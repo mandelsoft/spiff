@@ -1,15 +1,16 @@
 ```
-                                        ___ _ __ (_)/ _|/ _|
-                                       / __| '_ \| | |_| |_
-                                       \__ \ |_) | |  _|  _|
-                                       |___/ .__/|_|_| |_|
-                                           |_|
+                                              _  __  __             
+                                    ___ _ __ (_)/ _|/ _|  _     _   
+                                   / __| '_ \| | |_| |_ _| |_ _| |_ 
+                                   \__ \ |_) | |  _|  _|_   _|_   _|
+                                   |___/ .__/|_|_| |_|   |_|   |_|  
+                                       |_|
 
 ```
 
 ---
 
-**NOTE**: *Active development on spiff is currently paused, including Pull Requests.  Very severe issues will be addressed, and we will still be actively responding to requests for help via Issues.*
+**NOTE**: *Active development on [spiff](https://github.com/cloudfoundry-incubator/spiff) is currently paused and does not accept feature pull requests anymore. `spiff++` is a fork of spiff that provides a compatible extension to spiff based on the latest version offering a rich set of new features not yet available in spiff. All fixes provided by the original spiff project will be incorporated into spiff++, also. If development is opened again the new features will be proposed for the original project*
 
 ---
 
@@ -57,7 +58,7 @@ Contents:
 
 # Installation
 
-Official release executable binaries can be downloaded via [Github releases](https://github.com/cloudfoundry-incubator/spiff/releases) for Darwin and Linux machines (and virtual machines).
+Official release executable binaries can be downloaded via [Github releases](https://github.com/mandelsoft/spiff/releases) for Darwin and Linux machines (and virtual machines).
 
 Some of spiff's dependencies have changed since the last official release, and spiff will not be updated to keep up with these dependencies.  Working dependencies are vendored in the `Godeps` directory (more information on the `godep` tool is available [here](https://github.com/tools/godep)).  As such, trying to `go get` spiff will likely fail; the only supported way to use spiff is to use an official binary release.
 
