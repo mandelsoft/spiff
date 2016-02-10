@@ -131,7 +131,7 @@ func (e DefaultEnvironment) Flow(source yaml.Node, shouldOverride bool) (yaml.No
 	debug.Debug("@@@ Done\n")
 	unresolved := dynaml.FindUnresolvedNodes(result)
 	if len(unresolved) > 0 {
-		return nil, dynaml.UnresolvedNodes{unresolved}
+		return dynaml.ResetUnresolvedNodes(result), dynaml.UnresolvedNodes{unresolved}
 	}
 
 	return result, nil

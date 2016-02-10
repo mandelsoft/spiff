@@ -94,6 +94,8 @@ Example:
 spiff merge cf-release/templates/cf-deployment.yml my-cloud-stub.yml
 ```
 
+The ` merge` command offers the option `--partial`. If this option is given spiff handles incomplete expression evaluation. All errors are ignored and the unresolvable parts of the yaml document are returned as strings.
+
 ### `spiff diff manifest.yml other-manifest.yml`
 
 Show structural differences between two deployment manifests.

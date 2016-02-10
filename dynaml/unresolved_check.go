@@ -142,6 +142,29 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (nodes []UnresolvedN
 	return nodes
 }
 
+func ResetUnresolvedNodes(root yaml.Node) yaml.Node {
+	if root == nil {
+		return root
+	}
+
+	switch elem := root.Value().(type) {
+	case map[string]yaml.Node:
+		for key, val := range elem {
+			elem[key] = ResetUnresolvedNodes(val)
+		}
+
+	case []yaml.Node:
+		for i, val := range elem {
+			elem[i] = ResetUnresolvedNodes(val)
+		}
+
+	case Expression:
+		root = node(fmt.Sprintf("(( %s ))", elem), nil)
+	}
+
+	return root
+}
+
 func addContext(context []string, step string) []string {
 	dup := make([]string, len(context))
 	copy(dup, context)
