@@ -26,6 +26,7 @@ Contents:
 	- [(( foo bar ))](#-foo-bar-)
 		- [(( "foo" bar ))](#-foo-bar--1)
 		- [(( [1,2] bar ))](#-12-bar-)
+		- [(( map1 map2 ))](#-map1-map2-)
 	- [(( auto ))](#-auto-)
 	- [(( merge ))](#-merge-)
 		- [<<: (( merge ))](#--merge-)
@@ -248,7 +249,7 @@ Concatenation expression used to concatenate a sequence of dynaml expressions.
 
 Concatenation (where bar is another dynaml expr). Any sequences of simple values (string, integer and boolean) can be concatenated, given by any dynaml expression.
 
-e.g.
+e.g.:
 
 ```yaml
 domain: example.com
@@ -261,7 +262,7 @@ In this example `uri` will resolve to the value `"https://example.com"`.
 
 Concatenation of lists as expression (where bar is another dynaml expr). Any sequences of lists can be concatenated, given by any dynaml expression.
 
-e.g.
+e.g.:
 
 ```yaml
 other_ips: [ 10.0.0.2, 10.0.0.3 ]
@@ -272,13 +273,48 @@ In this example `static_ips` will resolve to the value `[ 10.0.1.2, 10.0.1.3, 10
 
 If the second expression evaluates to a value other than a list (integer, boolean, string or map), the value is appended to the first list.
 
-e.g.
+e.g.:
 
 ```yaml
 foo: 3
 bar: (( [1] 2 foo "alice" ))
 ```
 yields the list `[ 1, 2, 3, "alice" ]` for `bar`.
+
+### `(( map1 map2 ))`
+
+Concatenation of maps as expression. Any sequences of maps can be concatenated, given by any dynaml expression. Thereby entries will be merged. Entries with the same key are overwritten from left to right.
+
+e.g.:
+
+```yaml
+foo: 
+  alice: 24
+  bob: 25
+
+bar:
+  bob: 26
+  paul: 27
+
+concat: (( foo bar ))
+```
+
+yields
+
+```yaml
+foo: 
+  alice: 24
+  bob: 25
+
+bar:
+  bob: 26
+  paul: 27
+
+concat:
+  alice: 24
+  bob: 26
+  paul: 27
+```
 
 ## `(( auto ))`
 
