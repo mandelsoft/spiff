@@ -12,22 +12,22 @@ type AutoExpr struct {
 	Path []string
 }
 
-func (e AutoExpr) Evaluate(binding Binding) (yaml.Node, EvaluationInfo, bool) {
+func (e AutoExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 
 	if len(e.Path) == 3 && e.Path[0] == "resource_pools" && e.Path[2] == "size" {
 		jobs, info, found := refJobs.Evaluate(binding)
 		if !found {
-			info.Issue = "no jobs found"
+			info.Issue = yaml.NewIssue("no jobs found")
 			return nil, info, false
 		}
 
-		if !isResolved(jobs) {
-			return node(e), info, true
+		if !isResolvedValue(jobs) {
+			return e, info, true
 		}
-		jobsList, ok := jobs.Value().([]yaml.Node)
+		jobsList, ok := jobs.([]yaml.Node)
 		if !ok {
-			info.Issue = "jobs must be a list"
+			info.Issue = yaml.NewIssue("jobs must be a list")
 			return nil, info, false
 		}
 
@@ -51,10 +51,10 @@ func (e AutoExpr) Evaluate(binding Binding) (yaml.Node, EvaluationInfo, bool) {
 			size += instances
 		}
 
-		return node(size), info, true
+		return size, info, true
 	}
 
-	info.Issue = "auto only allowed for size entry in resource pools"
+	info.Issue = yaml.NewIssue("auto only allowed for size entry in resource pools")
 	return nil, info, false
 }
 

@@ -4,10 +4,10 @@ import (
 	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
-func Cascade(template yaml.Node, templates ...yaml.Node) (yaml.Node, error) {
+func Cascade(template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error) {
 	for i := len(templates) - 1; i >= 0; i-- {
 		flowed, err := Flow(templates[i], templates[i+1:]...)
-		if err != nil {
+		if !partial && err != nil {
 			return nil, err
 		}
 

@@ -8,32 +8,12 @@ import (
 	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
-type MapContext struct {
-	Binding
-	names map[string]yaml.Node
-}
-
-func (c MapContext) FindReference(path []string) (yaml.Node, bool) {
-	for name, node := range c.names {
-		if len(path) >= 1 && path[0] == name {
-			debug.Debug("map: catch find ref: %v\n", path)
-			if len(path) == 1 {
-				return node, true
-			}
-			return yaml.Find(node, path[1:]...)
-		}
-	}
-	debug.Debug("map: forward find ref: %v\n", path)
-	return c.Binding.FindReference(path)
-}
-
 type MapExpr struct {
-	A     Expression
-	Names []string
-	B     Expression
+	A      Expression
+	Lambda Expression
 }
 
-func (e MapExpr) Evaluate(binding Binding) (yaml.Node, EvaluationInfo, bool) {
+func (e MapExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 
 	debug.Debug("evaluate mapping\n")
@@ -41,72 +21,85 @@ func (e MapExpr) Evaluate(binding Binding) (yaml.Node, EvaluationInfo, bool) {
 	if !ok {
 		return nil, info, false
 	}
-	if !resolved {
-		return node(e), info, ok
+	lvalue, infoe, ok := ResolveExpressionOrPushEvaluation(&e.Lambda, &resolved, nil, binding)
+	if !ok {
+		return nil, info, false
 	}
 
-	debug.Debug("map: using expression %+v\n", e.B)
+	if !resolved {
+		return e, info.Join(infoe), ok
+	}
+
+	lambda, ok := lvalue.(LambdaValue)
+	if !ok {
+		infoe.Issue = yaml.NewIssue("mapping requires a lambda value")
+		return nil, infoe, false
+	}
+
+	debug.Debug("map: using lambda %+v\n", lambda)
 	var result []yaml.Node
 	switch value.(type) {
 	case []yaml.Node:
-		result, info, ok = mapList(value.([]yaml.Node), e.Names, e.B, binding)
+		result, info, ok = mapList(value.([]yaml.Node), lambda, binding)
 
 	case map[string]yaml.Node:
-		result, info, ok = mapMap(value.(map[string]yaml.Node), e.Names, e.B, binding)
+		result, info, ok = mapMap(value.(map[string]yaml.Node), lambda, binding)
 
 	default:
-		info.Issue = "map or list required for mapping"
+		info.Issue = yaml.NewIssue("map or list required for mapping")
 		return nil, info, false
 	}
 	if !ok {
 		return nil, info, false
 	}
 	if result == nil {
-		return node(e), info, true
+		return e, info, true
 	}
 	debug.Debug("map: --> %+v\n", result)
-	return node(result), info, true
+	return result, info, true
 }
 
 func (e MapExpr) String() string {
-	str := ""
-	for _, n := range e.Names {
-		str = "," + n + str
+	lambda, ok := e.Lambda.(LambdaExpr)
+	if ok {
+		return fmt.Sprintf("map[%s%s]", e.A, fmt.Sprintf("%s", lambda)[len("lambda"):])
+	} else {
+		return fmt.Sprintf("map[%s|%s]", e.A, e.Lambda)
 	}
-	return fmt.Sprintf("map[%s|%s|->%s]", e.A, str[1:], e.B)
 }
 
-func mapList(source []yaml.Node, names []string, e Expression, binding Binding) ([]yaml.Node, EvaluationInfo, bool) {
-	inp := map[string]yaml.Node{}
+func mapList(source []yaml.Node, e LambdaValue, binding Binding) ([]yaml.Node, EvaluationInfo, bool) {
+	inp := make([]interface{}, len(e.lambda.Names))
 	result := []yaml.Node{}
 	info := DefaultInfo()
 
+	if len(e.lambda.Names) > 2 {
+		info.Issue = yaml.NewIssue("mapping expression take a maximum of 2 arguments")
+		return nil, info, false
+	}
 	for i, n := range source {
 		debug.Debug("map:  mapping for %d: %+v\n", i, n)
-		inp[names[0]] = n
-		if len(names) > 1 {
-			inp[names[1]] = node(i)
-		}
-		ctx := MapContext{binding, inp}
-		mapped, info, ok := e.Evaluate(ctx)
+		inp[0] = i
+		inp[len(inp)-1] = n.Value()
+		mapped, info, ok := e.Evaluate(inp, binding)
 		if !ok {
 			debug.Debug("map:  %d %+v: failed\n", i, n)
 			return nil, info, false
 		}
 
-		_, ok = mapped.Value().(Expression)
+		_, ok = mapped.(Expression)
 		if ok {
 			debug.Debug("map:  %d unresolved  -> KEEP\n")
 			return nil, info, true
 		}
 		debug.Debug("map:  %d --> %+v\n", i, mapped)
-		result = append(result, mapped)
+		result = append(result, node(mapped, info))
 	}
 	return result, info, true
 }
 
-func mapMap(source map[string]yaml.Node, names []string, e Expression, binding Binding) ([]yaml.Node, EvaluationInfo, bool) {
-	inp := map[string]yaml.Node{}
+func mapMap(source map[string]yaml.Node, e LambdaValue, binding Binding) ([]yaml.Node, EvaluationInfo, bool) {
+	inp := make([]interface{}, len(e.lambda.Names))
 	result := []yaml.Node{}
 	info := DefaultInfo()
 
@@ -114,24 +107,21 @@ func mapMap(source map[string]yaml.Node, names []string, e Expression, binding B
 	for _, k := range keys {
 		n := source[k]
 		debug.Debug("map:  mapping for %s: %+v\n", k, n)
-		inp[names[0]] = n
-		if len(names) > 1 {
-			inp[names[1]] = node(k)
-		}
-		ctx := MapContext{binding, inp}
-		mapped, info, ok := e.Evaluate(ctx)
+		inp[0] = k
+		inp[len(inp)-1] = n.Value()
+		mapped, info, ok := e.Evaluate(inp, binding)
 		if !ok {
 			debug.Debug("map:  %s %+v: failed\n", k, n)
 			return nil, info, false
 		}
 
-		_, ok = mapped.Value().(Expression)
+		_, ok = mapped.(Expression)
 		if ok {
 			debug.Debug("map:  %d unresolved  -> KEEP\n")
 			return nil, info, true
 		}
 		debug.Debug("map:  %s --> %+v\n", k, mapped)
-		result = append(result, mapped)
+		result = append(result, node(mapped, info))
 	}
 	return result, info, true
 }

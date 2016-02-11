@@ -14,7 +14,7 @@ import (
 	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
-func func_exec(arguments []interface{}, binding Binding) (yaml.Node, EvaluationInfo, bool) {
+func func_exec(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 
 	if len(arguments) < 1 {
@@ -31,19 +31,19 @@ func func_exec(arguments []interface{}, binding Binding) (yaml.Node, EvaluationI
 				for j, arg := range list {
 					v, ok := getArg(j, arg.Value())
 					if !ok {
-						info.Issue = "command argument must be string"
+						info.Issue = yaml.NewIssue("command argument must be string")
 						return nil, info, false
 					}
 					args = append(args, v)
 				}
 			} else {
-				info.Issue = "list not allowed for command argument"
+				info.Issue = yaml.NewIssue("list not allowed for command argument")
 				return nil, info, false
 			}
 		} else {
 			v, ok := getArg(i, arg)
 			if !ok {
-				info.Issue = "command argument must be string"
+				info.Issue = yaml.NewIssue("command argument must be string")
 				return nil, info, false
 			}
 			args = append(args, v)
@@ -51,7 +51,7 @@ func func_exec(arguments []interface{}, binding Binding) (yaml.Node, EvaluationI
 	}
 	result, err := cachedExecute(args)
 	if err != nil {
-		info.Issue = "execution '" + args[0] + "' failed"
+		info.Issue = yaml.NewIssue("execution '%s' failed", args[0])
 		// expression set to undefined
 		return nil, info, false
 	}
@@ -60,7 +60,7 @@ func func_exec(arguments []interface{}, binding Binding) (yaml.Node, EvaluationI
 	execYML, err := yaml.Parse("exec", result)
 	if strings.HasPrefix(str, "---\n") && err == nil {
 		debug.Debug("exec: found yaml result %+v\n", execYML)
-		return execYML, info, true
+		return execYML.Value(), info, true
 	} else {
 		if strings.HasSuffix(str, "\n") {
 			str = str[:len(str)-1]
@@ -68,10 +68,10 @@ func func_exec(arguments []interface{}, binding Binding) (yaml.Node, EvaluationI
 		int64YML, err := strconv.ParseInt(str, 10, 64)
 		if err == nil {
 			debug.Debug("exec: found integer result: %s\n", int64YML)
-			return node(int64YML), info, true
+			return int64YML, info, true
 		}
 		debug.Debug("exec: found string result: %s\n", string(result))
-		return node(str), info, true
+		return str, info, true
 	}
 }
 
@@ -86,7 +86,7 @@ func getArg(i int, value interface{}) (string, bool) {
 		if i == 0 || value == nil {
 			return "", false
 		}
-		yaml, err := candiedyaml.Marshal(node(value))
+		yaml, err := candiedyaml.Marshal(node(value, nil))
 		if err != nil {
 			log.Fatalln("error marshalling manifest:", err)
 		}

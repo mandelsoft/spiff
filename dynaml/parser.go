@@ -6,12 +6,11 @@ import (
 	"strings"
 
 	"github.com/cloudfoundry-incubator/spiff/debug"
-	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
 type helperNode struct{}
 
-func (e helperNode) Evaluate(binding Binding) (yaml.Node, EvaluationInfo, bool) {
+func (e helperNode) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
 	panic("not intended to be evaluated")
 }
 
@@ -20,9 +19,19 @@ type expressionListHelper struct {
 	list []Expression
 }
 
+type nameListHelper struct {
+	helperNode
+	list []string
+}
+
 type nameHelper struct {
 	helperNode
 	name string
+}
+
+type operationHelper struct {
+	helperNode
+	op string
 }
 
 func Parse(source string, path []string, stubPath []string) (Expression, error) {
@@ -52,6 +61,8 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 		switch token.pegRule {
 		case ruleDynaml:
 			return tokens.Pop()
+		case ruleTemplate:
+			return TemplateExpr{}
 		case rulePrefer:
 			tokens.Push(PreferExpr{tokens.Pop()})
 		case ruleAuto:
@@ -75,8 +86,20 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 		case ruleOn:
 			keyName = tokens.Pop().(nameHelper).name
 
-		case ruleReference:
+		case ruleReference, ruleFollowUpRef:
 			tokens.Push(ReferenceExpr{strings.Split(contents, ".")})
+
+		case ruleChained:
+		case ruleChainedQualifiedExpression:
+			ref := tokens.Pop()
+			expr := tokens.Pop()
+			tokens.Push(QualifiedExpr{expr, ref.(ReferenceExpr)})
+
+		case ruleChainedCall:
+			tokens.Push(CallExpr{
+				Function:  tokens.Pop(),
+				Arguments: tokens.GetExpressionList(),
+			})
 
 		case ruleInteger:
 			val, err := strconv.ParseInt(contents, 10, 64)
@@ -92,11 +115,48 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 		case ruleString:
 			val := strings.Replace(contents[1:len(contents)-1], `\"`, `"`, -1)
 			tokens.Push(StringExpr{val})
+
+		case ruleSubstitution:
+			tokens.Push(SubstitutionExpr{Template: tokens.Pop()})
+
+		case ruleConditional:
+			fhs := tokens.Pop()
+			ths := tokens.Pop()
+			lhs := tokens.Pop()
+
+			tokens.Push(CondExpr{C: lhs, T: ths, F: fhs})
+
+		case ruleLogOr:
+			rhs := tokens.Pop()
+			lhs := tokens.Pop()
+
+			tokens.Push(LogOrExpr{A: lhs, B: rhs})
+
+		case ruleLogAnd:
+			rhs := tokens.Pop()
+			lhs := tokens.Pop()
+
+			tokens.Push(LogAndExpr{A: lhs, B: rhs})
+
 		case ruleOr:
 			rhs := tokens.Pop()
 			lhs := tokens.Pop()
 
 			tokens.Push(OrExpr{A: lhs, B: rhs})
+
+		case ruleNot:
+			tokens.Push(NotExpr{tokens.Pop()})
+
+		case ruleCompareOp:
+			tokens.Push(operationHelper{op: contents})
+
+		case ruleComparison:
+			rhs := tokens.Pop()
+			op := tokens.Pop()
+			lhs := tokens.Pop()
+
+			tokens.Push(ComparisonExpr{A: lhs, Op: op.(operationHelper).op, B: rhs})
+
 		case ruleConcatenation:
 			rhs := tokens.Pop()
 			lhs := tokens.Pop()
@@ -127,24 +187,40 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			lhs := tokens.Pop()
 
 			tokens.Push(ModuloExpr{A: lhs, B: rhs})
-		case ruleCall:
-			tokens.Push(CallExpr{
-				Name:      tokens.Pop().(nameHelper).name,
-				Arguments: tokens.GetExpressionList(),
-			})
+
 		case ruleName:
 			tokens.Push(nameHelper{name: contents})
+		case ruleNextName:
+			rhs := tokens.Pop()
+			list := tokens.PopNameList()
+			list.list = append(list.list, rhs.(nameHelper).name)
+			tokens.Push(list)
 
 		case ruleMapping:
 			rhs := tokens.Pop()
-			names := []string{tokens.Pop().(nameHelper).name}
 			lhs := tokens.Pop()
-			name, ok := lhs.(nameHelper)
+			tokens.Push(MapExpr{Lambda: rhs, A: lhs})
+
+		case ruleLambda:
+
+		case ruleLambdaExpr:
+			rhs := tokens.Pop()
+			names := tokens.PopNameList().list
+			tokens.Push(LambdaExpr{Names: names, E: rhs})
+
+		case ruleLambdaRef:
+			rhs := tokens.Pop()
+			lexp, ok := rhs.(LambdaExpr)
 			if ok {
-				names = append(names, name.name)
-				lhs = tokens.Pop()
+				tokens.Push(lexp)
+			} else {
+				tokens.Push(LambdaRefExpr{Source: rhs, Path: path, StubPath: stubPath})
 			}
-			tokens.Push(MapExpr{A: lhs, Names: names, B: rhs})
+
+		case ruleRange:
+			rhs := tokens.Pop()
+			lhs := tokens.Pop()
+			tokens.Push(RangeExpr{lhs.(Expression), rhs.(Expression)})
 
 		case ruleList:
 			seq := tokens.GetExpressionList()
@@ -160,9 +236,9 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 		case ruleContents, ruleArguments:
 			tokens.SetExpressionList(tokens.PopExpressionList())
 
-		case ruleKey:
+		case ruleKey, ruleIndex:
 		case ruleGrouped:
-		case ruleLevel0, ruleLevel1, ruleLevel2, ruleLevel3, ruleLevel4:
+		case ruleLevel0, ruleLevel1, ruleLevel2, ruleLevel3, ruleLevel4, ruleLevel5, ruleLevel6, ruleLevel7:
 		case ruleExpression:
 		case rulews:
 		case rulereq_ws:
@@ -172,6 +248,12 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 	}
 
 	panic("unreachable")
+}
+
+func reverse(a []string) {
+	for i := 0; i < len(a)/2; i++ {
+		a[i], a[len(a)-i-1] = a[len(a)-i-1], a[i]
+	}
 }
 
 func equals(p1 []string, p2 []string) bool {
@@ -227,4 +309,13 @@ func (s *tokenStack) GetExpressionList() []Expression {
 		return []Expression(nil)
 	}
 	return list.list
+}
+
+func (s *tokenStack) PopNameList() nameListHelper {
+	lhs := s.Pop()
+	list, ok := lhs.(nameListHelper)
+	if !ok {
+		list = nameListHelper{list: []string{lhs.(nameHelper).name}}
+	}
+	return list
 }

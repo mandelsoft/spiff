@@ -265,11 +265,47 @@ var _ = Describe("parsing", func() {
 	})
 
 	Describe("calls", func() {
+		It("parses simple calls for name", func() {
+			parsesAs(
+				`foo(1)`,
+				CallExpr{
+					ReferenceExpr{[]string{"foo"}},
+					[]Expression{
+						IntegerExpr{1},
+					},
+				},
+			)
+		})
+
+		It("parses call for reference", func() {
+			parsesAs(
+				`foo.bar(1)`,
+				CallExpr{
+					ReferenceExpr{[]string{"foo", "bar"}},
+					[]Expression{
+						IntegerExpr{1},
+					},
+				},
+			)
+		})
+
+		It("parses call for expression", func() {
+			parsesAs(
+				`(foo)(1)`,
+				CallExpr{
+					ReferenceExpr{[]string{"foo"}},
+					[]Expression{
+						IntegerExpr{1},
+					},
+				},
+			)
+		})
+
 		It("parses nodes in arguments to function calls", func() {
 			parsesAs(
 				`foo(1, "two", three)`,
 				CallExpr{
-					"foo",
+					ReferenceExpr{[]string{"foo"}},
 					[]Expression{
 						IntegerExpr{1},
 						StringExpr{"two"},
@@ -283,7 +319,7 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo(1, [ "two", three ])`,
 				CallExpr{
-					"foo",
+					ReferenceExpr{[]string{"foo"}},
 					[]Expression{
 						IntegerExpr{1},
 						ListExpr{
@@ -301,11 +337,11 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo(1, bar( "two", three ))`,
 				CallExpr{
-					"foo",
+					ReferenceExpr{[]string{"foo"}},
 					[]Expression{
 						IntegerExpr{1},
 						CallExpr{
-							"bar",
+							ReferenceExpr{[]string{"bar"}},
 							[]Expression{
 								StringExpr{"two"},
 								ReferenceExpr{[]string{"three"}},
@@ -333,38 +369,194 @@ var _ = Describe("parsing", func() {
 	})
 
 	Describe("mapping", func() {
-		It("parses simple mappinng", func() {
+		It("parses simple mapping", func() {
 			parsesAs(
 				`map[list|x|->x]`,
 				MapExpr{
 					ReferenceExpr{[]string{"list"}},
-					[]string{"x"},
-					ReferenceExpr{[]string{"x"}},
+					LambdaExpr{
+						[]string{"x"},
+						ReferenceExpr{[]string{"x"}},
+					},
 				},
 			)
 		})
 
-		It("parses key/value mappinng", func() {
+		It("parses key/value mapping", func() {
 			parsesAs(
 				`map[list|x,y|->x]`,
 				MapExpr{
 					ReferenceExpr{[]string{"list"}},
-					[]string{"y", "x"},
+					LambdaExpr{
+						[]string{"x", "y"},
+						ReferenceExpr{[]string{"x"}},
+					},
+				},
+			)
+		})
+
+		It("parses complex mapping", func() {
+			parsesAs(
+				`map[list|x|->x ".*"]`,
+				MapExpr{
+					ReferenceExpr{[]string{"list"}},
+					LambdaExpr{
+						[]string{"x"},
+						ConcatenationExpr{
+							ReferenceExpr{[]string{"x"}},
+							StringExpr{".*"},
+						},
+					},
+				},
+			)
+		})
+
+		It("parses mapping expression", func() {
+			parsesAs(
+				`map[list|mappings.a]`,
+				MapExpr{
+					ReferenceExpr{[]string{"list"}},
+					ReferenceExpr{
+						[]string{"mappings", "a"},
+					},
+				},
+			)
+		})
+
+		It("parses complex mapping expression", func() {
+			parsesAs(
+				`map[list|lambda |x|->x ".*"]`,
+				MapExpr{
+					ReferenceExpr{[]string{"list"}},
+					LambdaExpr{
+						[]string{"x"},
+						ConcatenationExpr{
+							ReferenceExpr{[]string{"x"}},
+							StringExpr{".*"},
+						},
+					},
+				},
+			)
+		})
+	})
+
+	Describe("lambda expressions", func() {
+		It("parses expression with one parameter", func() {
+			parsesAs(
+				`lambda|x|->x`,
+				LambdaExpr{
+					[]string{"x"},
 					ReferenceExpr{[]string{"x"}},
 				},
 			)
 		})
 
-		It("parses complex mappinng", func() {
+		It("parses expression with two parameter", func() {
 			parsesAs(
-				`map[list|x|->x ".*"]`,
-				MapExpr{
-					ReferenceExpr{[]string{"list"}},
-					[]string{"x"},
-					ConcatenationExpr{
+				`lambda|x,y|->x / y`,
+				LambdaExpr{
+					[]string{"x", "y"},
+					DivisionExpr{
 						ReferenceExpr{[]string{"x"}},
-						StringExpr{".*"},
+						ReferenceExpr{[]string{"y"}},
 					},
+				},
+			)
+		})
+
+		It("parses calculated expression", func() {
+			parsesAs(
+				`lambda "|x|->x+" ref`,
+				LambdaRefExpr{
+					Source: ConcatenationExpr{
+						StringExpr{"|x|->x+"},
+						ReferenceExpr{[]string{"ref"}},
+					},
+					Path:     []string{"foo", "bar"},
+					StubPath: []string{"foo", "bar"},
+				},
+				"foo", "bar",
+			)
+		})
+	})
+
+	Describe("chained calls and references", func() {
+		It("parses reference based chains", func() {
+			parsesAs(
+				`a.b(1)(2).c(3).e.f(4).g`,
+				QualifiedExpr{
+					CallExpr{
+						QualifiedExpr{
+							CallExpr{
+								QualifiedExpr{
+									CallExpr{
+										CallExpr{
+											ReferenceExpr{[]string{"a", "b"}},
+											[]Expression{
+												IntegerExpr{1},
+											},
+										},
+										[]Expression{
+											IntegerExpr{2},
+										},
+									},
+									ReferenceExpr{[]string{"c"}},
+								},
+								[]Expression{
+									IntegerExpr{3},
+								},
+							},
+							ReferenceExpr{[]string{"e", "f"}},
+						},
+						[]Expression{
+							IntegerExpr{4},
+						},
+					},
+					ReferenceExpr{[]string{"g"}},
+				},
+			)
+		})
+
+		It("parses list based chains", func() {
+			parsesAs(
+				`[1,2].a(1)(2).c(3).e.f(4).g`,
+				QualifiedExpr{
+					CallExpr{
+						QualifiedExpr{
+							CallExpr{
+								QualifiedExpr{
+									CallExpr{
+										CallExpr{
+											QualifiedExpr{
+												ListExpr{
+													[]Expression{
+														IntegerExpr{1},
+														IntegerExpr{2},
+													},
+												},
+												ReferenceExpr{[]string{"a"}},
+											},
+											[]Expression{
+												IntegerExpr{1},
+											},
+										},
+										[]Expression{
+											IntegerExpr{2},
+										},
+									},
+									ReferenceExpr{[]string{"c"}},
+								},
+								[]Expression{
+									IntegerExpr{3},
+								},
+							},
+							ReferenceExpr{[]string{"e", "f"}},
+						},
+						[]Expression{
+							IntegerExpr{4},
+						},
+					},
+					ReferenceExpr{[]string{"g"}},
 				},
 			)
 		})

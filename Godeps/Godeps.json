@@ -4,7 +4,7 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/candiedyaml",
-			"Rev": "5f3b3579b3dc360c8ad3f86fe9e59e58c5652d10"
+			"Rev": "4e924c79e32959414e8c7aaed6607176d8ee79c3"
 		},
 		{
 			"ImportPath": "github.com/codegangsta/cli",

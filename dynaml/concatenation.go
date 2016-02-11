@@ -13,7 +13,7 @@ type ConcatenationExpr struct {
 	B Expression
 }
 
-func (e ConcatenationExpr) Evaluate(binding Binding) (yaml.Node, EvaluationInfo, bool) {
+func (e ConcatenationExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 
 	debug.Debug("CONCAT %+v,%+v\n", e.A, e.B)
@@ -32,35 +32,45 @@ func (e ConcatenationExpr) Evaluate(binding Binding) (yaml.Node, EvaluationInfo,
 
 	if !resolved {
 		debug.Debug("  still unresolved operands\n")
-		return node(e), info, true
+		return e, info, true
 	}
 
 	debug.Debug("CONCAT resolved %+v,%+v\n", a, b)
 
-	val, ok := concatenateStringAndInt(a, b)
+	val, ok := concatenateString(a, b)
 	if ok {
 		debug.Debug("CONCAT --> string %+v\n", val)
-		return node(val), info, true
+		return val, info, true
 	}
 
 	alist, aok := a.([]yaml.Node)
 	if !aok {
-		switch a.(type) {
-		case map[string]yaml.Node:
-			info.Issue = "first argument must be list or simple value"
-		default:
-			info.Issue = "simple value can only be concatenated with simple values"
+		amap, aok := a.(map[string]yaml.Node)
+		if !aok {
+			info.Issue = yaml.NewIssue("simple value can only be concatenated with simple values")
+			return nil, info, false
 		}
-		return nil, info, false
-	}
-
-	switch b.(type) {
-	case []yaml.Node:
-		return node(append(alist, b.([]yaml.Node)...)), info, true
-	case nil:
-		return node(a), info, true
-	default:
-		return node(append(alist, node(b))), info, true
+		switch bmap := b.(type) {
+		case map[string]yaml.Node:
+			result := make(map[string]yaml.Node)
+			concatenateMap(result, amap)
+			concatenateMap(result, bmap)
+			return result, info, true
+		case nil:
+			return a, info, true
+		default:
+			info.Issue = yaml.NewIssue("simple value can only be concatenated with simple values")
+			return nil, info, false
+		}
+	} else {
+		switch b.(type) {
+		case []yaml.Node:
+			return append(alist, b.([]yaml.Node)...), info, true
+		case nil:
+			return a, info, true
+		default:
+			return append(alist, node(b, info)), info, true
+		}
 	}
 }
 
@@ -68,7 +78,7 @@ func (e ConcatenationExpr) String() string {
 	return fmt.Sprintf("%s %s", e.A, e.B)
 }
 
-func concatenateStringAndInt(a interface{}, b interface{}) (string, bool) {
+func concatenateString(a interface{}, b interface{}) (string, bool) {
 	var aString string
 
 	switch v := a.(type) {
@@ -89,7 +99,15 @@ func concatenateStringAndInt(a interface{}, b interface{}) (string, bool) {
 		return aString + strconv.FormatInt(v, 10), true
 	case bool:
 		return aString + strconv.FormatBool(v), true
+	case LambdaValue:
+		return aString + fmt.Sprintf("%s", v), true
 	default:
 		return "", false
+	}
+}
+
+func concatenateMap(a, b map[string]yaml.Node) {
+	for k, v := range b {
+		a[k] = v
 	}
 }

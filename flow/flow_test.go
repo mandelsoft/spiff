@@ -1,6 +1,8 @@
 package flow
 
 import (
+	"os"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -264,7 +266,7 @@ foo: (( auto ))
 						Node: yaml.IssueNode(yaml.NewNode(
 							dynaml.AutoExpr{Path: []string{"foo"}},
 							"test",
-						), "auto only allowed for size entry in resource pools"),
+						), yaml.NewIssue("auto only allowed for size entry in resource pools")),
 						Context: []string{"foo"},
 						Path:    []string{"foo"},
 					},
@@ -2007,6 +2009,198 @@ foo: "1515"
 		})
 	})
 
+	Describe("for logical expressions", func() {
+		It("evaluates not", func() {
+			source := parseYAML(`
+---
+foo: (( 5 ))
+bar: (( !foo ))
+`)
+			resolved := parseYAML(`
+---
+foo: 5
+bar: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates and", func() {
+			source := parseYAML(`
+---
+foo: (( 0 ))
+bar: (( !foo -and true))
+`)
+			resolved := parseYAML(`
+---
+foo: 0
+bar: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates or", func() {
+			source := parseYAML(`
+---
+foo: (( 5 ))
+bar: (( !foo -or true))
+`)
+			resolved := parseYAML(`
+---
+foo: 5
+bar: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates <=", func() {
+			source := parseYAML(`
+---
+foo: (( 5 ))
+bar: (( foo <= 5))
+`)
+			resolved := parseYAML(`
+---
+foo: 5
+bar: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates <", func() {
+			source := parseYAML(`
+---
+foo: (( 5 ))
+bar: (( foo < 5))
+`)
+			resolved := parseYAML(`
+---
+foo: 5
+bar: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates >=", func() {
+			source := parseYAML(`
+---
+foo: (( 5 ))
+bar: (( foo >= 5))
+`)
+			resolved := parseYAML(`
+---
+foo: 5
+bar: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates >", func() {
+			source := parseYAML(`
+---
+foo: (( 5 ))
+bar: (( foo > 5))
+`)
+			resolved := parseYAML(`
+---
+foo: 5
+bar: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates ==", func() {
+			source := parseYAML(`
+---
+foo: (( 5 ))
+bar: (( foo == 5))
+`)
+			resolved := parseYAML(`
+---
+foo: 5
+bar: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates == of lists", func() {
+			source := parseYAML(`
+---
+foo: 
+  - alice
+  - bob
+bar: (( foo == [ "alice","bob" ] ))
+`)
+			resolved := parseYAML(`
+---
+foo: 
+  - alice
+  - bob
+bar: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates == of lists to false", func() {
+			source := parseYAML(`
+---
+foo: 
+  - alice
+  - bob
+bar: (( foo == [ "alice","paul" ] ))
+`)
+			resolved := parseYAML(`
+---
+foo: 
+  - alice
+  - bob
+bar: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates == of maps", func() {
+			source := parseYAML(`
+---
+foo: 
+  a: 1
+  b: 2
+
+comp:
+  a: 1
+  b: 2
+
+bar: (( foo == comp ))
+`)
+			resolved := parseYAML(`
+---
+foo: 
+  a: 1
+  b: 2
+
+comp:
+  a: 1
+  b: 2
+
+bar: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates !=", func() {
+			source := parseYAML(`
+---
+foo: (( 5 ))
+bar: (( foo != 5))
+`)
+			resolved := parseYAML(`
+---
+foo: 5
+bar: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
 	Describe("when concatenating a list", func() {
 		Context("with incremental expression resolution", func() {
 			It("evaluates in case of successfully completed operand resolution", func() {
@@ -2289,6 +2483,287 @@ foo: failed
 		})
 	})
 
+	Describe("when splitting", func() {
+		It("splits single value", func() {
+			source := parseYAML(`
+---
+foo: (( split( ",", "alice") ))
+`)
+			resolved := parseYAML(`
+---
+foo:
+ - alice
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("splits multiple values", func() {
+			source := parseYAML(`
+---
+foo: (( split( ",", "alice,bob") ))
+`)
+			resolved := parseYAML(`
+---
+foo:
+ - alice
+ - bob
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when trimming", func() {
+		It("trims strings", func() {
+			source := parseYAML(`
+---
+foo: (( trim( "  alice ") ))
+`)
+			resolved := parseYAML(`
+---
+foo: alice
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("trims dedicated characters", func() {
+			source := parseYAML(`
+---
+foo: (( trim( "alice", "ae") ))
+`)
+			resolved := parseYAML(`
+---
+foo: lic
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("trims lists", func() {
+			source := parseYAML(`
+---
+foo: (( trim( split(",","alice, bob ")) ))
+`)
+			resolved := parseYAML(`
+---
+foo:
+  - alice
+  - bob
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("calling length", func() {
+		It("calculates string length", func() {
+			source := parseYAML(`
+---
+foo: (( length( "alice") ))
+`)
+			resolved := parseYAML(`
+---
+foo: 5
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("calculates list length", func() {
+			source := parseYAML(`
+---
+foo: (( length( ["alice","bob"]) ))
+`)
+			resolved := parseYAML(`
+---
+foo: 2
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("calculates map length", func() {
+			source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+
+foo: (( length( map) ))
+`)
+			resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+foo: 2
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when reevaluating an expression", func() {
+		It("resolves indirect fields", func() {
+			source := parseYAML(`
+---
+alice:
+  bob: married
+
+foo: alice
+bar: bob
+
+status: (( eval( foo "." bar ) ))
+`)
+			resolved := parseYAML(`
+---
+alice:
+  bob: married
+
+foo: alice
+bar: bob
+
+status: married
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("defaults evaluation errors", func() {
+			source := parseYAML(`
+---
+alice:
+  bob: married
+
+foo: alice
+
+status: (( eval( foo "." bar ) || "failed" ))
+`)
+			resolved := parseYAML(`
+---
+alice:
+  bob: married
+
+foo: alice
+
+status: failed
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when resing from the environment", func() {
+		os.Setenv("TEST1", "alice")
+		os.Setenv("TEST2", "bob")
+		dynaml.ReloadEnv()
+
+		It("resolves a single variable", func() {
+			source := parseYAML(`
+---
+alice: (( env("TEST1") ))
+`)
+			resolved := parseYAML(`
+---
+alice: alice
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("defaults a non-existing single variable", func() {
+			source := parseYAML(`
+---
+alice: (( env("TEST3") || "default" ))
+`)
+			resolved := parseYAML(`
+---
+alice: default
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("resolves a two variables to a map", func() {
+			source := parseYAML(`
+---
+env: (( env("TEST1","TEST2") ))
+`)
+			resolved := parseYAML(`
+---
+env:
+  TEST1: alice
+  TEST2: bob
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("resolves a list to a map", func() {
+			source := parseYAML(`
+---
+list:
+  - TEST1
+  - TEST2
+env: (( env(list) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+  - TEST1
+  - TEST2
+env:
+  TEST1: alice
+  TEST2: bob
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when formatting a string", func() {
+		It("formats strings and integers", func() {
+			source := parseYAML(`
+---
+int: 5
+str: string
+msg: (( format("%s %d", str, int) ))
+`)
+			resolved := parseYAML(`
+---
+int: 5
+str: string
+msg: string 5
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("formats maps", func() {
+			source := parseYAML(`
+---
+map:
+  alice: 25
+msg: (( format("%s", map) ))
+`)
+			resolved := parseYAML(`
+---
+map:
+  alice: 25
+msg: |+
+  alice: 25
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("formats lists", func() {
+			source := parseYAML(`
+---
+list:
+  - alice
+  - bob
+msg: (( format("%s", list) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+  - alice
+  - bob
+msg: |+
+  - alice
+  - bob
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
 	Describe("when doing a mapping", func() {
 		Context("for a list", func() {
 			It("maps simple expression", func() {
@@ -2454,6 +2929,28 @@ joined: failed
 `)
 				Expect(source).To(FlowAs(resolved))
 			})
+
+			It("maps with referenced expression", func() {
+				source := parseYAML(`
+---
+map: '|x|->x'
+list:
+  - alice
+  - bob
+mapped: (( map[list|lambda map] ))
+`)
+				resolved := parseYAML(`
+---
+map: '|x|->x'
+list:
+  - alice
+  - bob
+mapped:
+  - alice
+  - bob
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
 
 		Context("for a map", func() {
@@ -2494,6 +2991,84 @@ mapped:
   - alice25
   - bob24
 `)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
+	Describe("using templates", func() {
+		Context("direct usage", func() {
+			It("uses usage context", func() {
+				source := parseYAML(`
+---
+verb: hates
+
+foo:
+  bar:
+    <<: (( &template ))
+    alice: alice
+    bob: (( verb " " alice ))
+
+
+use:
+  verb: loves
+  subst: (( *foo.bar ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+foo:
+  bar:
+    <<: (( &template ))
+    alice: alice
+    bob: (( verb " " alice ))
+use:
+  subst:
+    alice: alice
+    bob: loves alice
+  verb: loves
+verb: hates
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("handles independent usage", func() {
+				source := parseYAML(`
+---
+verb: hates
+
+foo:
+  bar:
+    <<: (( &template ))
+    alice: alice
+    bob: (( verb " " alice ))
+
+
+use1:
+  verb: loves
+  subst: (( *foo.bar ))
+use2:
+  verb: works with
+  subst: (( *foo.bar ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+foo:
+  bar:
+    <<: (( &template ))
+    alice: alice
+    bob: (( verb " " alice ))
+use1:
+  subst:
+    alice: alice
+    bob: loves alice
+  verb: loves
+use2:
+  subst:
+    alice: alice
+    bob: works with alice
+  verb: works with
+verb: hates
+`))
 				Expect(source).To(FlowAs(resolved))
 			})
 		})
@@ -2583,6 +3158,33 @@ list:
 `)
 				Expect(source).To(FlowAs(resolved, stub))
 			})
+		})
+	})
+
+	Describe("accessing the evaluation context", func() {
+		It("resolves context variables", func() {
+			source := parseYAML(`
+---
+foo:
+  bar:
+    path: (( __ctx.PATH ))
+    str: (( __ctx.PATHNAME ))
+    file: (( __ctx.FILE ))
+    dir: (( __ctx.DIR ))
+`)
+			resolved := parseYAML(`
+---
+foo:
+  bar:
+    dir: .
+    file: test
+    path:
+    - foo
+    - bar
+    - path
+    str: foo.bar.str
+`)
+			Expect(source).To(FlowAs(resolved))
 		})
 	})
 })

@@ -1,7 +1,6 @@
 package dynaml
 
 import (
-	"fmt"
 	"github.com/cloudfoundry-incubator/spiff/debug"
 	"github.com/cloudfoundry-incubator/spiff/yaml"
 	"strings"
@@ -15,7 +14,7 @@ type MergeExpr struct {
 	KeyName  string
 }
 
-func (e MergeExpr) Evaluate(binding Binding) (yaml.Node, EvaluationInfo, bool) {
+func (e MergeExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
 	var info EvaluationInfo
 	if e.Redirect {
 		info.RedirectPath = e.Path
@@ -26,10 +25,12 @@ func (e MergeExpr) Evaluate(binding Binding) (yaml.Node, EvaluationInfo, bool) {
 	if ok {
 		info.Replace = e.Replace
 		info.Merged = true
+		info.Source = node.SourceName()
+		return node.Value(), info, ok
 	} else {
-		info.Issue = fmt.Sprintf("'%s' not found in any stub", strings.Join(e.Path, "."))
+		info.Issue = yaml.NewIssue("'%s' not found in any stub", strings.Join(e.Path, "."))
+		return nil, info, false
 	}
-	return node, info, ok
 }
 
 func (e MergeExpr) String() string {

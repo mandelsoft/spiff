@@ -18,14 +18,45 @@ type UnresolvedNode struct {
 	Path    []string
 }
 
+func (e UnresolvedNodes) Issue(message string) yaml.Issue {
+	result := yaml.NewIssue(message)
+	format := ""
+
+	for _, node := range e.Nodes {
+		issue := node.Issue()
+		msg := issue.Issue
+		if msg != "" {
+			msg = "\t" + msg
+		}
+		switch node.Value().(type) {
+		case Expression:
+			format = "\t(( %s ))\tin %s\t%s\t(%s)%s"
+		default:
+			format = "\t%s\tin %s\t%s\t(%s)%s"
+		}
+		message = fmt.Sprintf(
+			format,
+			node.Value(),
+			node.SourceName(),
+			strings.Join(node.Context, "."),
+			strings.Join(node.Path, "."),
+			msg,
+		)
+		issue.Issue = message
+		result.Nested = append(result.Nested, issue)
+	}
+	return result
+}
+
 func (e UnresolvedNodes) Error() string {
 	message := "unresolved nodes:"
 	format := ""
 
 	for _, node := range e.Nodes {
 		issue := node.Issue()
-		if issue != "" {
-			issue = "\t" + issue
+		msg := issue.Issue
+		if msg != "" {
+			msg = "\t" + msg
 		}
 		switch node.Value().(type) {
 		case Expression:
@@ -40,10 +71,22 @@ func (e UnresolvedNodes) Error() string {
 			node.SourceName(),
 			strings.Join(node.Context, "."),
 			strings.Join(node.Path, "."),
-			issue,
+			msg,
 		)
+		message += nestedIssues("\t", issue)
 	}
 
+	return message
+}
+
+func nestedIssues(gap string, issue yaml.Issue) string {
+	message := ""
+	if issue.Nested != nil {
+		for _, sub := range issue.Nested {
+			message = message + "\n" + gap + sub.Issue
+			message += nestedIssues(gap+"\t", sub)
+		}
+	}
 	return message
 }
 
@@ -89,7 +132,7 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (nodes []UnresolvedN
 	case string:
 		if yaml.EmbeddedDynaml(root) != nil {
 			nodes = append(nodes, UnresolvedNode{
-				Node:    yaml.IssueNode(root, "unparseable expression"),
+				Node:    yaml.IssueNode(root, yaml.Issue{Issue: "unparseable expression"}),
 				Context: context,
 				Path:    []string{},
 			})
@@ -99,17 +142,40 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (nodes []UnresolvedN
 	return nodes
 }
 
+func ResetUnresolvedNodes(root yaml.Node) yaml.Node {
+	if root == nil {
+		return root
+	}
+
+	switch elem := root.Value().(type) {
+	case map[string]yaml.Node:
+		for key, val := range elem {
+			elem[key] = ResetUnresolvedNodes(val)
+		}
+
+	case []yaml.Node:
+		for i, val := range elem {
+			elem[i] = ResetUnresolvedNodes(val)
+		}
+
+	case Expression:
+		root = node(fmt.Sprintf("(( %s ))", elem), nil)
+	}
+
+	return root
+}
+
 func addContext(context []string, step string) []string {
 	dup := make([]string, len(context))
 	copy(dup, context)
 	return append(dup, step)
 }
 
-func isExpression(node yaml.Node) bool {
-	if node == nil {
+func isExpression(val interface{}) bool {
+	if val == nil {
 		return false
 	}
-	_, ok := node.Value().(Expression)
+	_, ok := val.(Expression)
 	return ok
 }
 
@@ -132,21 +198,25 @@ func isLocallyResolved(node yaml.Node) bool {
 }
 
 func isResolved(node yaml.Node) bool {
-	if node == nil {
+	return node == nil || isResolvedValue(node.Value())
+}
+
+func isResolvedValue(val interface{}) bool {
+	if val == nil {
 		return true
 	}
-	switch node.Value().(type) {
+	switch v := val.(type) {
 	case Expression:
 		return false
 	case []yaml.Node:
-		for _, n := range node.Value().([]yaml.Node) {
+		for _, n := range v {
 			if !isResolved(n) {
 				return false
 			}
 		}
 		return true
 	case map[string]yaml.Node:
-		for _, n := range node.Value().(map[string]yaml.Node) {
+		for _, n := range v {
 			if !isResolved(n) {
 				return false
 			}
@@ -154,7 +224,7 @@ func isResolved(node yaml.Node) bool {
 		return true
 
 	case string:
-		if yaml.EmbeddedDynaml(node) != nil {
+		if yaml.EmbeddedDynaml(node(val, nil)) != nil {
 			return false
 		}
 		return true

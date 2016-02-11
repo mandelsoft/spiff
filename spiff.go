@@ -21,7 +21,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "spiff"
 	app.Usage = "BOSH deployment manifest toolkit"
-	app.Version = "1.0.8dev"
+	app.Version = "1.0.8dev2"
 
 	app.Commands = []cli.Command{
 		{
@@ -33,6 +33,10 @@ func main() {
 					Name:  "debug",
 					Usage: "print state info",
 				},
+				cli.BoolFlag{
+					Name:  "partial",
+					Usage: "allow partial evaluation only",
+				},
 			},
 			Action: func(c *cli.Context) {
 				if len(c.Args()) < 1 {
@@ -40,7 +44,7 @@ func main() {
 					os.Exit(1)
 				}
 				debug.DebugFlag = c.Bool("debug")
-				merge(c.Args()[0], c.Args()[1:])
+				merge(c.Args()[0], c.Bool("partial"), c.Args()[1:])
 			},
 		},
 		{
@@ -67,7 +71,7 @@ func main() {
 	app.Run(os.Args)
 }
 
-func merge(templateFilePath string, stubFilePaths []string) {
+func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 	templateFile, err := ioutil.ReadFile(templateFilePath)
 	if err != nil {
 		log.Fatalln(fmt.Sprintf("error reading template [%s]:", path.Clean(templateFilePath)), err)
@@ -94,8 +98,8 @@ func merge(templateFilePath string, stubFilePaths []string) {
 		stubs = append(stubs, stubYAML)
 	}
 
-	flowed, err := flow.Cascade(templateYAML, stubs...)
-	if err != nil {
+	flowed, err := flow.Cascade(templateYAML, partial, stubs...)
+	if !partial && err != nil {
 		log.Fatalln("error generating manifest:", err)
 	}
 

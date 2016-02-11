@@ -12,7 +12,7 @@ type AdditionExpr struct {
 	B Expression
 }
 
-func (e AdditionExpr) Evaluate(binding Binding) (yaml.Node, EvaluationInfo, bool) {
+func (e AdditionExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 
 	a, info, ok := ResolveExpressionOrPushEvaluation(&e.A, &resolved, nil, binding)
@@ -26,23 +26,23 @@ func (e AdditionExpr) Evaluate(binding Binding) (yaml.Node, EvaluationInfo, bool
 	}
 
 	if !resolved {
-		return node(e), info, true
+		return e, info, true
 	}
 
 	aint, ok := a.(int64)
 	if ok {
-		return node(aint + bint), info, true
+		return aint + bint, info, true
 	}
 
 	str, ok := a.(string)
 	if ok {
 		ip := net.ParseIP(str)
 		if ip != nil {
-			return node(IPAdd(ip, bint).String()), info, true
+			return IPAdd(ip, bint).String(), info, true
 		}
-		info.Issue = "string argument for PLUS must be an IP address"
+		info.Issue = yaml.NewIssue("string argument for PLUS must be an IP address")
 	} else {
-		info.Issue = "first argument of PLUS must be IP address or integer"
+		info.Issue = yaml.NewIssue("first argument of PLUS must be IP address or integer")
 	}
 	return nil, info, false
 }

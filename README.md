@@ -23,9 +23,11 @@ Contents:
 	- [(( foo ))](#-foo-)
 	- [(( foo.bar.[1].baz ))](#-foobar1baz-)
 	- [(( "foo" ))](#-foo--1)
+	- [(( [ 1, 2, 3 ] ))](#--1-2-3--)
 	- [(( foo bar ))](#-foo-bar-)
 		- [(( "foo" bar ))](#-foo-bar--1)
 		- [(( [1,2] bar ))](#-12-bar-)
+		- [(( map1 map2 ))](#-map1-map2-)
 	- [(( auto ))](#-auto-)
 	- [(( merge ))](#-merge-)
 		- [<<: (( merge ))](#--merge-)
@@ -44,14 +46,32 @@ Contents:
 	- [(( a || b ))](#-a--b-)
 	- [(( 1 + 2 * foo ))](#-1--2--foo-)
 	- [(( "10.10.10.10" - 11 ))](#-10101010---11-)
-	- [(( join( ", ", list) ))](#-join---list-)
-	- [(( exec( "command", arg1, arg2) ))](#-exec-command-arg1-arg2-)
-	- [(( static_ips(0, 1, 3) ))](#-static_ips0-1-3-)
+	- [(( a > 1 ? foo :bar ))](#-a--1--foo-bar-)
+	- [(( 5 -or 6 ))](#-5--or-6-)
+	- [Functions](#functions)
+		- [(( format( "%s %d", alice, 25) ))](#-format-s-d-alice-25-)
+		- [(( join( ", ", list) ))](#-join---list-)
+		- [(( split( ",", string) ))](#-split--string-)
+		- [(( trim(string) ))](#-trimstring-)
+		- [(( length(list) ))](#-lengthlist-)
+		- [(( defined(foobar) ))](#-definedfoobar-)
+		- [(( exec( "command", arg1, arg2) ))](#-exec-command-arg1-arg2-)
+		- [(( eval( foo "." bar ) ))](#-eval-foo--bar--)
+		- [(( env( "HOME" ) ))](#-env-HOME--)
+		- [(( read("file.yml") ))](#-readfileyml-)
+		- [(( static_ips(0, 1, 3) ))](#-static_ips0-1-3-)
+	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
 	- [Mappings](#mappings)
 		- [(( map[list|elem|->dynaml-expr] ))](#-maplistelem-dynaml-expr-)
-		- [(( map[map|key,value|->dynaml-expr] ))](#-maplistidxelem-dynaml-expr-)
+		- [(( map[list|idx,elem|->dynaml-expr] ))](#-maplistidxelem-dynaml-expr-)
+		- [(( map[map|key,value|->dynaml-expr] ))](#-mapmapkeyvalue-dynaml-expr-)
+	- [Templates](#templates)
+		- [<<: (( &template ))](#--template-)
+		- [(( *foo.bar ))](#-foobar-)
+	- [Access to evaluation context](#access-to-evaluation-context)
 	- [Operation Priorities](#operation-priorities)
 - [Structural Auto-Merge](#structural-auto-merge)
+- [Bringing it all together](#bringing-it-all-together)
 - [Useful to Know](#useful-to-know)
 - [Error Reporting](#error-reporting)
 
@@ -75,6 +95,8 @@ Example:
 ```
 spiff merge cf-release/templates/cf-deployment.yml my-cloud-stub.yml
 ```
+
+The ` merge` command offers the option `--partial`. If this option is given spiff handles incomplete expression evaluation. All errors are ignored and the unresolvable parts of the yaml document are returned as strings.
 
 ### `spiff diff manifest.yml other-manifest.yml`
 
@@ -204,6 +226,25 @@ can be referenced by using the path `list.alice.age`, instead of `list[0].age`.
 
 String literal. The only escape character handled currently is '"'.
 
+## `(( [ 1, 2, 3 ] ))`
+
+List literal. The list elements might again be expressions. There is a special list literal `[1 .. -1]`, that can be used to resolve an increasing or descreasing number range to a list. 
+
+e.g.:
+
+```yaml
+list: (( [ 1 .. -1 ] ))
+```
+
+yields
+
+```yaml
+list:
+  - 1
+  - 0
+  - -1
+```
+
 ## `(( foo bar ))`
 
 Concatenation expression used to concatenate a sequence of dynaml expressions.
@@ -212,7 +253,7 @@ Concatenation expression used to concatenate a sequence of dynaml expressions.
 
 Concatenation (where bar is another dynaml expr). Any sequences of simple values (string, integer and boolean) can be concatenated, given by any dynaml expression.
 
-e.g.
+e.g.:
 
 ```yaml
 domain: example.com
@@ -225,7 +266,7 @@ In this example `uri` will resolve to the value `"https://example.com"`.
 
 Concatenation of lists as expression (where bar is another dynaml expr). Any sequences of lists can be concatenated, given by any dynaml expression.
 
-e.g.
+e.g.:
 
 ```yaml
 other_ips: [ 10.0.0.2, 10.0.0.3 ]
@@ -236,13 +277,48 @@ In this example `static_ips` will resolve to the value `[ 10.0.1.2, 10.0.1.3, 10
 
 If the second expression evaluates to a value other than a list (integer, boolean, string or map), the value is appended to the first list.
 
-e.g.
+e.g.:
 
 ```yaml
 foo: 3
 bar: (( [1] 2 foo "alice" ))
 ```
 yields the list `[ 1, 2, 3, "alice" ]` for `bar`.
+
+### `(( map1 map2 ))`
+
+Concatenation of maps as expression. Any sequences of maps can be concatenated, given by any dynaml expression. Thereby entries will be merged. Entries with the same key are overwritten from left to right.
+
+e.g.:
+
+```yaml
+foo: 
+  alice: 24
+  bob: 25
+
+bar:
+  bob: 26
+  paul: 27
+
+concat: (( foo bar ))
+```
+
+yields
+
+```yaml
+foo: 
+  alice: 24
+  bob: 25
+
+bar:
+  bob: 26
+  paul: 27
+
+concat:
+  alice: 24
+  bob: 26
+  paul: 27
+```
 
 ## `(( auto ))`
 
@@ -671,12 +747,13 @@ ip: 10.10.10.10
 range: 10.10.10.10-10.11.11.1
 ```
 
-Additionally there are functions working on CIDRs:
+Additionally there are functions working on IPv4 CIDRs:
 
 ```yaml
 cidr: 192.168.0.1/24
 range: (( min_ip(cidr) "-" max_ip(cidr) ))
 next: (( max_ip(cidr) + 1 ))
+num: (( min_ip(cidr) "+" num_ip(cidr) "=" min_ip(cidr) + num_ip(cidr) ))
 ```
 
 yields
@@ -685,13 +762,61 @@ yields
 cidr: 192.168.0.1/24
 range: 192.168.0.0-192.168.0.255
 next: 192.168.1.0
+num: 192.168.0.0+256=192.168.1.0
 ```
 
-## `(( join( ", ", list) ))`
+## `(( a > 1 ? foo :bar ))`
+
+Dynaml supports the comparison operators `<`, `<=`, `==`, `!=`, `>=` and `>`. The comparison operators work on
+integer values. The check for equality also works on lists and maps. The result is always a boolean value.
+
+Additionally there is the ternary conditional operator `?:`, that can be used to evaluate expressions depending on a condition. The first operand is used as condition. The expression is evaluated to the second operand, if the condition is true, and to the third one, otherwise.
+
+e.g.:
+
+```yaml
+foo: alice
+bar: bob
+age: 24
+name: (( age > 24 ? foo :bar ))
+```
+
+yields the value `bob` for the property `name`.
+
+**Remark**
+
+The use of the symbol `:` may collide with the yaml syntax, if the complete expression is not a quoated string value.
+
+The operators `-or` and `-and` can be used to combine comparison operators to compose more complex conditions.
+
+**Remark:**
+
+The more traditional operator symbol `||` (and `&&`) cannot be used here, because the operator `||` already exists in dynam with a different semantic, that does not hold for logical operations. The expression `false || true` evaluates to `false`, because it yields the first operand, if it is defined, regardless of its value. To be as compatible as possible this cannot be changed and the bare symbols `or` and `and` cannot be be used, because this would invalidate the concatenation of references with such names. 
+
+## `(( 5 -or 6 ))`
+
+If both sides of an `-or` or `-and` operator evaluate to integer values, a bit-wise operation is executed and the result is again an integer. Therefore the expression `5 -or 6` evaluates to `7`.
+
+## Functions
+
+Dynaml supports a set of predefined functions. A function is generally called like
+
+```yaml
+result: (( functionname(arg, arg, ...) ))
+```
+
+Additional functions may be defined as part of the yaml document using [lambda expressions](#-lambda-x-x--port-). The function name then is either a grouped expression or the path to the node hosting the lambda expression.
+ 
+### `(( format( "%s %d", alice, 25) ))`
+
+Format a string based on arguments given by dynaml expressions. There is a second flavor of this function: `error` formats an error message and sets the evaluation to failed.
+  
+
+### `(( join( ", ", list) ))`
 
 Join entries of lists or direct values to a single string value using a given separator string. The arguments to join can be dynaml expressions evaluating to lists, whose values again are strings or integers, or string or integer values.
 
-e.g.
+e.g.:
 
 ```yaml
 alice: alice
@@ -704,7 +829,89 @@ join: (( join(", ", "bob", list, alice, 10) ))
 
 yields the string value `bob, foo, bar, alice, 10` for `join`.
 
-## `(( exec( "command", arg1, arg2) ))`
+### `(( split( ",", string) ))`
+
+Split a string for a dedicated separator. The result is a list.
+
+e.g.:
+
+```yaml
+list: (( split("," "alice, bob") ))
+```
+
+yields:
+
+```yaml
+list:
+  - alice
+  - ' bob'
+```
+
+### `(( trim(string) ))`
+
+Trim a string or all elements of a list of strings. There is an optional second string argument. It can be used to specify a set of characters that will be cut. The default cut set consists of a space and a tab character.
+
+e.g.:
+
+```yaml
+list: (( trim(split("," "alice, bob")) ))
+```
+
+yields:
+
+```yaml
+list:
+  - alice
+  - bob
+```
+
+### `(( length(list) ))`
+
+Determine the length of a list, a map or a string value.
+
+e.g.:
+
+```yaml
+list:
+  - alice
+  - bob
+length: (( length(list) ))
+```
+
+yields:
+
+```yaml
+list:
+  - alice
+  - bob
+length: 2
+```
+
+### `(( defined(foobar) ))`
+
+The function `defined` checks whether an expression can successfully be evaluated. It yields the boolean value `true`, if the expression can be evaluated, and `false` otherwise.
+
+e.g.:
+
+```yaml
+zero: 0
+div_ok: (( defined(1 / zero ) ))
+zero_def: (( defined( zero ) ))
+null_def: (( defined( null ) ))
+```
+
+evaluates to
+
+```yaml
+zero: 0
+div_ok: false
+zero_def: true
+null_def: false
+```
+
+This function can be used in combination of the [conditional operator](#-a--1--foo-bar-) to evaluate expressions depending on the resolvability of another expression.
+
+### `(( exec( "command", arg1, arg2) ))`
 
 Execute a command. Arguments can be any dynaml expressions including reference expressions evaluated to lists or maps. Lists or maps are passed as single arguments containing a yaml document with the given fragment.
 
@@ -737,7 +944,55 @@ Alternatively `exec` can be called with a single list argument completely descri
 
 The same command will be executed once, only, even if it is used in multiple expressions.
 
-## `(( static_ips(0, 1, 3) ))`
+### `(( eval( foo "." bar ) ))`
+
+Evaluate the evaluation result of a string expression again as dynaml expression. This can, for example, be used to realize indirections.
+
+e.g.: the expression in
+
+```yaml
+alice:
+  bob: married
+
+foo: alice
+bar: bob
+
+status: (( eval( foo "." bar ) ))
+```
+
+calculates the path to a field, which is then evaluated again to yield the value of this composed field:
+
+```yaml
+alice:
+  bob: married
+
+foo: alice
+bar: bob
+
+status: married
+```
+
+### `(( env( "HOME" ) ))`
+
+Read the value of an environment variable whose name is given as dynaml expression. If the environment variable is not set the evaluation fails.
+
+In a second flavor the function `env` accepts multiple arguments and/or list arguments, which are joined to a single list. Every entry in this list is used as name of an environment variable and the result of the function is a map of the given given variables as yaml element. Hereby non-existent environment variables are omitted.
+
+### `(( read("file.yml") ))` 
+
+Read a file and return its content. There is support for two content types: `yaml` files and `text` files.
+If the file suffix is `.yml`, by default the yaml type is used. An optional second parameter can be used
+to explicitly specifiy the desired return type: `yaml` or `text`.
+
+#### yaml documents
+A yaml document will be parsed and the tree is returned. The  elements of the tree can be accessed by regular dynaml expressions.
+
+Additionally the yaml file may again contain dynaml expressions. All included dynaml expressions will be evaluated in the context of the reading expression. This means that the same file included at different places in a yaml document may result in different sub trees, depending on the used dynaml expressions. 
+
+#### text documents
+A text document will be returned as single string.
+
+### `(( static_ips(0, 1, 3) ))`
 
 Generate a list of static IPs for a job.
 
@@ -875,7 +1130,92 @@ networks:
   type: manual
 ```
 
+## `(( lambda |x|->x ":" port ))`
+
+Lambda expressions can be used to define additional anonymous functions. They can be assigned to yaml nodes as values and referenced with path expressions to call the function with approriate arguments in other dynaml expressions. For the final document they are mapped to string values.
+
+There are two forms of lambda expressions. While
+
+```yaml
+lvalue: (( lambda |x|->x ":" port ))
+```
+
+yields a function taking one argument by directly taking the elements from the dynaml expression,
+
+```yaml
+string: "|x|->x \":\" port"
+lvalue: (( lambda string ))
+```
+
+evaluates an expression to a function or a string. If the expression is evaluated to a string it parses the function from the string.
+
+Since the evaluation result of a lambda expression is a regular value, it can also be passed as argument to function calls and merged as value along stub processing.
+
+A complete example could look like this:
+
+```yaml
+lvalue: (( lambda |x,y|->x + y ))
+mod: (( lambda|x,y,m|->(lambda m)(x, y) + 3 ))
+value: (( .mod(1,2, lvalue) ))
+```
+
+yields
+
+```yaml
+lvalue: lambda |x,y|->x + y
+mod: lambda|x,y,m|->(lambda m)(x, y) + 3
+value: 6
+```
+
+A lambda expression might refer to absolute or relative nodes of the actual template. Relative references are evaluated in the context of the function call. Therefore
+
+```yaml
+lvalue: (( lambda |x,y|->x + y + offset ))
+offset: 0
+values:
+  offset: 3
+  value: (( .lvalue(1,2) ))
+```
+
+yields `6` for `values.value`.
+
+Besides the specified parameters, there is an implicit name (`_`), that can be used to refer to the function itself. It can be used to define self recursive function. Together with the logical and conditional operators a fibunacci function can be defined:
+
+```yaml
+fibonacci: (( lambda |x|-> x <= 0 ? 0 :x == 1 ? 1 :_(x - 2) + _( x - 1 ) ))
+value: (( .fibonacci(5) ))
+```
+
+yields the value `8` for the `value` property.
+
+Inner lambda expressions remember the local binding of outer lambda expressions. This can be used to return functions based an arguments of the outer function.
+
+e.g.:
+
+```yaml
+mult: (( lambda |x|-> lambda |y|-> x * y ))
+mult2: (( .mult(2) ))
+value: (( .mult2(3) ))
+```
+
+yields `6` for property `value`.
+
+If a lambda function is called with less arguments than expected, the result is a new function taking the missing arguments (currying).
+
+e.g.:
+
+```yaml
+mult: (( lambda |x,y|-> x * y ))
+mult2: (( .mult(2) ))
+value: (( .mult2(3) ))
+```
+
+If a complete expression is a lambda expression the keyword `lambda` can be omitted.
+
 ## Mappings
+
+Mappings are used to produce a new list from the entries of a _list_ or _map_ containing the entries processed by a dynaml expression. The expression is given by a [lambda function](#-lambda-x-x--port-). There are two basic forms of the mapping function: It can be inlined as in`(( map[list|x|->x ":" port] ))`, or it can be determined by a regular dynaml expression evaluating to a lambda function as in `(( map[list|mapping.expression))` (here the mapping is taken from the property `mapping.expression`, which should hold an approriate lambda function).
+
 
 ### `(( map[list|elem|->dynaml-expr] ))`
 
@@ -955,7 +1295,7 @@ ages:
 - 2. bob is 24
 ```
 
-### (( map[map|key,value|->dynaml-expr] ))
+### `(( map[map|key,value|->dynaml-expr] ))`
 
 Mapping of a map to a list using a mapping expression. The expression may have access to the key and/or the value. If two references are declared, both values are passed to the expression, the first one is provided with the key and the second one with the value for the key. If one reference is declared, only the value is provided.
 
@@ -982,6 +1322,108 @@ keys:
 - bob
 ```
 
+## Templates
+
+A map can be tagged by a dynaml expression to be used as template. Dynaml expressions in a template are not evaluated at its definition location in the document, but can be inserted at other locations using dynaml.
+At every usage location it is evaluated separately.
+
+### `<<: (( &template ))`
+
+The dynaml expression `&template` can be used to tag a map node as template:
+
+i.g.:
+
+```yaml
+foo:
+  bar:
+    <<: (( &template ))
+    alice: alice
+    bob: (( verb " " alice ))
+```
+
+The template will be the value of the node `foo.bar`. As such it can be overwritten as a whole by settings in a stub during the merge process. Dynaml expressions in the template are not evaluated.
+
+### `(( *foo.bar ))`
+
+The dynaml expression `*<refernce expression>` can be used to evaluate a template somewhere in the yaml document.
+Dynaml expressions in the template are evaluated in the context of this expression.
+
+e.g.:
+
+```yaml
+foo:
+  bar:
+    <<: (( &template ))
+    alice: alice
+    bob: (( verb " " alice ))
+
+
+use:
+  subst: (( *foo.bar ))
+  verb: loves
+
+verb: hates
+```
+
+evaluates to
+
+```yaml
+foo:
+  bar:
+    <<: (( &template ))
+    alice: alice
+    bob: (( verb " " alice ))
+	
+use:
+  subst:
+    alice: alice
+    bob: loves alice
+  verb: loves
+
+verb: hates
+```
+
+## Access to evaluation context
+
+Inside every dynaml expression a virtual field `__ctx` is available. It allows access to information about the actual evaluation context. It can be accessed by a relative reference expression.
+
+The following fields are supported:
+
+| Field Name  | Type | Meaning |
+| ------------| ---- | ------- |
+| `FILE` | string | name of actually processed template file  |
+| `DIR`  | string | name of directory of actually processed template file  |
+| `PATHNAME` | string | path name of actually processed field |
+| `PATH` | list[string] | path name as component list |
+
+e.g.:
+
+**template.yml**
+```yaml
+foo:
+  bar:
+    path: (( __ctx.PATH ))
+    str: (( __ctx.PATHNAME ))
+    file: (( __ctx.FILE ))
+    dir: (( __ctx.DIR ))
+```
+
+evaluates to
+
+e.g.:
+
+```yaml
+foo:
+  bar:
+    dir: .
+    file: template.yml
+    path:
+    - foo
+    - bar
+    - path
+    str: foo.bar.str
+```
+
 ## Operation Priorities
 
 Dynaml expressions are evaluated obeying certain priority levels. This means operations with a higher priority are evaluated first. For example the expression `1 + 2 * 3` is evaluated in the order `1 + ( 2 * 3 )`. Operations with the same priority are evaluated from left to right (in contrast to version 1.0.7). This means the expression `6 - 3 - 2` is evaluated as `( 6 - 3 ) - 2`.
@@ -990,9 +1432,11 @@ The following levels are supported (from low priority to high priority)
 
 1. `||`
 2. White-space separated sequence as concatenation operation (`foo bar`)
-3. `+`, `-`
-4. `*`, `/`, `%`
-5. Grouping `( )`, constants, references (`foo.bar`) and functions (`merge`, `auto`, `map[]`, `join`, `exec`, `static_ips`, `min_ip`, `max_ip`)
+3. `-or`, `-and`
+4. `==`, `!=`, `<=`, `<`, `>`, `>=`
+5. `+`, `-`
+6. `*`, `/`, `%`
+7. Grouping `( )`, `!`, constants, references (`foo.bar`), `merge`, `auto`, `lambda`, `map[]`, and [functions](#functions)
 
 The complete grammar can be found in [dynaml.peg](dynaml/dynaml.peg).
 
@@ -1087,6 +1531,144 @@ field exist in a list element, then this element can only be targeted by this
 name. When the selector is defeated, the resulting value is the one provided
 by the template.
 
+## Bringing it all together
+
+Merging the following files in the given order
+
+**deployment.yml**
+```yaml
+networks: (( merge ))
+```
+
+**cf.yml**
+```yaml
+utils: (( merge )) 
+network: (( merge ))
+meta: (( merge ))
+
+networks:
+  - name: cf1
+    <<: (( utils.defNet(network.base.z1,meta.deployment_no,30) ))
+  - name: cf2
+    <<: (( utils.defNet(network.base.z2,meta.deployment_no,30) ))
+```
+
+**infrastructure.yml**
+```yaml
+network:
+  size: 16
+  block_size: 256
+  base:
+    z1: 10.0.0.0
+    z2: 10.1.0.0
+```
+
+**rules.yml**
+```yaml
+utils:
+  defNet: (( |b,n,s|->(*.utils.network).net ))
+  network:
+    <<: (( &template ))
+    start: (( b + n * .network.block_size ))
+    first: (( start + ( n == 0 ? 2 :0 ) ))
+    lower: (( n == 0 ? [] :b " - " start - 1 ))
+    upper: (( start + .network.block_size " - " max_ip(net.subnets.[0].range) ))
+    net:
+      subnets:
+      - range: (( b "/" .network.size ))
+        reserved: (( [] lower upper ))
+        static:
+          - (( first " - " first + s - 1 ))
+```
+
+**instance.yml**
+```yaml
+meta:
+  deployment_no: 1
+  
+```
+
+will yield a network setting for a dedicated deployment
+
+```yaml
+networks:
+- name: cf1
+  subnets:
+  - range: 10.0.0.0/16
+    reserved:
+    - 10.0.0.0 - 10.0.0.255
+    - 10.0.2.0 - 10.0.255.255
+    static:
+    - 10.0.1.0 - 10.0.1.29
+- name: cf2
+  subnets:
+  - range: 10.1.0.0/16
+    reserved:
+    - 10.1.0.0 - 10.1.0.255
+    - 10.1.2.0 - 10.1.255.255
+    static:
+    - 10.1.1.0 - 10.1.1.29
+```
+
+Using the same config for another deployment of the same type just requires the replacement of the `instance.yml`.
+Using a different `instance.yml`
+
+```yaml
+meta:
+  deployment_no: 0
+  
+```
+
+will yield a network setting for a second deployment providing the appropriate settings for a unique other IP block.
+
+```yaml
+networks:
+- name: cf1
+  subnets:
+  - range: 10.0.0.0/16
+    reserved:
+    - 10.0.1.0 - 10.0.255.255
+    static:
+    - 10.0.0.2 - 10.0.0.31
+- name: cf2
+  subnets:
+  - range: 10.1.0.0/16
+    reserved:
+    - 10.1.1.0 - 10.1.255.255
+    static:
+    - 10.1.0.2 - 10.1.0.31
+```
+
+If you move to another infrastructure you might want to change the basic IP layout. You can do it just by adapting the `infrastructure.yml`
+
+```yaml
+network:
+  size: 17
+  block_size: 128
+  base:
+    z1: 10.0.0.0
+    z2: 10.0.128.0
+```
+
+Without any change to your other settings you'll get
+
+```yaml
+networks:
+- name: cf1
+  subnets:
+  - range: 10.0.0.0/17
+    reserved:
+    - 10.0.0.128 - 10.0.127.255
+    static:
+    - 10.0.0.2 - 10.0.0.31
+- name: cf2
+  subnets:
+  - range: 10.0.128.0/17
+    reserved:
+    - 10.0.128.128 - 10.0.255.255
+    static:
+    - 10.0.128.2 - 10.0.128.31
+```
 
 ## Useful to Know
 
@@ -1239,6 +1821,48 @@ by the template.
       bob: 42
   ```
 
+- _Functions and mappings can freely be nested_
+
+  e.g.:
+
+  ```yaml
+  pot: (( lambda |x,y|-> y == 0 ? 1 :(|m|->m * m)(_(x, y / 2)) * ( 1 + ( y % 2 ) * ( x - 1 ) ) ))
+  seq: (( lambda |b,l|->map[l|x|-> .pot(b,x)] ))
+  values: (( .seq(2,[ 0..4 ]) ))
+  ```
+
+  yields the list `[ 1,2,4,8,16 ]` for the property `values`.
+
+- _Functions can be used to parameterize templates_
+
+  The combination of functions with templates can be use to provide functions yielding complex structures.
+  The parameters of a function are part of the scope used to resolve reference expressions in a template used in the function body.
+
+  e.g.:
+
+  ```yaml
+  relation:
+    template:
+      <<: (( &template ))
+      bob: (( x " " y ))
+    relate: (( |x,y|->*relation.template ))
+
+  banda: (( relation.relate("loves","alice") ))
+  ```
+
+  evaluates to
+
+  ```yaml
+  relation:
+    relate: lambda|x,y|->*(relation.template)
+    template:
+      <<: (( &template ))
+      bob: (( x " " y ))
+	
+	banda:
+      bob: loves alice
+  ```
+ 
 # Error Reporting
 
 The evaluation of dynaml expressions may fail because of several reasons:

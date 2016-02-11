@@ -4,10 +4,32 @@ import (
 	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
+type Status interface {
+	error
+	Issue(string) yaml.Issue
+}
+
+type SourceProvider interface {
+	SourceName() string
+}
+
 type Binding interface {
+	SourceProvider
+	GetLocalBinding() map[string]yaml.Node
 	FindFromRoot([]string) (yaml.Node, bool)
 	FindReference([]string) (yaml.Node, bool)
 	FindInStubs([]string) (yaml.Node, bool)
+
+	WithScope(step map[string]yaml.Node) Binding
+	WithLocalScope(step map[string]yaml.Node) Binding
+	WithPath(step string) Binding
+	WithSource(source string) Binding
+	RedirectOverwrite(path []string) Binding
+
+	Path() []string
+	StubPath() []string
+
+	Flow(source yaml.Node, shouldOverride bool) (yaml.Node, Status)
 }
 
 type EvaluationInfo struct {
@@ -16,15 +38,20 @@ type EvaluationInfo struct {
 	Merged       bool
 	Preferred    bool
 	KeyName      string
-	Issue        string
+	Source       string
+	Issue        yaml.Issue
+}
+
+func (e EvaluationInfo) SourceName() string {
+	return e.Source
 }
 
 func DefaultInfo() EvaluationInfo {
-	return EvaluationInfo{nil, false, false, false, "", ""}
+	return EvaluationInfo{nil, false, false, false, "", "", yaml.Issue{}}
 }
 
 type Expression interface {
-	Evaluate(Binding) (yaml.Node, EvaluationInfo, bool)
+	Evaluate(Binding) (interface{}, EvaluationInfo, bool)
 }
 
 func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {
@@ -37,14 +64,14 @@ func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {
 	if o.KeyName != "" {
 		i.KeyName = o.KeyName
 	}
-	if o.Issue != "" {
+	if o.Issue.Issue != "" {
 		i.Issue = o.Issue
 	}
 	return i
 }
 
 func ResolveExpressionOrPushEvaluation(e *Expression, resolved *bool, info *EvaluationInfo, binding Binding) (interface{}, EvaluationInfo, bool) {
-	node, infoe, ok := (*e).Evaluate(binding)
+	val, infoe, ok := (*e).Evaluate(binding)
 	if info != nil {
 		infoe = (*info).Join(infoe)
 	}
@@ -52,13 +79,12 @@ func ResolveExpressionOrPushEvaluation(e *Expression, resolved *bool, info *Eval
 		return nil, infoe, false
 	}
 
-	switch node.Value().(type) {
-	case Expression:
-		*e = node.Value().(Expression)
+	if v, ok := val.(Expression); ok {
+		*e = v
 		*resolved = false
 		return nil, infoe, true
-	default:
-		return node.Value(), infoe, true
+	} else {
+		return val, infoe, true
 	}
 }
 
@@ -73,7 +99,7 @@ func ResolveIntegerExpressionOrPushEvaluation(e *Expression, resolved *bool, inf
 	if ok {
 		return i, infoe, true
 	} else {
-		infoe.Issue = "integer operand required"
+		infoe.Issue = yaml.NewIssue("integer operand required")
 		return 0, infoe, false
 	}
 }

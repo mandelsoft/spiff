@@ -2,7 +2,6 @@ package flow
 
 import (
 	"fmt"
-	"reflect"
 	"sort"
 	"strings"
 
@@ -12,29 +11,10 @@ import (
 )
 
 func Flow(source yaml.Node, stubs ...yaml.Node) (yaml.Node, error) {
-	result := source
-
-	for {
-		debug.Debug("@@@ loop:  %+v\n", result)
-		next := flow(result, Environment{Stubs: stubs}, true)
-		debug.Debug("@@@ --->   %+v\n", next)
-
-		if reflect.DeepEqual(result, next) {
-			break
-		}
-
-		result = next
-	}
-	debug.Debug("@@@ Done\n")
-	unresolved := dynaml.FindUnresolvedNodes(result)
-	if len(unresolved) > 0 {
-		return nil, dynaml.UnresolvedNodes{unresolved}
-	}
-
-	return result, nil
+	return NewEnvironment(stubs, source.SourceName()).Flow(source, true)
 }
 
-func flow(root yaml.Node, env Environment, shouldOverride bool) yaml.Node {
+func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 	if root == nil {
 		return root
 	}
@@ -44,6 +24,7 @@ func flow(root yaml.Node, env Environment, shouldOverride bool) yaml.Node {
 	preferred := root.Preferred()
 	merged := root.Merged()
 	keyName := root.KeyName()
+	source := root.SourceName()
 
 	if redirect != nil {
 		env = env.RedirectOverwrite(redirect)
@@ -58,8 +39,13 @@ func flow(root yaml.Node, env Environment, shouldOverride bool) yaml.Node {
 			return flowList(root, env)
 
 		case dynaml.Expression:
-			debug.Debug("??? eval %+v\n", val)
-			result, info, ok := val.Evaluate(env)
+			debug.Debug("??? eval %T: %+v\n", val, val)
+			env := env
+			if root.SourceName() != env.SourceName() {
+				env = env.WithSource(root.SourceName())
+			}
+			eval, info, ok := val.Evaluate(env)
+			debug.Debug("??? ---> %+v\n", eval)
 			if !ok {
 				root = yaml.IssueNode(root, info.Issue)
 				debug.Debug("??? failed ---> KEEP\n")
@@ -68,13 +54,20 @@ func flow(root yaml.Node, env Environment, shouldOverride bool) yaml.Node {
 				}
 				replace = replace || info.Replace
 			} else {
-				_, ok = result.Value().(string)
+				if info.SourceName() != "" {
+					source = info.SourceName()
+				}
+				result := yaml.NewNode(eval, source)
+				_, ok = eval.(string)
 				if ok {
 					// map result to potential expression
 					result = flowString(result, env)
 				}
 				_, expr := result.Value().(dynaml.Expression)
 
+				if len(info.Issue.Issue) != 0 {
+					result = yaml.IssueNode(result, info.Issue)
+				}
 				// preserve accumulated node attributes
 				if preferred || info.Preferred {
 					debug.Debug("   PREFERRED")
@@ -107,7 +100,7 @@ func flow(root yaml.Node, env Environment, shouldOverride bool) yaml.Node {
 					debug.Debug("??? ---> %+v\n", result)
 					return result
 				}
-				debug.Debug("???   try override")
+				debug.Debug("???   try override\n")
 				replace = result.ReplaceFlag()
 				root = result
 			}
@@ -125,8 +118,8 @@ func flow(root yaml.Node, env Environment, shouldOverride bool) yaml.Node {
 	}
 
 	if !merged && shouldOverride {
-		debug.Debug("/// lookup stub %v -> %v\n", env.Path, env.StubPath)
-		overridden, found := env.FindInStubs(env.StubPath)
+		debug.Debug("/// lookup stub %v -> %v\n", env.Path(), env.StubPath())
+		overridden, found := env.FindInStubs(env.StubPath())
 		if found {
 			root = overridden
 			if keyName != "" {
@@ -161,8 +154,9 @@ func simpleMergeCompatibilityCheck(initial bool, node yaml.Node) bool {
 	return false
 }
 
-func flowMap(root yaml.Node, env Environment) yaml.Node {
+func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 	processed := true
+	template := false
 	rootMap := root.Value().(map[string]yaml.Node)
 
 	env = env.WithScope(rootMap)
@@ -173,7 +167,7 @@ func flowMap(root yaml.Node, env Environment) yaml.Node {
 
 	sortedKeys := getSortedKeys(rootMap)
 
-	debug.Debug("HANDLE MAP %v\n", env.Path)
+	debug.Debug("HANDLE MAP %v\n", env.Path())
 
 	// iteration order matters for the "<<" operator, it must be the first key in the map that is handled
 	for i := range sortedKeys {
@@ -183,12 +177,20 @@ func flowMap(root yaml.Node, env Environment) yaml.Node {
 		if key == "<<" {
 			_, initial := val.Value().(string)
 			base := flow(val, env, false)
+			debug.Debug("flow to %#v\n", base.Value())
 			_, ok := base.Value().(dynaml.Expression)
 			if ok {
-				if simpleMergeCompatibilityCheck(initial, base) {
+				_, ok := base.Value().(dynaml.TemplateExpr)
+				if ok {
+					debug.Debug("found template declaration\n")
+					template = true
 					continue
+				} else {
+					if simpleMergeCompatibilityCheck(initial, base) {
+						continue
+					}
+					val = base
 				}
-				val = base
 				processed = false
 			} else {
 				baseMap, ok := base.Value().(map[string]yaml.Node)
@@ -217,17 +219,24 @@ func flowMap(root yaml.Node, env Environment) yaml.Node {
 		newMap[key] = val
 	}
 
-	debug.Debug("MAP DONE %v\n", env.Path)
-	if replace {
-		return yaml.ReplaceNode(newMap, root, redirect)
+	debug.Debug("MAP DONE %v\n", env.Path())
+	var result interface{}
+	if template {
+		debug.Debug(" as template\n")
+		result = dynaml.TemplateValue{yaml.NewNode(newMap, root.SourceName()), root}
+	} else {
+		result = newMap
 	}
-	return yaml.RedirectNode(newMap, root, redirect)
+	if replace {
+		return yaml.ReplaceNode(result, root, redirect)
+	}
+	return yaml.RedirectNode(result, root, redirect)
 }
 
-func flowList(root yaml.Node, env Environment) yaml.Node {
+func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
 	rootList := root.Value().([]yaml.Node)
 
-	debug.Debug("HANDLE LIST %v\n", env.Path)
+	debug.Debug("HANDLE LIST %v\n", env.Path())
 	merged, process, replaced, redirectPath, keyName := processMerges(root, rootList, env)
 
 	if process {
@@ -248,7 +257,7 @@ func flowList(root yaml.Node, env Environment) yaml.Node {
 	if keyName != "" {
 		root = yaml.KeyNameNode(root, keyName)
 	}
-	debug.Debug("LIST DONE (%s)%v\n", root.KeyName(), env.Path)
+	debug.Debug("LIST DONE (%s)%v\n", root.KeyName(), env.Path())
 	if replaced {
 		return yaml.ReplaceNode(merged, root, redirectPath)
 	}
@@ -258,14 +267,14 @@ func flowList(root yaml.Node, env Environment) yaml.Node {
 	return yaml.SubstituteNode(merged, root)
 }
 
-func flowString(root yaml.Node, env Environment) yaml.Node {
+func flowString(root yaml.Node, env dynaml.Binding) yaml.Node {
 
 	sub := yaml.EmbeddedDynaml(root)
 	if sub == nil {
 		return root
 	}
-	debug.Debug("dynaml: %v: %s\n", env.Path, *sub)
-	expr, err := dynaml.Parse(*sub, env.Path, env.StubPath)
+	debug.Debug("dynaml: %v: %s\n", env.Path(), *sub)
+	expr, err := dynaml.Parse(*sub, env.Path(), env.StubPath())
 	if err != nil {
 		return root
 	}
@@ -285,7 +294,7 @@ func stepName(index int, value yaml.Node, keyName string) string {
 	return fmt.Sprintf("[%d]", index)
 }
 
-func processMerges(orig yaml.Node, root []yaml.Node, env Environment) ([]yaml.Node, bool, bool, []string, string) {
+func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) ([]yaml.Node, bool, bool, []string, string) {
 	spliced := []yaml.Node{}
 	process := true
 	keyName := orig.KeyName()

@@ -7,39 +7,46 @@ import (
 	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
-func func_ip(op func(ip net.IP, cidr *net.IPNet) net.IP, arguments []interface{}, binding Binding) (yaml.Node, EvaluationInfo, bool) {
+func func_ip(op func(ip net.IP, cidr *net.IPNet) interface{}, arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 
 	if len(arguments) != 1 {
-		info.Issue = "only one argument expected for CIDR function"
+		info.Issue = yaml.NewIssue("only one argument expected for CIDR function")
 		return nil, info, false
 	}
 
 	str, ok := arguments[0].(string)
 	if !ok {
-		info.Issue = "CIDR argument required"
+		info.Issue = yaml.NewIssue("CIDR argument required")
 		return nil, info, false
 	}
 
 	ip, cidr, err := net.ParseCIDR(str)
 
 	if err != nil {
-		info.Issue = "CIDR argument required"
+		info.Issue = yaml.NewIssue("CIDR argument required")
 		return nil, info, false
 	}
 
-	return node(op(ip, cidr).String()), info, true
+	return op(ip, cidr), info, true
 }
 
-func func_minIP(arguments []interface{}, binding Binding) (yaml.Node, EvaluationInfo, bool) {
-	return func_ip(func(ip net.IP, cidr *net.IPNet) net.IP {
-		return ip.Mask(cidr.Mask)
+func func_minIP(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
+	return func_ip(func(ip net.IP, cidr *net.IPNet) interface{} {
+		return ip.Mask(cidr.Mask).String()
 	}, arguments, binding)
 }
 
-func func_maxIP(arguments []interface{}, binding Binding) (yaml.Node, EvaluationInfo, bool) {
-	return func_ip(func(ip net.IP, cidr *net.IPNet) net.IP {
-		return MaxIP(cidr)
+func func_maxIP(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
+	return func_ip(func(ip net.IP, cidr *net.IPNet) interface{} {
+		return MaxIP(cidr).String()
+	}, arguments, binding)
+}
+
+func func_numIP(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
+	return func_ip(func(ip net.IP, cidr *net.IPNet) interface{} {
+		ones, _ := cidr.Mask.Size()
+		return int64(1 << (32 - uint32(ones)))
 	}, arguments, binding)
 }
 
