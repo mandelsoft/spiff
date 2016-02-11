@@ -1,7 +1,9 @@
 package flow
 
 import (
+	"path/filepath"
 	"reflect"
+	"strings"
 
 	"github.com/cloudfoundry-incubator/spiff/debug"
 	"github.com/cloudfoundry-incubator/spiff/dynaml"
@@ -32,6 +34,8 @@ type DefaultEnvironment struct {
 	stubPath   []string
 	sourceName string
 
+	currentSourceName string
+
 	local map[string]yaml.Node
 }
 
@@ -47,6 +51,10 @@ func (e DefaultEnvironment) SourceName() string {
 	return e.sourceName
 }
 
+func (e DefaultEnvironment) CurrentSourceName() string {
+	return e.currentSourceName
+}
+
 func (e DefaultEnvironment) GetLocalBinding() map[string]yaml.Node {
 	return e.local
 }
@@ -60,7 +68,7 @@ func (e DefaultEnvironment) FindFromRoot(path []string) (yaml.Node, bool) {
 }
 
 func (e DefaultEnvironment) FindReference(path []string) (yaml.Node, bool) {
-	root, found := resolveSymbol(path[0], e.scope)
+	root, found := resolveSymbol(&e, path[0], e.scope)
 	if !found {
 		return nil, false
 	}
@@ -138,10 +146,14 @@ func (e DefaultEnvironment) Flow(source yaml.Node, shouldOverride bool) (yaml.No
 }
 
 func NewEnvironment(stubs []yaml.Node, source string) dynaml.Binding {
-	return DefaultEnvironment{stubs: stubs, sourceName: source}
+	return DefaultEnvironment{stubs: stubs, sourceName: source, currentSourceName: source}
 }
 
-func resolveSymbol(name string, scope *Scope) (yaml.Node, bool) {
+func resolveSymbol(env *DefaultEnvironment, name string, scope *Scope) (yaml.Node, bool) {
+
+	if name == "__ctx" {
+		return createContext(env), true
+	}
 	for scope != nil {
 		val := scope.local[name]
 		if val != nil {
@@ -151,4 +163,23 @@ func resolveSymbol(name string, scope *Scope) (yaml.Node, bool) {
 	}
 
 	return nil, false
+}
+
+func createContext(env *DefaultEnvironment) yaml.Node {
+	ctx := make(map[string]yaml.Node)
+
+	ctx["FILE"] = node(env.CurrentSourceName())
+	ctx["DIR"] = node(filepath.Dir(env.CurrentSourceName()))
+	ctx["PATHNAME"] = node(strings.Join(env.Path(), "."))
+
+	path := make([]yaml.Node, len(env.Path()))
+	for i, v := range env.Path() {
+		path[i] = node(v)
+	}
+	ctx["PATH"] = node(path)
+	return node(ctx)
+}
+
+func node(val interface{}) yaml.Node {
+	return yaml.NewNode(val, "__ctx")
 }

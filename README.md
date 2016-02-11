@@ -67,6 +67,7 @@ Contents:
 	- [Templates](#templates)
 		- [<<: (( &template ))](#--template-)
 		- [(( *foo.bar ))](#-foobar-)
+	- [Access to evaluation context](#access-to-evaluation-context)
 	- [Operation Priorities](#operation-priorities)
 - [Structural Auto-Merge](#structural-auto-merge)
 - [Bringing it all together](#bringing-it-all-together)
@@ -1381,6 +1382,46 @@ use:
 verb: hates
 ```
 
+## Access to evaluation context
+
+Inside every dynaml expression a virtual field `__ctx` is available. It allows access to information about the actual evaluation context. It can be accessed by a relative reference expression.
+
+The following fields are supported:
+
+| Field Name  | Type | Meaning |
+| ------------| ---- | ------- |
+| `FILE` | string | name of actually processed template file  |
+| `DIR`  | string | name of directory of actually processed template file  |
+| `PATHNAME` | string | path name of actually processed field |
+| `PATH` | list[string] | path name as component list |
+
+e.g.:
+
+**template.yml**
+```yaml
+foo:
+  bar:
+    path: (( __ctx.PATH ))
+    str: (( __ctx.PATHNAME ))
+    file: (( __ctx.FILE ))
+    dir: (( __ctx.DIR ))
+```
+
+evaluates to
+
+e.g.:
+
+```yaml
+foo:
+  bar:
+    dir: .
+    file: template.yml
+    path:
+    - foo
+    - bar
+    - path
+    str: foo.bar.str
+```
 
 ## Operation Priorities
 

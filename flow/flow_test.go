@@ -3160,4 +3160,31 @@ list:
 			})
 		})
 	})
+
+	Describe("accessing the evaluation context", func() {
+		It("resolves context variables", func() {
+			source := parseYAML(`
+---
+foo:
+  bar:
+    path: (( __ctx.PATH ))
+    str: (( __ctx.PATHNAME ))
+    file: (( __ctx.FILE ))
+    dir: (( __ctx.DIR ))
+`)
+			resolved := parseYAML(`
+---
+foo:
+  bar:
+    dir: .
+    file: test
+    path:
+    - foo
+    - bar
+    - path
+    str: foo.bar.str
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
 })
