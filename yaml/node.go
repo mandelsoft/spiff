@@ -170,8 +170,8 @@ func (n AnnotatedNode) GetAnnotation() Annotation {
 	return n.Annotation
 }
 
-func (n AnnotatedNode) MarshalYAML() (string, interface{}) {
-	return "", n.Value()
+func (n AnnotatedNode) MarshalYAML() (string, interface{}, error) {
+	return "", n.Value(), nil
 }
 
 func (n AnnotatedNode) EquivalentToNode(o Node) bool {

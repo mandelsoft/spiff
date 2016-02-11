@@ -92,8 +92,8 @@ func (e LambdaValue) String() string {
 	return fmt.Sprintf("%s%s", binding, e.lambda)
 }
 
-func (e LambdaValue) MarshalYAML() (tag string, value interface{}) {
-	return "", e.String()
+func (e LambdaValue) MarshalYAML() (tag string, value interface{}, err error) {
+	return "", e.String(), nil
 }
 
 func (e LambdaValue) Evaluate(args []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
