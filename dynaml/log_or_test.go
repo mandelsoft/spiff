@@ -77,6 +77,28 @@ var _ = Describe("logical or", func() {
 		})
 	})
 
+	Context("when left-hand false and the right-hand side fails", func() {
+		It("fails", func() {
+			expr := LogOrExpr{
+				BooleanExpr{false},
+				FailingExpr{},
+			}
+
+			Expect(expr).To(FailToEvaluate(FakeBinding{}))
+		})
+	})
+
+	Context("when left-hand true and the right-hand side fails", func() {
+		It("returns true", func() {
+			expr := LogOrExpr{
+				BooleanExpr{true},
+				FailingExpr{},
+			}
+
+			Expect(expr).To(EvaluateAs(true, FakeBinding{}))
+		})
+	})
+
 	Context("when the left-hand side is nil", func() {
 		It("returns the right-hand side", func() {
 			expr := LogOrExpr{
