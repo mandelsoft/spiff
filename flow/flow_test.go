@@ -2786,6 +2786,25 @@ mapped:
 				Expect(source).To(FlowAs(resolved))
 			})
 
+			It("filters nil values", func() {
+				source := parseYAML(`
+---
+list:
+  - alice
+  - ~
+mapped: (( map[list|x|->x] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - alice
+  - ~
+mapped:
+  - alice
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
 			It("maps index expression", func() {
 				source := parseYAML(`
 ---
@@ -2970,6 +2989,25 @@ map:
 mapped:
   - 25
   - 24
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("filters empty expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: ~
+mapped: (( map[map|x|->x] ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: ~
+mapped:
+  - 25
 `)
 				Expect(source).To(FlowAs(resolved))
 			})
