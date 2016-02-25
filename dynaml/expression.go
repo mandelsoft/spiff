@@ -7,6 +7,7 @@ import (
 type Status interface {
 	error
 	Issue(string) yaml.Issue
+	HasError() bool
 }
 
 type SourceProvider interface {

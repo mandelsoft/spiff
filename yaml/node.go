@@ -225,7 +225,9 @@ func (n AnnotatedNode) EquivalentToNode(o Node) bool {
 		return true
 	}
 
-	return reflect.DeepEqual(n.Value(), o.Value())
+	b := reflect.DeepEqual(n.Value(), o.Value())
+
+	return b
 }
 
 var embeddedDynaml = regexp.MustCompile(`^\(\((.*)\)\)$`)

@@ -48,6 +48,17 @@ func (e UnresolvedNodes) Issue(message string) yaml.Issue {
 	return result
 }
 
+func (e UnresolvedNodes) HasError() bool {
+	for _, node := range e.Nodes {
+		issue := node.Issue()
+		msg := issue.Issue
+		if msg != "" {
+			return true
+		}
+	}
+	return false
+}
+
 func (e UnresolvedNodes) Error() string {
 	message := "unresolved nodes:"
 	format := ""
