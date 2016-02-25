@@ -2201,6 +2201,61 @@ bar: false
 		})
 	})
 
+	Describe("when concatenating a map", func() {
+		Context("with other maps", func() {
+			It("yields a joined map", func() {
+				source := parseYAML(`
+---
+map1:
+  alice: a
+  bob: b
+map2:
+  bob: b2
+  peter: p
+
+foo: (( map1 map2 ))
+`)
+
+				resolved := parseYAML(`
+---
+map1:
+  alice: a
+  bob: b
+map2:
+  bob: b2
+  peter: p
+foo:
+  alice: a
+  bob: b2
+  peter: p
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("handles empty map constant", func() {
+				source := parseYAML(`
+---
+map1:
+  alice: a
+  bob: b
+
+foo: (( {} map1 ))
+`)
+
+				resolved := parseYAML(`
+---
+map1:
+  alice: a
+  bob: b
+foo:
+  alice: a
+  bob: b
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
 	Describe("when concatenating a list", func() {
 		Context("with incremental expression resolution", func() {
 			It("evaluates in case of successfully completed operand resolution", func() {
