@@ -106,6 +106,8 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (nodes []UnresolvedN
 		return nodes
 	}
 
+	dummy := []string{"dummy"}
+
 	switch val := root.Value().(type) {
 	case map[string]yaml.Node:
 		for key, val := range val {
@@ -140,13 +142,24 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (nodes []UnresolvedN
 			Path:    path,
 		})
 
+	case TemplateValue:
+		context := addContext(context, fmt.Sprintf("&"))
+
+		nodes = append(
+			nodes,
+			FindUnresolvedNodes(val.Orig, context...)...,
+		)
+
 	case string:
-		if yaml.EmbeddedDynaml(root) != nil {
-			nodes = append(nodes, UnresolvedNode{
-				Node:    yaml.IssueNode(root, yaml.Issue{Issue: "unparseable expression"}),
-				Context: context,
-				Path:    []string{},
-			})
+		if s := yaml.EmbeddedDynaml(root); s != nil {
+			_, err := Parse(*s, dummy, dummy)
+			if err != nil {
+				nodes = append(nodes, UnresolvedNode{
+					Node:    yaml.IssueNode(root, yaml.Issue{Issue: fmt.Sprintf("unparseable expression")}),
+					Context: context,
+					Path:    []string{},
+				})
+			}
 		}
 	}
 
