@@ -139,7 +139,7 @@ func (e DefaultEnvironment) Flow(source yaml.Node, shouldOverride bool) (yaml.No
 	debug.Debug("@@@ Done\n")
 	unresolved := dynaml.FindUnresolvedNodes(result)
 	if len(unresolved) > 0 {
-		return dynaml.ResetUnresolvedNodes(result), dynaml.UnresolvedNodes{unresolved}
+		return result, dynaml.UnresolvedNodes{unresolved}
 	}
 
 	return result, nil
@@ -168,8 +168,15 @@ func resolveSymbol(env *DefaultEnvironment, name string, scope *Scope) (yaml.Nod
 func createContext(env *DefaultEnvironment) yaml.Node {
 	ctx := make(map[string]yaml.Node)
 
+	read, err := filepath.EvalSymlinks(env.CurrentSourceName())
+	if err != nil {
+		read = env.CurrentSourceName()
+	}
 	ctx["FILE"] = node(env.CurrentSourceName())
 	ctx["DIR"] = node(filepath.Dir(env.CurrentSourceName()))
+	ctx["RESOLVED_FILE"] = node(read)
+	ctx["RESOLVED_DIR"] = node(filepath.Dir(read))
+
 	ctx["PATHNAME"] = node(strings.Join(env.Path(), "."))
 
 	path := make([]yaml.Node, len(env.Path()))

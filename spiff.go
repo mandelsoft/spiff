@@ -13,6 +13,7 @@ import (
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/cloudfoundry-incubator/spiff/compare"
 	"github.com/cloudfoundry-incubator/spiff/debug"
+	"github.com/cloudfoundry-incubator/spiff/dynaml"
 	"github.com/cloudfoundry-incubator/spiff/flow"
 	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
@@ -122,7 +123,9 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 	if !partial && err != nil {
 		log.Fatalln("error generating manifest:", err)
 	}
-
+	if err != nil {
+		flowed = dynaml.ResetUnresolvedNodes(flowed)
+	}
 	yaml, err := candiedyaml.Marshal(flowed)
 	if err != nil {
 		log.Fatalln("error marshalling manifest:", err)

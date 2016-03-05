@@ -1392,6 +1392,8 @@ The following fields are supported:
 | ------------| ---- | ------- |
 | `FILE` | string | name of actually processed template file  |
 | `DIR`  | string | name of directory of actually processed template file  |
+| `RESOLVED_FILE` | string | name of actually processed template file with resolved symbolic links |
+| `RESOLVED_DIR`  | string | name of directory of actually processed template file with resolved symbolic links |
 | `PATHNAME` | string | path name of actually processed field |
 | `PATH` | list[string] | path name as component list |
 
