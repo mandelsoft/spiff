@@ -16,8 +16,8 @@ type LogAndExpr struct {
 }
 
 func (e LogAndExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
-	a, b, info, resolved, ok := resolveLOperands(e.A, e.B, binding)
-	if !ok {
+	a, b, info, resolved, first_ok, all_ok := resolveLOperands(e.A, e.B, binding)
+	if !first_ok {
 		return nil, info, false
 	}
 	if !resolved {
@@ -26,9 +26,18 @@ func (e LogAndExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool
 	debug.Debug("AND: %#v, %#v\n", a, b)
 	inta, ok := a.(int64)
 	if ok {
+		if !all_ok {
+			return nil, info, false
+		}
 		return inta & b.(int64), info, true
 	}
-	return toBool(a) && toBool(b), info, true
+	if !toBool(a) {
+		return false, info, true
+	}
+	if !all_ok {
+		return nil, info, false
+	}
+	return toBool(b), info, true
 }
 
 func (e LogAndExpr) String() string {

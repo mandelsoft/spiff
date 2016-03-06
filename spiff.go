@@ -13,6 +13,7 @@ import (
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/cloudfoundry-incubator/spiff/compare"
 	"github.com/cloudfoundry-incubator/spiff/debug"
+	"github.com/cloudfoundry-incubator/spiff/dynaml"
 	"github.com/cloudfoundry-incubator/spiff/flow"
 	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
@@ -21,7 +22,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "spiff"
 	app.Usage = "BOSH deployment manifest toolkit"
-	app.Version = "1.0.8dev2"
+	app.Version = "1.0.8-ms.1"
 
 	app.Commands = []cli.Command{
 		{
@@ -72,7 +73,17 @@ func main() {
 }
 
 func merge(templateFilePath string, partial bool, stubFilePaths []string) {
-	templateFile, err := ioutil.ReadFile(templateFilePath)
+	var templateFile []byte
+	var err error
+	var stdin = false
+
+	if templateFilePath == "-" {
+		templateFile, err = ioutil.ReadAll(os.Stdin)
+		stdin = true
+	} else {
+		templateFile, err = ioutil.ReadFile(templateFilePath)
+	}
+
 	if err != nil {
 		log.Fatalln(fmt.Sprintf("error reading template [%s]:", path.Clean(templateFilePath)), err)
 	}
@@ -85,7 +96,17 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 	stubs := []yaml.Node{}
 
 	for _, stubFilePath := range stubFilePaths {
-		stubFile, err := ioutil.ReadFile(stubFilePath)
+		var stubFile []byte
+		var err error
+		if stubFilePath == "-" {
+			if stdin {
+				log.Fatalln(fmt.Sprintf("stdin cannot be used twice"))
+			}
+			stubFile, err = ioutil.ReadAll(os.Stdin)
+			stdin = true
+		} else {
+			stubFile, err = ioutil.ReadFile(stubFilePath)
+		}
 		if err != nil {
 			log.Fatalln(fmt.Sprintf("error reading stub [%s]:", path.Clean(stubFilePath)), err)
 		}
@@ -102,7 +123,9 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 	if !partial && err != nil {
 		log.Fatalln("error generating manifest:", err)
 	}
-
+	if err != nil {
+		flowed = dynaml.ResetUnresolvedNodes(flowed)
+	}
 	yaml, err := candiedyaml.Marshal(flowed)
 	if err != nil {
 		log.Fatalln("error marshalling manifest:", err)

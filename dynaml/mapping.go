@@ -93,7 +93,9 @@ func mapList(source []yaml.Node, e LambdaValue, binding Binding) ([]yaml.Node, E
 			return nil, info, true
 		}
 		debug.Debug("map:  %d --> %+v\n", i, mapped)
-		result = append(result, node(mapped, info))
+		if mapped != nil {
+			result = append(result, node(mapped, info))
+		}
 	}
 	return result, info, true
 }
@@ -121,7 +123,9 @@ func mapMap(source map[string]yaml.Node, e LambdaValue, binding Binding) ([]yaml
 			return nil, info, true
 		}
 		debug.Debug("map:  %s --> %+v\n", k, mapped)
-		result = append(result, node(mapped, info))
+		if mapped != nil {
+			result = append(result, node(mapped, info))
+		}
 	}
 	return result, info, true
 }

@@ -16,6 +16,9 @@ func (e OrExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
 		if reflect.DeepEqual(a, e.A) {
 			return nil, infoa, false
 		}
+		if isExpression(a) {
+			return e, infoa, true
+		}
 		return a, infoa, true
 	}
 

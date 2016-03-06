@@ -110,6 +110,8 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			tokens.Push(IntegerExpr{val})
 		case ruleNil:
 			tokens.Push(NilExpr{})
+		case ruleEmptyHash:
+			tokens.Push(EmptyHashExpr{})
 		case ruleBoolean:
 			tokens.Push(BooleanExpr{contents == "true"})
 		case ruleString:

@@ -6,6 +6,6 @@ go:
 install:
   - go get -v github.com/kr/godep
   - export PATH=$HOME/gopath/bin:$PATH
-  - godep go test -i ./...
+  - ./travis.sh
 
 script: godep go test -v ./...

@@ -2201,6 +2201,61 @@ bar: false
 		})
 	})
 
+	Describe("when concatenating a map", func() {
+		Context("with other maps", func() {
+			It("yields a joined map", func() {
+				source := parseYAML(`
+---
+map1:
+  alice: a
+  bob: b
+map2:
+  bob: b2
+  peter: p
+
+foo: (( map1 map2 ))
+`)
+
+				resolved := parseYAML(`
+---
+map1:
+  alice: a
+  bob: b
+map2:
+  bob: b2
+  peter: p
+foo:
+  alice: a
+  bob: b2
+  peter: p
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("handles empty map constant", func() {
+				source := parseYAML(`
+---
+map1:
+  alice: a
+  bob: b
+
+foo: (( {} map1 ))
+`)
+
+				resolved := parseYAML(`
+---
+map1:
+  alice: a
+  bob: b
+foo:
+  alice: a
+  bob: b
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
 	Describe("when concatenating a list", func() {
 		Context("with incremental expression resolution", func() {
 			It("evaluates in case of successfully completed operand resolution", func() {
@@ -2786,6 +2841,25 @@ mapped:
 				Expect(source).To(FlowAs(resolved))
 			})
 
+			It("filters nil values", func() {
+				source := parseYAML(`
+---
+list:
+  - alice
+  - ~
+mapped: (( map[list|x|->x] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - alice
+  - ~
+mapped:
+  - alice
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
 			It("maps index expression", func() {
 				source := parseYAML(`
 ---
@@ -2974,6 +3048,25 @@ mapped:
 				Expect(source).To(FlowAs(resolved))
 			})
 
+			It("filters empty expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: ~
+mapped: (( map[map|x|->x] ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: ~
+mapped:
+  - 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
 			It("maps key expression", func() {
 				source := parseYAML(`
 ---
@@ -3013,6 +3106,39 @@ foo:
 use:
   verb: loves
   subst: (( *foo.bar ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+foo:
+  bar:
+    <<: (( &template ))
+    alice: alice
+    bob: (( verb " " alice ))
+use:
+  subst:
+    alice: alice
+    bob: loves alice
+  verb: loves
+verb: hates
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("uses usage context without falling back to default", func() {
+				source := parseYAML(`
+---
+verb: hates
+
+foo:
+  bar:
+    <<: (( &template ))
+    alice: alice
+    bob: (( verb " " alice ))
+
+
+use:
+  verb: loves
+  subst: (( *foo.bar || "failed" ))
 `)
 				resolved, _ := Flow(parseYAML(`
 ---
@@ -3071,7 +3197,60 @@ verb: hates
 `))
 				Expect(source).To(FlowAs(resolved))
 			})
+
+			It("defaults failures", func() {
+				source := parseYAML(`
+---
+foo:
+  bar:
+    <<: (( &template ))
+    alice: alice
+    bob: (( verb " " alice ))
+
+use:
+  subst: (( *foo.bar || "failed" ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+foo:
+  bar:
+    <<: (( &template ))
+    alice: alice
+    bob: (( verb " " alice ))
+use:
+  subst: failed
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("defaults deep failures", func() {
+				source := parseYAML(`
+---
+verbs: (( merge || nil ))
+foo:
+  bar:
+    <<: (( &template ))
+    alice: alice
+    bob: (( verbs.verb " " alice ))
+
+use:
+  subst: (( *foo.bar || "failed" ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+verbs: ~
+foo:
+  bar:
+    <<: (( &template ))
+    alice: alice
+    bob: (( verbs.verb " " alice ))
+use:
+  subst: failed
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
+
 	})
 
 	Describe("merging lists with specified key", func() {

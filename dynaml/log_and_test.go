@@ -25,7 +25,7 @@ var _ = Describe("logical and", func() {
 			Expect(expr).To(EvaluateAs(false, FakeBinding{}))
 		})
 
-		It("false name true", func() {
+		It("false and true", func() {
 			expr := LogAndExpr{
 				BooleanExpr{false},
 				BooleanExpr{true},
@@ -74,6 +74,28 @@ var _ = Describe("logical and", func() {
 			}
 
 			Expect(expr).To(FailToEvaluate(FakeBinding{}))
+		})
+	})
+
+	Context("when left-hand true and the right-hand side fails", func() {
+		It("fails", func() {
+			expr := LogAndExpr{
+				BooleanExpr{true},
+				FailingExpr{},
+			}
+
+			Expect(expr).To(FailToEvaluate(FakeBinding{}))
+		})
+	})
+
+	Context("when left-hand false and the right-hand side fails", func() {
+		It("returns false", func() {
+			expr := LogAndExpr{
+				BooleanExpr{false},
+				FailingExpr{},
+			}
+
+			Expect(expr).To(EvaluateAs(false, FakeBinding{}))
 		})
 	})
 

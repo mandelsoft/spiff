@@ -16,8 +16,8 @@ type LogOrExpr struct {
 }
 
 func (e LogOrExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
-	a, b, info, resolved, ok := resolveLOperands(e.A, e.B, binding)
-	if !ok {
+	a, b, info, resolved, first_ok, all_ok := resolveLOperands(e.A, e.B, binding)
+	if !first_ok {
 		debug.Debug("OR: failed %#v, %#v\n", e.A, e.B)
 		return nil, info, false
 	}
@@ -27,33 +27,42 @@ func (e LogOrExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool)
 	debug.Debug("OR: %#v, %#v\n", a, b)
 	inta, ok := a.(int64)
 	if ok {
+		if !all_ok {
+			return nil, info, false
+		}
 		return inta | b.(int64), info, true
 	}
-	return (toBool(a) || toBool(b)), info, true
+	if toBool(a) {
+		return true, info, true
+	}
+	if !all_ok {
+		return nil, info, false
+	}
+	return toBool(b), info, true
 }
 
 func (e LogOrExpr) String() string {
 	return fmt.Sprintf("%s %s %s", e.A, OpOr, e.B)
 }
 
-func resolveLOperands(a, b Expression, binding Binding) (eff_a, eff_b interface{}, info EvaluationInfo, resolved bool, ok bool) {
+func resolveLOperands(a, b Expression, binding Binding) (eff_a, eff_b interface{}, info EvaluationInfo, resolved bool, first_ok bool, ok bool) {
 	var va, vb interface{}
 	var infoa, infob EvaluationInfo
 
-	va, infoa, ok = a.Evaluate(binding)
-	if ok {
+	va, infoa, first_ok = a.Evaluate(binding)
+	if first_ok {
 		if isExpression(va) {
-			return nil, nil, infoa, false, true
+			return nil, nil, infoa, false, true, true
 		}
 
 		vb, infob, ok = b.Evaluate(binding)
 		info = infoa.Join(infob)
 		if !ok {
-			return nil, nil, info, false, false
+			return va, nil, info, true, true, false
 		}
 
 		if isExpression(vb) {
-			return nil, nil, info, false, true
+			return nil, nil, info, false, true, true
 		}
 
 		resolved = true
@@ -64,8 +73,8 @@ func resolveLOperands(a, b Expression, binding Binding) (eff_a, eff_b interface{
 				return
 			}
 		}
-		return toBool(va), toBool(vb), info, true, true
+		return toBool(va), toBool(vb), info, true, true, true
 	}
 
-	return nil, nil, info, false, false
+	return nil, nil, info, false, false, false
 }
