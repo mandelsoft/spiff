@@ -27,8 +27,7 @@ func (e AutoExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		}
 		jobsList, ok := jobs.([]yaml.Node)
 		if !ok {
-			info.Issue = yaml.NewIssue("jobs must be a list")
-			return nil, info, false
+			return info.Error("jobs must be a list")
 		}
 
 		var size int64
@@ -54,8 +53,7 @@ func (e AutoExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		return size, info, true
 	}
 
-	info.Issue = yaml.NewIssue("auto only allowed for size entry in resource pools")
-	return nil, info, false
+	return info.Error("auto only allowed for size entry in resource pools")
 }
 
 func (e AutoExpr) String() string {

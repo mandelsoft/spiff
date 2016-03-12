@@ -51,13 +51,11 @@ func (e ComparisonExpr) Evaluate(binding Binding, locally bool) (interface{}, Ev
 		var va, vb int64
 		va, ok = a.(int64)
 		if !ok {
-			infor.Issue = yaml.NewIssue("comparision %s only for integers", e.Op)
-			break
+			return infor.Error("comparision %s only for integers", e.Op)
 		}
 		vb, ok = b.(int64)
 		if !ok {
-			infor.Issue = yaml.NewIssue("comparision %s only for integers", e.Op)
-			break
+			return infor.Error("comparision %s only for integers", e.Op)
 		}
 		switch e.Op {
 		case "<=":

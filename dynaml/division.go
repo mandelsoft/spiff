@@ -2,8 +2,6 @@ package dynaml
 
 import (
 	"fmt"
-
-	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
 type DivisionExpr struct {
@@ -29,8 +27,7 @@ func (e DivisionExpr) Evaluate(binding Binding, locally bool) (interface{}, Eval
 	}
 
 	if bint == 0 {
-		info.Issue = yaml.NewIssue("division by zero")
-		return nil, info, false
+		return info.Error("division by zero")
 	}
 	return aint / bint, info, true
 }

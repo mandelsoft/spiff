@@ -2,7 +2,6 @@ package dynaml
 
 import (
 	"github.com/cloudfoundry-incubator/spiff/debug"
-	"github.com/cloudfoundry-incubator/spiff/yaml"
 	"strings"
 )
 
@@ -28,8 +27,7 @@ func (e MergeExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluat
 		info.Source = node.SourceName()
 		return node.Value(), info, ok
 	} else {
-		info.Issue = yaml.NewIssue("'%s' not found in any stub", strings.Join(e.Path, "."))
-		return nil, info, false
+		return info.Error("'%s' not found in any stub", strings.Join(e.Path, "."))
 	}
 }
 

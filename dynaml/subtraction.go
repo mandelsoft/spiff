@@ -3,8 +3,6 @@ package dynaml
 import (
 	"fmt"
 	"net"
-
-	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
 type SubtractionExpr struct {
@@ -40,11 +38,9 @@ func (e SubtractionExpr) Evaluate(binding Binding, locally bool) (interface{}, E
 		if ip != nil {
 			return IPAdd(ip, -bint).String(), info, true
 		}
-		info.Issue = yaml.NewIssue("string argument for MINUS must be an IP address")
-	} else {
-		info.Issue = yaml.NewIssue("first argument of MINUS must be IP address or integer")
+		return info.Error("string argument for MINUS must be an IP address")
 	}
-	return nil, info, false
+	return info.Error("first argument of MINUS must be IP address or integer")
 }
 
 func (e SubtractionExpr) String() string {

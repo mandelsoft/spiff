@@ -31,29 +31,24 @@ func func_exec(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 				for j, arg := range list {
 					v, ok := getArg(j, arg.Value())
 					if !ok {
-						info.Issue = yaml.NewIssue("command argument must be string")
-						return nil, info, false
+						return info.Error("command argument must be string")
 					}
 					args = append(args, v)
 				}
 			} else {
-				info.Issue = yaml.NewIssue("list not allowed for command argument")
-				return nil, info, false
+				return info.Error("list not allowed for command argument")
 			}
 		} else {
 			v, ok := getArg(i, arg)
 			if !ok {
-				info.Issue = yaml.NewIssue("command argument must be string")
-				return nil, info, false
+				return info.Error("command argument must be string")
 			}
 			args = append(args, v)
 		}
 	}
 	result, err := cachedExecute(args)
 	if err != nil {
-		info.Issue = yaml.NewIssue("execution '%s' failed", args[0])
-		// expression set to undefined
-		return nil, info, false
+		return info.Error("execution '%s' failed", args[0])
 	}
 
 	str := string(result)

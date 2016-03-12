@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/cloudfoundry-incubator/spiff/debug"
-	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
 type CallExpr struct {
@@ -28,7 +27,7 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 			_, ok = value.(LambdaValue)
 			if !ok {
 				debug.Debug("function: no string or lambda value: %T\n", value)
-				info.Issue = yaml.NewIssue("function call '%s' requires function name or lambda value", e.Function)
+				return info.Error("function call '%s' requires function name or lambda value", e.Function)
 			}
 		}
 	}
@@ -104,8 +103,7 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		result, sub, ok = func_numIP(values, binding)
 
 	default:
-		info.Issue = yaml.NewIssue("unknown function '%s'", funcName)
-		return nil, info, false
+		return info.Error("unknown function '%s'", funcName)
 	}
 
 	if ok && (result == nil || isExpression(result)) {

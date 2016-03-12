@@ -36,8 +36,7 @@ func (e SumExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluatio
 
 	lambda, ok := lvalue.(LambdaValue)
 	if !ok {
-		infoe.Issue = yaml.NewIssue("sum requires a lambda value")
-		return nil, infoe, false
+		return infoe.Error("sum requires a lambda value")
 	}
 
 	debug.Debug("map: using lambda %+v\n", lambda)
@@ -50,8 +49,7 @@ func (e SumExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluatio
 		result, info, ok = sumMap(value.(map[string]yaml.Node), lambda, initial, binding)
 
 	default:
-		info.Issue = yaml.NewIssue("map or list required for sum")
-		return nil, info, false
+		return info.Error("map or list required for sum")
 	}
 	if !ok {
 		return nil, info, false
@@ -78,12 +76,10 @@ func sumList(source []yaml.Node, e LambdaValue, initial interface{}, binding Bin
 	info := DefaultInfo()
 
 	if len(e.lambda.Names) > 3 {
-		info.Issue = yaml.NewIssue("mapping expression take a maximum of 3 arguments")
-		return nil, info, false
+		return info.Error("mapping expression take a maximum of 3 arguments")
 	}
 	if len(e.lambda.Names) < 2 {
-		info.Issue = yaml.NewIssue("mapping expression take a minimum of 2 arguments")
-		return nil, info, false
+		return info.Error("mapping expression take a minimum of 2 arguments")
 	}
 
 	for i, n := range source {

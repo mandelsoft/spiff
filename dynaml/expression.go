@@ -6,7 +6,7 @@ import (
 
 type Status interface {
 	error
-	Issue(string) yaml.Issue
+	Issue(fmt string, args ...interface{}) yaml.Issue
 	HasError() bool
 }
 
@@ -40,6 +40,7 @@ type EvaluationInfo struct {
 	Preferred    bool
 	KeyName      string
 	Source       string
+	LocalError   bool
 	Issue        yaml.Issue
 }
 
@@ -48,11 +49,22 @@ func (e EvaluationInfo) SourceName() string {
 }
 
 func DefaultInfo() EvaluationInfo {
-	return EvaluationInfo{nil, false, false, false, "", "", yaml.Issue{}}
+	return EvaluationInfo{nil, false, false, false, "", "", false, yaml.Issue{}}
 }
 
 type Expression interface {
 	Evaluate(Binding, bool) (interface{}, EvaluationInfo, bool)
+}
+
+func (i *EvaluationInfo) Error(fmt interface{}, args ...interface{}) (interface{}, EvaluationInfo, bool) {
+	issue, ok := fmt.(yaml.Issue)
+	if ok {
+		i.Issue = issue
+	} else {
+		i.Issue = yaml.NewIssue(fmt.(string), args...)
+	}
+	i.LocalError = true
+	return nil, *i, false
 }
 
 func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {

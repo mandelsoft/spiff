@@ -25,8 +25,7 @@ func func_join(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 			args = append(args, strconv.FormatBool(v))
 		case []yaml.Node:
 			if i == 0 {
-				info.Issue = yaml.NewIssue("first argument for join must be a string")
-				return nil, info, false
+				return info.Error("first argument for join must be a string")
 			}
 			for _, elem := range v {
 				switch e := elem.Value().(type) {
@@ -37,14 +36,12 @@ func func_join(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 				case bool:
 					args = append(args, strconv.FormatBool(e))
 				default:
-					info.Issue = yaml.NewIssue("elements of list(arg %d) to join must be simple values", i)
-					return nil, info, false
+					return info.Error("elements of list(arg %d) to join must be simple values", i)
 				}
 			}
 		case nil:
 		default:
-			info.Issue = yaml.NewIssue("argument %d to join must be simple value or list", i)
-			return nil, info, false
+			return info.Error("argument %d to join must be simple value or list", i)
 		}
 	}
 

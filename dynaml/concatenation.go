@@ -47,8 +47,7 @@ func (e ConcatenationExpr) Evaluate(binding Binding, locally bool) (interface{},
 	if !aok {
 		amap, aok := a.(map[string]yaml.Node)
 		if !aok {
-			info.Issue = yaml.NewIssue("simple value can only be concatenated with simple values")
-			return nil, info, false
+			return info.Error("simple value can only be concatenated with simple values")
 		}
 		switch bmap := b.(type) {
 		case map[string]yaml.Node:
@@ -59,8 +58,7 @@ func (e ConcatenationExpr) Evaluate(binding Binding, locally bool) (interface{},
 		case nil:
 			return a, info, true
 		default:
-			info.Issue = yaml.NewIssue("simple value can only be concatenated with simple values")
-			return nil, info, false
+			return info.Error("simple value can only be concatenated with simple values")
 		}
 	} else {
 		switch b.(type) {

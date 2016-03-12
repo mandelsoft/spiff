@@ -32,8 +32,7 @@ func (e MapExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluatio
 
 	lambda, ok := lvalue.(LambdaValue)
 	if !ok {
-		infoe.Issue = yaml.NewIssue("mapping requires a lambda value")
-		return nil, infoe, false
+		return infoe.Error("mapping requires a lambda value")
 	}
 
 	debug.Debug("map: using lambda %+v\n", lambda)
@@ -46,8 +45,7 @@ func (e MapExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluatio
 		result, info, ok = mapMap(value.(map[string]yaml.Node), lambda, binding)
 
 	default:
-		info.Issue = yaml.NewIssue("map or list required for mapping")
-		return nil, info, false
+		return info.Error("map or list required for mapping")
 	}
 	if !ok {
 		return nil, info, false
@@ -74,7 +72,7 @@ func mapList(source []yaml.Node, e LambdaValue, binding Binding) ([]yaml.Node, E
 	info := DefaultInfo()
 
 	if len(e.lambda.Names) > 2 {
-		info.Issue = yaml.NewIssue("mapping expression take a maximum of 2 arguments")
+		info.Error("mapping expression take a maximum of 2 arguments")
 		return nil, info, false
 	}
 	for i, n := range source {

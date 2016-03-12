@@ -51,19 +51,17 @@ func (e LambdaRefExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 		expr, err := Parse(v, e.Path, e.StubPath)
 		if err != nil {
 			debug.Debug("cannot parse: %s\n", err.Error())
-			info.Issue = yaml.NewIssue("cannot parse lamba expression '%s'")
-			return nil, info, false
+			return info.Error("cannot parse lamba expression '%s'")
 		}
 		lexpr, ok := expr.(LambdaExpr)
 		if !ok {
 			debug.Debug("no lambda expression: %T\n", expr)
-			info.Issue = yaml.NewIssue("'%s' is no lambda expression", v)
-			return nil, info, false
+			return info.Error("'%s' is no lambda expression", v)
 		}
 		lambda = LambdaValue{lexpr, binding.GetLocalBinding()}
 
 	default:
-		info.Issue = yaml.NewIssue("lambda reference must resolve to lambda value or string")
+		return info.Error("lambda reference must resolve to lambda value or string")
 	}
 	debug.Debug("found lambda: %s\n", lambda)
 	return lambda, info, true

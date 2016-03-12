@@ -50,14 +50,12 @@ func func_env(arguments []interface{}, binding Binding) (interface{}, Evaluation
 				case bool:
 					args = append(args, strconv.FormatBool(e))
 				default:
-					info.Issue = yaml.NewIssue("elements of list(arg %d) to join must be simple values", i)
-					return nil, info, false
+					return info.Error("elements of list(arg %d) to join must be simple values", i)
 				}
 			}
 		case nil:
 		default:
-			info.Issue = yaml.NewIssue("env argument %d must be simple value or list", i)
-			return nil, info, false
+			return info.Error("env argument %d must be simple value or list", i)
 		}
 	}
 
@@ -66,8 +64,7 @@ func func_env(arguments []interface{}, binding Binding) (interface{}, Evaluation
 		if ok {
 			return s, info, ok
 		} else {
-			info.Issue = yaml.NewIssue("environment variable '%s' not set", args[0])
-			return nil, info, ok
+			return info.Error("environment variable '%s' not set", args[0])
 		}
 	} else {
 		m := make(map[string]yaml.Node)

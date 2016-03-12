@@ -47,7 +47,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 			eval, info, ok := val.Evaluate(env, false)
 			debug.Debug("??? ---> %+v\n", eval)
 			if !ok {
-				root = yaml.IssueNode(root, info.Issue)
+				root = yaml.IssueNode(root, true, info.Issue)
 				debug.Debug("??? failed ---> KEEP\n")
 				if !shouldOverride {
 					return root
@@ -66,7 +66,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 				_, expr := result.Value().(dynaml.Expression)
 
 				if len(info.Issue.Issue) != 0 {
-					result = yaml.IssueNode(result, info.Issue)
+					result = yaml.IssueNode(result, false, info.Issue)
 				}
 				// preserve accumulated node attributes
 				if preferred || info.Preferred {
@@ -223,7 +223,7 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 	var result interface{}
 	if template {
 		debug.Debug(" as template\n")
-		result = dynaml.TemplateValue{yaml.NewNode(newMap, root.SourceName()), root}
+		result = dynaml.TemplateValue{env.Path(), yaml.NewNode(newMap, root.SourceName()), root}
 	} else {
 		result = newMap
 	}

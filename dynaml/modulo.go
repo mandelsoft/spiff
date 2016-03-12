@@ -2,8 +2,6 @@ package dynaml
 
 import (
 	"fmt"
-
-	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
 type ModuloExpr struct {
@@ -29,8 +27,7 @@ func (e ModuloExpr) Evaluate(binding Binding, locally bool) (interface{}, Evalua
 	}
 
 	if bint == 0 {
-		info.Issue = yaml.NewIssue("division by zero")
-		return nil, info, false
+		return info.Error("division by zero")
 	}
 	return aint % bint, info, true
 }

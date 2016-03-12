@@ -771,7 +771,7 @@ num: 192.168.0.0+256=192.168.1.0
 ## `(( a > 1 ? foo :bar ))`
 
 Dynaml supports the comparison operators `<`, `<=`, `==`, `!=`, `>=` and `>`. The comparison operators work on
-integer values. The check for equality also works on lists and maps. The result is always a boolean value.
+integer values. The checks for equality also work on lists and maps. The result is always a boolean value. To negate a condition the unary not opertor (`!`) can be used.
 
 Additionally there is the ternary conditional operator `?:`, that can be used to evaluate expressions depending on a condition. The first operand is used as condition. The expression is evaluated to the second operand, if the condition is true, and to the third one, otherwise.
 
@@ -788,13 +788,13 @@ yields the value `bob` for the property `name`.
 
 **Remark**
 
-The use of the symbol `:` may collide with the yaml syntax, if the complete expression is not a quoated string value.
+The use of the symbol `:` may collide with the yaml syntax, if the complete expression is not a quoted string value.
 
 The operators `-or` and `-and` can be used to combine comparison operators to compose more complex conditions.
 
 **Remark:**
 
-The more traditional operator symbol `||` (and `&&`) cannot be used here, because the operator `||` already exists in dynam with a different semantic, that does not hold for logical operations. The expression `false || true` evaluates to `false`, because it yields the first operand, if it is defined, regardless of its value. To be as compatible as possible this cannot be changed and the bare symbols `or` and `and` cannot be be used, because this would invalidate the concatenation of references with such names. 
+The more traditional operator symbol `||` (and `&&`) cannot be used here, because the operator `||` already exists in dynaml with a different semantic, that does not hold for logical operations. The expression `false || true` evaluates to `false`, because it yields the first operand, if it is defined, regardless of its value. To be as compatible as possible this cannot be changed and the bare symbols `or` and `and` cannot be be used, because this would invalidate the concatenation of references with such names. 
 
 ## `(( 5 -or 6 ))`
 
@@ -1995,4 +1995,5 @@ e.g.:
 ```
 	
 Cyclic dependencies are detected by iterative evaluation until the document is unchanged after a step.
-Nodes involved in a cycle are therefore typically reported without an issue.
+Nodes involved in a cycle are therefore typically reported just as unresolved node without a specific issue.
+Dedicated evaluation issues are marked with a star (`*`) and listed in front of follow-up issues.

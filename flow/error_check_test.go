@@ -13,7 +13,7 @@ var _ = Describe("Reporting issues for unresolved nodes", func() {
 node: (( ref ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( ref ))	in test	node	()	'ref' not found`,
+			`	(( ref ))	in test	node	()	*'ref' not found`,
 		))
 	})
 
@@ -24,7 +24,7 @@ a: true
 node: (( a + 1 ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a + 1 ))	in test	node	()	first argument of PLUS must be IP address or integer`,
+			`	(( a + 1 ))	in test	node	()	*first argument of PLUS must be IP address or integer`,
 		))
 	})
 
@@ -35,7 +35,7 @@ a: true
 node: (( a - 1 ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a - 1 ))	in test	node	()	first argument of MINUS must be IP address or integer`,
+			`	(( a - 1 ))	in test	node	()	*first argument of MINUS must be IP address or integer`,
 		))
 	})
 
@@ -46,7 +46,7 @@ a: 1
 node: (( a / 0 ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a / 0 ))	in test	node	()	division by zero`,
+			`	(( a / 0 ))	in test	node	()	*division by zero`,
 		))
 	})
 
@@ -57,7 +57,7 @@ a: 1
 node: (( a / true ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a / true ))	in test	node	()	integer operand required`,
+			`	(( a / true ))	in test	node	()	*integer operand required`,
 		))
 	})
 
@@ -67,7 +67,7 @@ node: (( a / true ))
 node: (( merge ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( merge ))	in test	node	(node)	'node' not found in any stub`,
+			`	(( merge ))	in test	node	(node)	*'node' not found in any stub`,
 		))
 	})
 
@@ -77,7 +77,7 @@ node: (( merge ))
 node: (( merge other.node))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( merge other.node ))	in test	node	(other.node)	'other.node' not found in any stub`,
+			`	(( merge other.node ))	in test	node	(other.node)	*'other.node' not found in any stub`,
 		))
 	})
 
@@ -89,7 +89,7 @@ list:
 node: (( join( ",", list.[0] ) ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( join(",", list.[0]) ))	in test	node	()	argument 1 to join must be simple value or list`,
+			`	(( join(",", list.[0]) ))	in test	node	()	*argument 1 to join must be simple value or list`,
 		))
 	})
 
@@ -101,7 +101,7 @@ list:
 node: (( join( [], "a" ) ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( join([], "a") ))	in test	node	()	first argument for join must be a string`,
+			`	(( join([], "a") ))	in test	node	()	*first argument for join must be a string`,
 		))
 	})
 
@@ -113,7 +113,7 @@ list:
 node: (( join( ",", list ) ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( join(",", list) ))	in test	node	()	elements of list(arg 1) to join must be simple values`,
+			`	(( join(",", list) ))	in test	node	()	*elements of list(arg 1) to join must be simple values`,
 		))
 	})
 
@@ -123,7 +123,7 @@ node: (( join( ",", list ) ))
 node: (( min_ip( "10" ) ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( min_ip("10") ))	in test	node	()	CIDR argument required`,
+			`	(( min_ip("10") ))	in test	node	()	*CIDR argument required`,
 		))
 	})
 
@@ -135,7 +135,7 @@ a:
 node: (( "." a ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( "." a ))	in test	node	()	simple value can only be concatenated with simple values`,
+			`	(( "." a ))	in test	node	()	*simple value can only be concatenated with simple values`,
 		))
 	})
 
@@ -146,7 +146,7 @@ node: (( "." a ))
 node: (( length( 5 ) ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( length(5) ))	in test	node	()	invalid type for function length`,
+			`	(( length(5) ))	in test	node	()	*invalid type for function length`,
 		))
 	})
 
@@ -156,7 +156,7 @@ node: (( length( 5 ) ))
 node: (( a "." ) ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a "." ) ))	in test	node	()	unparseable expression`,
+			`	(( a "." ) ))	in test	node	()	*unparseable expression`,
 		))
 	})
 })

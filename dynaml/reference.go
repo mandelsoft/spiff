@@ -36,20 +36,25 @@ func (e ReferenceExpr) find(f func(int, []string) (node yaml.Node, x bool), bind
 	for i := 0; i < len(e.Path); i++ {
 		step, ok = f(i, e.Path)
 
-		debug.Debug("  %d: %v %#v\n", i, ok, step)
+		debug.Debug("  %d: %v %+v\n", i, ok, step)
 		if !ok {
-			info.Issue = yaml.NewIssue("'%s' not found", strings.Join(e.Path, "."))
-			return nil, info, false
+			return info.Error("'%s' not found", strings.Join(e.Path[0:i+1], "."))
 		}
 
 		if !isLocallyResolved(step) {
 			debug.Debug("  locally unresolved\n")
+			if _, ok := step.Value().(Expression); ok {
+				info.Issue = yaml.NewIssue("'%s' unresolved", strings.Join(e.Path[0:i+1], "."))
+			} else {
+				info.Issue = yaml.NewIssue("'%s' not complete", strings.Join(e.Path[0:i+1], "."))
+			}
 			return e, info, true
 		}
 	}
 
 	if !locally && !isResolvedValue(step.Value()) {
 		debug.Debug("  unresolved\n")
+		info.Issue = yaml.NewIssue("'%s' unresolved", strings.Join(e.Path, "."))
 		return e, info, true
 	}
 

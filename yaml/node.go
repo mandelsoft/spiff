@@ -18,6 +18,7 @@ type Node interface {
 	Preferred() bool
 	Merged() bool
 	KeyName() string
+	HasError() bool
 	Issue() Issue
 
 	GetAnnotation() Annotation
@@ -45,6 +46,7 @@ type Annotation struct {
 	preferred    bool
 	merged       bool
 	keyName      string
+	error        bool
 	issue        Issue
 }
 
@@ -80,8 +82,8 @@ func KeyNameNode(node Node, keyName string) Node {
 	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().AddKeyName(keyName)}
 }
 
-func IssueNode(node Node, issue Issue) Node {
-	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().AddIssue(issue)}
+func IssueNode(node Node, error bool, issue Issue) Node {
+	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().AddIssue(error, issue)}
 }
 
 func massageType(value interface{}) interface{} {
@@ -93,11 +95,11 @@ func massageType(value interface{}) interface{} {
 }
 
 func EmptyAnnotation() Annotation {
-	return Annotation{nil, false, false, false, "", Issue{}}
+	return Annotation{nil, false, false, false, "", false, Issue{}}
 }
 
 func NewReferencedAnnotation(node Node) Annotation {
-	return Annotation{nil, false, false, false, node.KeyName(), node.Issue()}
+	return Annotation{nil, false, false, false, node.KeyName(), node.HasError(), node.Issue()}
 }
 
 func (n Annotation) RedirectPath() []string {
@@ -118,6 +120,10 @@ func (n Annotation) Merged() bool {
 
 func (n Annotation) KeyName() string {
 	return n.keyName
+}
+
+func (n Annotation) HasError() bool {
+	return n.error
 }
 
 func (n Annotation) Issue() Issue {
@@ -151,10 +157,11 @@ func (n Annotation) AddKeyName(keyName string) Annotation {
 	return n
 }
 
-func (n Annotation) AddIssue(issue Issue) Annotation {
+func (n Annotation) AddIssue(error bool, issue Issue) Annotation {
 	if issue.Issue != "" {
 		n.issue = issue
 	}
+	n.error = error
 	return n
 }
 

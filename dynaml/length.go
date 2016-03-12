@@ -9,8 +9,7 @@ func func_length(arguments []interface{}, binding Binding) (interface{}, Evaluat
 	info := DefaultInfo()
 
 	if len(arguments) != 1 {
-		info.Issue = yaml.NewIssue("length takes exactly 1 arguments")
-		return nil, info, false
+		return info.Error("length takes exactly 1 arguments")
 	}
 
 	switch v := arguments[0].(type) {
@@ -21,9 +20,7 @@ func func_length(arguments []interface{}, binding Binding) (interface{}, Evaluat
 	case string:
 		result = len(v)
 	default:
-		info.Issue = yaml.NewIssue("invalid type for function length")
-		return nil, info, false
-
+		return info.Error("invalid type for function length")
 	}
 	return result, info, true
 }
