@@ -24,7 +24,7 @@ func (matcher *EvaluateAsMatcher) Match(source interface{}) (success bool, err e
 		return false, fmt.Errorf("Not an expression: %v\n", source)
 	}
 
-	matcher.actual, _, ok = expr.Evaluate(matcher.Binding)
+	matcher.actual, _, ok = expr.Evaluate(matcher.Binding, false)
 	if !ok {
 		return false, fmt.Errorf("Node failed to evaluate.")
 	}

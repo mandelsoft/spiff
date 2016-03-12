@@ -6,7 +6,7 @@ import (
 
 type EmptyHashExpr struct{}
 
-func (e EmptyHashExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e EmptyHashExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	return make(map[string]yaml.Node), DefaultInfo(), true
 }
 

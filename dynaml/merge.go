@@ -14,7 +14,7 @@ type MergeExpr struct {
 	KeyName  string
 }
 
-func (e MergeExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e MergeExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	var info EvaluationInfo
 	if e.Redirect {
 		info.RedirectPath = e.Path

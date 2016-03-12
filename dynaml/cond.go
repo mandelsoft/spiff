@@ -12,12 +12,12 @@ type CondExpr struct {
 	F Expression
 }
 
-func (e CondExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e CondExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 	info := DefaultInfo()
 	var result interface{}
 
-	a, info, ok := ResolveExpressionOrPushEvaluation(&e.C, &resolved, &info, binding)
+	a, info, ok := ResolveExpressionOrPushEvaluation(&e.C, &resolved, &info, binding, false)
 	if !ok {
 		return nil, info, false
 	}
@@ -25,9 +25,9 @@ func (e CondExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) 
 		return e, info, true
 	}
 	if toBool(a) {
-		result, info, ok = e.T.Evaluate(binding)
+		result, info, ok = e.T.Evaluate(binding, false)
 	} else {
-		result, info, ok = e.F.Evaluate(binding)
+		result, info, ok = e.F.Evaluate(binding, false)
 	}
 	return result, info, ok
 }

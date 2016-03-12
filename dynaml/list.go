@@ -11,10 +11,10 @@ type ListExpr struct {
 	Contents []Expression
 }
 
-func (e ListExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e ListExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 
-	values, info, ok := ResolveExpressionListOrPushEvaluation(&e.Contents, &resolved, nil, binding)
+	values, info, ok := ResolveExpressionListOrPushEvaluation(&e.Contents, &resolved, nil, binding, false)
 
 	if !ok {
 		return nil, info, false

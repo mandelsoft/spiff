@@ -8,9 +8,9 @@ type PreferExpr struct {
 	expression Expression
 }
 
-func (e PreferExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e PreferExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 
-	val, info, ok := e.expression.Evaluate(binding)
+	val, info, ok := e.expression.Evaluate(binding, locally)
 	info.Preferred = true
 	return val, info, ok
 }

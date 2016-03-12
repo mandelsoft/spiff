@@ -15,7 +15,7 @@ type LogAndExpr struct {
 	B Expression
 }
 
-func (e LogAndExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e LogAndExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	a, b, info, resolved, first_ok, all_ok := resolveLOperands(e.A, e.B, binding)
 	if !first_ok {
 		return nil, info, false

@@ -52,7 +52,7 @@ func DefaultInfo() EvaluationInfo {
 }
 
 type Expression interface {
-	Evaluate(Binding) (interface{}, EvaluationInfo, bool)
+	Evaluate(Binding, bool) (interface{}, EvaluationInfo, bool)
 }
 
 func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {
@@ -71,8 +71,8 @@ func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {
 	return i
 }
 
-func ResolveExpressionOrPushEvaluation(e *Expression, resolved *bool, info *EvaluationInfo, binding Binding) (interface{}, EvaluationInfo, bool) {
-	val, infoe, ok := (*e).Evaluate(binding)
+func ResolveExpressionOrPushEvaluation(e *Expression, resolved *bool, info *EvaluationInfo, binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
+	val, infoe, ok := (*e).Evaluate(binding, locally)
 	if info != nil {
 		infoe = (*info).Join(infoe)
 	}
@@ -89,8 +89,8 @@ func ResolveExpressionOrPushEvaluation(e *Expression, resolved *bool, info *Eval
 	}
 }
 
-func ResolveIntegerExpressionOrPushEvaluation(e *Expression, resolved *bool, info *EvaluationInfo, binding Binding) (int64, EvaluationInfo, bool) {
-	value, infoe, ok := ResolveExpressionOrPushEvaluation(e, resolved, info, binding)
+func ResolveIntegerExpressionOrPushEvaluation(e *Expression, resolved *bool, info *EvaluationInfo, binding Binding, locally bool) (int64, EvaluationInfo, bool) {
+	value, infoe, ok := ResolveExpressionOrPushEvaluation(e, resolved, info, binding, locally)
 
 	if value == nil {
 		return 0, infoe, ok
@@ -105,7 +105,7 @@ func ResolveIntegerExpressionOrPushEvaluation(e *Expression, resolved *bool, inf
 	}
 }
 
-func ResolveExpressionListOrPushEvaluation(list *[]Expression, resolved *bool, info *EvaluationInfo, binding Binding) ([]interface{}, EvaluationInfo, bool) {
+func ResolveExpressionListOrPushEvaluation(list *[]Expression, resolved *bool, info *EvaluationInfo, binding Binding, locally bool) ([]interface{}, EvaluationInfo, bool) {
 	values := make([]interface{}, len(*list))
 	pushed := make([]Expression, len(*list))
 	infoe := EvaluationInfo{}
@@ -114,7 +114,7 @@ func ResolveExpressionListOrPushEvaluation(list *[]Expression, resolved *bool, i
 	copy(pushed, *list)
 
 	for i, _ := range pushed {
-		values[i], infoe, ok = ResolveExpressionOrPushEvaluation(&pushed[i], resolved, info, binding)
+		values[i], infoe, ok = ResolveExpressionOrPushEvaluation(&pushed[i], resolved, info, binding, locally)
 		info = &infoe
 		if !ok {
 			return nil, infoe, false

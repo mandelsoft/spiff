@@ -11,15 +11,15 @@ type DivisionExpr struct {
 	B Expression
 }
 
-func (e DivisionExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e DivisionExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 
-	aint, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.A, &resolved, nil, binding)
+	aint, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.A, &resolved, nil, binding, false)
 	if !ok {
 		return nil, info, false
 	}
 
-	bint, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.B, &resolved, &info, binding)
+	bint, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.B, &resolved, &info, binding, false)
 	if !ok {
 		return nil, info, false
 	}

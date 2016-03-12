@@ -15,7 +15,7 @@ type LogOrExpr struct {
 	B Expression
 }
 
-func (e LogOrExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e LogOrExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	a, b, info, resolved, first_ok, all_ok := resolveLOperands(e.A, e.B, binding)
 	if !first_ok {
 		debug.Debug("OR: failed %#v, %#v\n", e.A, e.B)
@@ -49,13 +49,13 @@ func resolveLOperands(a, b Expression, binding Binding) (eff_a, eff_b interface{
 	var va, vb interface{}
 	var infoa, infob EvaluationInfo
 
-	va, infoa, first_ok = a.Evaluate(binding)
+	va, infoa, first_ok = a.Evaluate(binding, false)
 	if first_ok {
 		if isExpression(va) {
 			return nil, nil, infoa, false, true, true
 		}
 
-		vb, infob, ok = b.Evaluate(binding)
+		vb, infob, ok = b.Evaluate(binding, false)
 		info = infoa.Join(infob)
 		if !ok {
 			return va, nil, info, true, true, false

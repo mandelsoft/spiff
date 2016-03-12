@@ -10,7 +10,7 @@ import (
 type TemplateExpr struct {
 }
 
-func (e TemplateExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e TemplateExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 	info.Issue = yaml.NewIssue("&template only usable to declare templates")
 	return nil, info, false
@@ -25,10 +25,10 @@ type SubstitutionExpr struct {
 	Node     yaml.Node
 }
 
-func (e SubstitutionExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e SubstitutionExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	if e.Node == nil {
 		debug.Debug("evaluating expression to determine template\n")
-		n, info, ok := e.Template.Evaluate(binding)
+		n, info, ok := e.Template.Evaluate(binding, false)
 		if !ok || isExpression(n) {
 			return e, info, ok
 		}

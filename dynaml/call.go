@@ -13,7 +13,7 @@ type CallExpr struct {
 	Arguments []Expression
 }
 
-func (e CallExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 	funcName := ""
 	var value interface{}
@@ -23,7 +23,7 @@ func (e CallExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) 
 	if ok && len(ref.Path) == 1 && ref.Path[0] != "" && ref.Path[0] != "_" {
 		funcName = ref.Path[0]
 	} else {
-		value, info, ok = ResolveExpressionOrPushEvaluation(&e.Function, &resolved, &info, binding)
+		value, info, ok = ResolveExpressionOrPushEvaluation(&e.Function, &resolved, &info, binding, false)
 		if ok {
 			_, ok = value.(LambdaValue)
 			if !ok {
@@ -42,7 +42,7 @@ func (e CallExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) 
 		return e.defined(binding)
 	}
 
-	values, info, ok := ResolveExpressionListOrPushEvaluation(&e.Arguments, &resolved, nil, binding)
+	values, info, ok := ResolveExpressionListOrPushEvaluation(&e.Arguments, &resolved, nil, binding, false)
 
 	if !ok {
 		debug.Debug("call args failed\n")
@@ -59,7 +59,7 @@ func (e CallExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) 
 	switch funcName {
 	case "":
 		debug.Debug("calling lambda function %#v\n", value)
-		result, sub, ok = value.(LambdaValue).Evaluate(values, binding)
+		result, sub, ok = value.(LambdaValue).Evaluate(values, binding, false)
 
 	case "static_ips":
 		result, sub, ok = func_static_ips(e.Arguments, binding)
@@ -80,7 +80,7 @@ func (e CallExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) 
 		result, sub, ok = func_exec(values, binding)
 
 	case "eval":
-		result, sub, ok = func_eval(values, binding)
+		result, sub, ok = func_eval(values, binding, locally)
 
 	case "env":
 		result, sub, ok = func_env(values, binding)

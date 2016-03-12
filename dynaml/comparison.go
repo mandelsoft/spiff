@@ -15,15 +15,15 @@ type ComparisonExpr struct {
 	B  Expression
 }
 
-func (e ComparisonExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e ComparisonExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 
-	a, info, ok := ResolveExpressionOrPushEvaluation(&e.A, &resolved, nil, binding)
+	a, info, ok := ResolveExpressionOrPushEvaluation(&e.A, &resolved, nil, binding, false)
 	if !ok {
 		return nil, info, false
 	}
 
-	b, info, ok := ResolveExpressionOrPushEvaluation(&e.B, &resolved, &info, binding)
+	b, info, ok := ResolveExpressionOrPushEvaluation(&e.B, &resolved, &info, binding, false)
 	if !ok {
 		return nil, info, false
 	}

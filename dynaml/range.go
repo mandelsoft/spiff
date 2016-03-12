@@ -11,14 +11,14 @@ type RangeExpr struct {
 	End   Expression
 }
 
-func (e RangeExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e RangeExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 
-	start, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.Start, &resolved, nil, binding)
+	start, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.Start, &resolved, nil, binding, false)
 	if !ok {
 		return nil, info, false
 	}
-	end, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.End, &resolved, &info, binding)
+	end, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.End, &resolved, &info, binding, false)
 	if !ok {
 		return nil, info, false
 	}

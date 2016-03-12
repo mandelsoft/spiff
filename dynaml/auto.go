@@ -12,11 +12,11 @@ type AutoExpr struct {
 	Path []string
 }
 
-func (e AutoExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e AutoExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 
 	if len(e.Path) == 3 && e.Path[0] == "resource_pools" && e.Path[2] == "size" {
-		jobs, info, found := refJobs.Evaluate(binding)
+		jobs, info, found := refJobs.Evaluate(binding, false)
 		if !found {
 			info.Issue = yaml.NewIssue("no jobs found")
 			return nil, info, false

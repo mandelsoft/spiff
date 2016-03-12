@@ -13,15 +13,15 @@ type MapExpr struct {
 	Lambda Expression
 }
 
-func (e MapExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e MapExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 
 	debug.Debug("evaluate mapping\n")
-	value, info, ok := ResolveExpressionOrPushEvaluation(&e.A, &resolved, nil, binding)
+	value, info, ok := ResolveExpressionOrPushEvaluation(&e.A, &resolved, nil, binding, true)
 	if !ok {
 		return nil, info, false
 	}
-	lvalue, infoe, ok := ResolveExpressionOrPushEvaluation(&e.Lambda, &resolved, nil, binding)
+	lvalue, infoe, ok := ResolveExpressionOrPushEvaluation(&e.Lambda, &resolved, nil, binding, false)
 	if !ok {
 		return nil, info, false
 	}
@@ -81,7 +81,7 @@ func mapList(source []yaml.Node, e LambdaValue, binding Binding) ([]yaml.Node, E
 		debug.Debug("map:  mapping for %d: %+v\n", i, n)
 		inp[0] = i
 		inp[len(inp)-1] = n.Value()
-		mapped, info, ok := e.Evaluate(inp, binding)
+		mapped, info, ok := e.Evaluate(inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %d %+v: failed\n", i, n)
 			return nil, info, false
@@ -111,7 +111,7 @@ func mapMap(source map[string]yaml.Node, e LambdaValue, binding Binding) ([]yaml
 		debug.Debug("map:  mapping for %s: %+v\n", k, n)
 		inp[0] = k
 		inp[len(inp)-1] = n.Value()
-		mapped, info, ok := e.Evaluate(inp, binding)
+		mapped, info, ok := e.Evaluate(inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %s %+v: failed\n", k, n)
 			return nil, info, false

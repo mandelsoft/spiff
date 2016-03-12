@@ -10,9 +10,9 @@ type NotExpr struct {
 	Expr Expression
 }
 
-func (e NotExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e NotExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
-	v, info, ok := ResolveExpressionOrPushEvaluation(&e.Expr, &resolved, nil, binding)
+	v, info, ok := ResolveExpressionOrPushEvaluation(&e.Expr, &resolved, nil, binding, false)
 	if !ok {
 		return nil, info, false
 	}

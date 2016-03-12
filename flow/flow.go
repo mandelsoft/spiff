@@ -44,7 +44,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 			if root.SourceName() != env.SourceName() {
 				env = env.WithSource(root.SourceName())
 			}
-			eval, info, ok := val.Evaluate(env)
+			eval, info, ok := val.Evaluate(env, false)
 			debug.Debug("??? ---> %+v\n", eval)
 			if !ok {
 				root = yaml.IssueNode(root, info.Issue)

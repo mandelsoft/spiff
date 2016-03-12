@@ -204,7 +204,11 @@ func isExpression(val interface{}) bool {
 }
 
 func isLocallyResolved(node yaml.Node) bool {
-	switch v := node.Value().(type) {
+	return isLocallyResolvedValue(node.Value())
+}
+
+func isLocallyResolvedValue(value interface{}) bool {
+	switch v := value.(type) {
 	case Expression:
 		return false
 	case map[string]yaml.Node:

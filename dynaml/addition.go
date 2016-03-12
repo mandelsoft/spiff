@@ -12,15 +12,15 @@ type AdditionExpr struct {
 	B Expression
 }
 
-func (e AdditionExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e AdditionExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 
-	a, info, ok := ResolveExpressionOrPushEvaluation(&e.A, &resolved, nil, binding)
+	a, info, ok := ResolveExpressionOrPushEvaluation(&e.A, &resolved, nil, binding, false)
 	if !ok {
 		return nil, info, false
 	}
 
-	bint, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.B, &resolved, &info, binding)
+	bint, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.B, &resolved, &info, binding, false)
 	if !ok {
 		return nil, info, false
 	}

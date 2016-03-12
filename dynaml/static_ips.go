@@ -16,7 +16,7 @@ func func_static_ips(arguments []Expression, binding Binding) (interface{}, Eval
 
 	indices := make([]int, len(arguments))
 	for i, arg := range arguments {
-		index, info, ok := arg.Evaluate(binding)
+		index, info, ok := arg.Evaluate(binding, false)
 		if !ok {
 			return nil, info, false
 		}
@@ -71,7 +71,7 @@ func generateStaticIPs(binding Binding, indices []int) (interface{}, EvaluationI
 }
 
 func findInstanceCount(binding Binding) (*int64, EvaluationInfo, bool) {
-	nearestInstances, info, found := refInstances.Evaluate(binding)
+	nearestInstances, info, found := refInstances.Evaluate(binding, false)
 	if !found || isExpression(nearestInstances) {
 		return nil, info, false
 	}
@@ -81,7 +81,7 @@ func findInstanceCount(binding Binding) (*int64, EvaluationInfo, bool) {
 }
 
 func findStaticIPRanges(binding Binding) ([]string, EvaluationInfo, bool) {
-	nearestNetworkName, info, found := refName.Evaluate(binding)
+	nearestNetworkName, info, found := refName.Evaluate(binding, false)
 	if !found || isExpression(nearestNetworkName) {
 		return nil, info, found
 	}
@@ -93,7 +93,7 @@ func findStaticIPRanges(binding Binding) ([]string, EvaluationInfo, bool) {
 	}
 
 	subnetsRef := ReferenceExpr{[]string{"", "networks", networkName, "subnets"}}
-	subnets, info, found := subnetsRef.Evaluate(binding)
+	subnets, info, found := subnetsRef.Evaluate(binding, false)
 
 	if !found {
 		return nil, info, false

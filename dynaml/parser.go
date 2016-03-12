@@ -10,7 +10,7 @@ import (
 
 type helperNode struct{}
 
-func (e helperNode) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e helperNode) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	panic("not intended to be evaluated")
 }
 

@@ -4,7 +4,7 @@ import (
 	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
-func func_eval(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
+func func_eval(arguments []interface{}, binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 
 	if len(arguments) != 1 {
@@ -23,5 +23,5 @@ func func_eval(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 		info.Issue = yaml.NewIssue("cannot parse expression '%s'", str)
 		return nil, info, false
 	}
-	return expr.Evaluate(binding)
+	return expr.Evaluate(binding, locally)
 }

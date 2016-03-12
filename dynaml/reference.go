@@ -11,7 +11,7 @@ type ReferenceExpr struct {
 	Path []string
 }
 
-func (e ReferenceExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e ReferenceExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	fromRoot := e.Path[0] == ""
 
 	debug.Debug("reference: %v\n", e.Path)
@@ -21,14 +21,14 @@ func (e ReferenceExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, b
 		} else {
 			return binding.FindReference(path[:end+1])
 		}
-	}, binding)
+	}, binding, locally)
 }
 
 func (e ReferenceExpr) String() string {
 	return strings.Join(e.Path, ".")
 }
 
-func (e ReferenceExpr) find(f func(int, []string) (node yaml.Node, x bool), binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e ReferenceExpr) find(f func(int, []string) (node yaml.Node, x bool), binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	var step yaml.Node
 	var ok bool
 
@@ -48,7 +48,7 @@ func (e ReferenceExpr) find(f func(int, []string) (node yaml.Node, x bool), bind
 		}
 	}
 
-	if !isResolvedValue(step.Value()) {
+	if !locally && !isResolvedValue(step.Value()) {
 		debug.Debug("  unresolved\n")
 		return e, info, true
 	}
