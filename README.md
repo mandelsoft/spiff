@@ -64,6 +64,10 @@ Contents:
 		- [(( map[list|elem|->dynaml-expr] ))](#-maplistelem-dynaml-expr-)
 		- [(( map[list|idx,elem|->dynaml-expr] ))](#-maplistidxelem-dynaml-expr-)
 		- [(( map[map|key,value|->dynaml-expr] ))](#-mapmapkeyvalue-dynaml-expr-)
+	- [Aggregations](#aggregations)
+		- [(( sum[list|initial|sum,elem|->dynaml-expr] ))](#-sumlistinitialsumelem-dynaml-expr-)
+		- [(( sum[list|initial|sum,idx,elem|->dynaml-expr] ))](#-sumlistinitialsumidxelem-dynaml-expr-)
+		- [(( sum[map|initial|sum,key,value|->dynaml-expr] ))](#-summapinitialsumkeyvalue-dynaml-expr-)
 	- [Templates](#templates)
 		- [<<: (( &template ))](#--template-)
 		- [(( *foo.bar ))](#-foobar-)
@@ -1213,7 +1217,7 @@ If a complete expression is a lambda expression the keyword `lambda` can be omit
 
 ## Mappings
 
-Mappings are used to produce a new list from the entries of a _list_ or _map_ containing the entries processed by a dynaml expression. The expression is given by a [lambda function](#-lambda-x-x--port-). There are two basic forms of the mapping function: It can be inlined as in`(( map[list|x|->x ":" port] ))`, or it can be determined by a regular dynaml expression evaluating to a lambda function as in `(( map[list|mapping.expression))` (here the mapping is taken from the property `mapping.expression`, which should hold an approriate lambda function).
+Mappings are used to produce a new list from the entries of a _list_ or _map_ containing the entries processed by a dynaml expression. The expression is given by a [lambda function](#-lambda-x-x--port-). There are two basic forms of the mapping function: It can be inlined as in `(( map[list|x|->x ":" port] ))`, or it can be determined by a regular dynaml expression evaluating to a lambda function as in `(( map[list|mapping.expression))` (here the mapping is taken from the property `mapping.expression`, which should hold an approriate lambda function).
 
 
 ### `(( map[list|elem|->dynaml-expr] ))`
@@ -1319,6 +1323,85 @@ ages:
 keys:
 - alice
 - bob
+```
+
+## Aggregations
+
+Aggregations are used to produce a single result from the entries of a _list_ or _map_ aggregating the entries by a dynaml expression. The expression is given by a [lambda function](#-lambda-x-x--port-). There are two basic forms of the aggregation function: It can be inlined as in `(( sum[list|0|s,x|->s + x] ))`, or it can be determined by a regular dynaml expression evaluating to a lambda function as in `(( sum[list|0|aggregation.expression))` (here the aggregation function  is taken from the property `aggregation.expression`, which should hold an approriate lambda function).
+
+
+### `(( sum[list|initial|sum,elem|->dynaml-expr] ))`
+
+Execute an aggregation expression on members of a list to produce an aggregation result. The first expression (`list`) must resolve to a list. The second expression is used as initial value for the aggregation. The last expression (`s + x`) defines the aggregation expression used to aggregate all members of the given list. Inside this expression an arbitrarily declared simple reference name (here `s`) can be used to access the intermediate aggregation result and a second reference name (here `x`) can be used to access the actually processed list element.
+
+e.g.
+
+```yaml
+list:
+  - 1
+  - 2
+sum: (( sum[list|0|s,x|->s + x] ))
+```
+
+yields
+
+```yaml
+list:
+  - 1
+  - 2
+sum: 3
+```
+
+### `(( sum[list|initial|sum,idx,elem|->dynaml-expr] ))`
+
+In this variant, the second argument `idx` is provided with the index and the
+third `elem` with the value for the index.
+
+e.g.
+
+```yaml
+list:
+  - 1
+  - 2
+  - 3
+	
+prod: (( sum[list|0|s,i,x|->s + i * x ] ))
+```
+ 
+yields
+
+```yaml
+list:
+  - 1
+  - 2
+  - 3
+	
+prod: 8
+```
+
+### `(( sum[map|initial|sum,key,value|->dynaml-expr] ))`
+
+Aggregation of the elements of a map to a single result using an aggregation expression. The expression may have access to the key and/or the value. The first argument is always the intermediate aggregation result. If three references are declared, both values are passed to the expression, the second one is provided with the key and the third one with the value for the key. If two references are declared, only the second one is provided with the value of the map entry.
+
+e.g.
+
+```yaml
+ages:
+  alice: 25
+  bob: 24
+
+sum: (( map[ages|0|s,k,v|->s + v] ))
+
+```
+
+yields
+
+```yaml
+ages:
+  alice: 25
+  bob: 24
+
+sum: 49
 ```
 
 ## Templates
@@ -1862,6 +1945,31 @@ networks:
 	
 	banda:
       bob: loves alice
+  ```
+
+- _Aggregations may yield complex values by using templates_
+
+  The expression of an aggregation may return complex values by returning inline lists or instantiated templates. The binding of the function will be available (as usual) for the evaluation of the template. In the example below the aggregation provides a map with both the sum and the product of the list entries containing the integers from 1 to 4.
+
+  e.g.:
+
+  ```yaml
+  sum: (( sum[[1..4]|init|s,e|->*temp] ))
+
+  temp:
+    <<: (( &template ))
+    sum: (( s.sum + e ))
+    prd: (( s.prd * e ))
+  init:
+    sum: 0
+    prd: 1
+	```
+
+  yields for `sum` the value
+  ```
+  sum:
+    prd: 24
+    sum: 10
   ```
  
 # Error Reporting

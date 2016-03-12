@@ -1,0 +1,138 @@
+package dynaml
+
+import (
+	"fmt"
+
+	"github.com/cloudfoundry-incubator/spiff/debug"
+	"github.com/cloudfoundry-incubator/spiff/yaml"
+)
+
+type SumExpr struct {
+	A      Expression
+	I      Expression
+	Lambda Expression
+}
+
+func (e SumExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+	resolved := true
+
+	debug.Debug("evaluate sum")
+	value, info, ok := ResolveExpressionOrPushEvaluation(&e.A, &resolved, nil, binding)
+	if !ok {
+		return nil, info, false
+	}
+	initial, info, ok := ResolveExpressionOrPushEvaluation(&e.I, &resolved, &info, binding)
+	if !ok {
+		return nil, info, false
+	}
+	lvalue, infoe, ok := ResolveExpressionOrPushEvaluation(&e.Lambda, &resolved, nil, binding)
+	if !ok {
+		return nil, infoe, false
+	}
+
+	if !resolved {
+		return e, info.Join(infoe), ok
+	}
+
+	lambda, ok := lvalue.(LambdaValue)
+	if !ok {
+		infoe.Issue = yaml.NewIssue("sum requires a lambda value")
+		return nil, infoe, false
+	}
+
+	debug.Debug("map: using lambda %+v\n", lambda)
+	var result interface{}
+	switch value.(type) {
+	case []yaml.Node:
+		result, info, ok = sumList(value.([]yaml.Node), lambda, initial, binding)
+
+	case map[string]yaml.Node:
+		result, info, ok = sumMap(value.(map[string]yaml.Node), lambda, initial, binding)
+
+	default:
+		info.Issue = yaml.NewIssue("map or list required for sum")
+		return nil, info, false
+	}
+	if !ok {
+		return nil, info, false
+	}
+	if result == nil {
+		return e, info, true
+	}
+	debug.Debug("sum: --> %+v\n", result)
+	return result, info, true
+}
+
+func (e SumExpr) String() string {
+	lambda, ok := e.Lambda.(LambdaExpr)
+	if ok {
+		return fmt.Sprintf("sum[%s|%s%s]", e.A, e.I, fmt.Sprintf("%s", lambda)[len("lambda"):])
+	} else {
+		return fmt.Sprintf("sum[%s|%s|%s]", e.A, e.I, e.Lambda)
+	}
+}
+
+func sumList(source []yaml.Node, e LambdaValue, initial interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
+	inp := make([]interface{}, len(e.lambda.Names))
+	result := initial
+	info := DefaultInfo()
+
+	if len(e.lambda.Names) > 3 {
+		info.Issue = yaml.NewIssue("mapping expression take a maximum of 3 arguments")
+		return nil, info, false
+	}
+	if len(e.lambda.Names) < 2 {
+		info.Issue = yaml.NewIssue("mapping expression take a minimum of 2 arguments")
+		return nil, info, false
+	}
+
+	for i, n := range source {
+		debug.Debug("map:  mapping for %d: %+v\n", i, n)
+		inp[0] = result
+		inp[1] = i
+		inp[len(inp)-1] = n.Value()
+		mapped, info, ok := e.Evaluate(inp, binding)
+		if !ok {
+			debug.Debug("map:  %d %+v: failed\n", i, n)
+			return nil, info, false
+		}
+
+		_, ok = mapped.(Expression)
+		if ok {
+			debug.Debug("map:  %d unresolved  -> KEEP\n")
+			return nil, info, true
+		}
+		debug.Debug("map:  %d --> %+v\n", i, mapped)
+		result = mapped
+	}
+	return result, info, true
+}
+
+func sumMap(source map[string]yaml.Node, e LambdaValue, initial interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
+	inp := make([]interface{}, len(e.lambda.Names))
+	result := initial
+	info := DefaultInfo()
+
+	keys := getSortedKeys(source)
+	for _, k := range keys {
+		n := source[k]
+		debug.Debug("map:  mapping for %s: %+v\n", k, n)
+		inp[0] = result
+		inp[1] = k
+		inp[len(inp)-1] = n.Value()
+		mapped, info, ok := e.Evaluate(inp, binding)
+		if !ok {
+			debug.Debug("map:  %s %+v: failed\n", k, n)
+			return nil, info, false
+		}
+
+		_, ok = mapped.(Expression)
+		if ok {
+			debug.Debug("map:  %d unresolved  -> KEEP\n")
+			return nil, info, true
+		}
+		debug.Debug("map:  %s --> %+v\n", k, mapped)
+		result = mapped
+	}
+	return result, info, true
+}

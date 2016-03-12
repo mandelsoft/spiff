@@ -203,6 +203,12 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			lhs := tokens.Pop()
 			tokens.Push(MapExpr{Lambda: rhs, A: lhs})
 
+		case ruleSum:
+			rhs := tokens.Pop()
+			ini := tokens.Pop()
+			lhs := tokens.Pop()
+			tokens.Push(SumExpr{Lambda: rhs, A: lhs, I: ini})
+
 		case ruleLambda:
 
 		case ruleLambdaExpr:

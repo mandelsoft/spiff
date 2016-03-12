@@ -3089,6 +3089,130 @@ mapped:
 		})
 	})
 
+	Describe("when doing a sum", func() {
+		Context("for a list", func() {
+			It("sums simple expression", func() {
+				source := parseYAML(`
+---
+list:
+  - 1
+  - 2
+sum: (( sum[list|0|s,x|->s + x] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - 1
+  - 2
+sum: 3
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("sums provides index and value", func() {
+				source := parseYAML(`
+---
+list:
+  - 1
+  - 2
+  - 3
+sum: (( sum[list|0|s,i,x|->s + i * x] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - 1
+  - 2
+  - 3
+sum: 8
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("works with failing expressions", func() {
+				source := parseYAML(`
+---
+list:
+  - 1
+  - 2
+sum: (( sum[list|0|s,x|->s + x + y] || "failed" ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - 1
+  - 2
+sum: failed
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("maps with referenced expression", func() {
+				source := parseYAML(`
+---
+map: "|s,x|->s + x"
+list:
+  - 1
+  - 2
+sum: (( sum[list|0|lambda map] ))
+`)
+				resolved := parseYAML(`
+---
+map: "|s,x|->s + x"
+list:
+  - 1
+  - 2
+sum: 3
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("for a map", func() {
+			It("sums simple expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 1
+  bob: 2
+sum: (( sum[map|0|s,x|->s + x] ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 1
+  bob: 2
+sum: 3
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("sums provides access to key", func() {
+				source := parseYAML(`
+---
+factors:
+  alice: 2
+  bob: 3
+map:
+  alice: 1
+  bob: 2
+sum: (( sum[map|0|s,k,x|->s + eval("factors." k) * x] ))
+`)
+				resolved := parseYAML(`
+---
+factors:
+  alice: 2
+  bob: 3
+map:
+  alice: 1
+  bob: 2
+sum: 8
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
 	Describe("using templates", func() {
 		Context("direct usage", func() {
 			It("uses usage context", func() {
