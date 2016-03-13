@@ -59,6 +59,7 @@ Contents:
 		- [(( env( "HOME" ) ))](#-env-HOME--)
 		- [(( read("file.yml") ))](#-readfileyml-)
 		- [(( static_ips(0, 1, 3) ))](#-static_ips0-1-3-)
+		- [(( list_to_map(list, "key") ))](#-list_to_maplist-key-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
 	- [Mappings](#mappings)
 		- [(( map[list|elem|->dynaml-expr] ))](#-maplistelem-dynaml-expr-)
@@ -988,6 +989,7 @@ If the file suffix is `.yml`, by default the yaml type is used. An optional seco
 to explicitly specifiy the desired return type: `yaml` or `text`.
 
 #### yaml documents
+
 A yaml document will be parsed and the tree is returned. The  elements of the tree can be accessed by regular dynaml expressions.
 
 Additionally the yaml file may again contain dynaml expressions. All included dynaml expressions will be evaluated in the context of the reading expression. This means that the same file included at different places in a yaml document may result in different sub trees, depending on the used dynaml expressions. 
@@ -1133,6 +1135,40 @@ networks:
   type: manual
 ```
 
+### `(( list_to_map(list, "key") ))`
+
+A list of map entries with explicit name/key fields will be mapped to a map with the dedicated keys. By default the key field `name` is used, which can changed by the optional second argument. An explicitly denoted key field in the list will also be taken into account.
+
+e.g.:
+
+```yaml
+list:
+  - key:foo: alice
+    age: 24
+  - foo: bob
+    age: 30
+
+map: (( list_to_map(list) ))
+```
+
+will be mapped to
+
+```yaml
+list:
+  - foo: alice
+    age: 24
+  - foo: bob
+    age: 30
+
+map:
+  alice:
+    age: 24
+  bob:
+    age: 30
+```
+
+In combination with templates and lambda expressions this can be used to generate maps with arbitrarily named key values, although dynaml expressions are not allowed for key values.
+
 ## `(( lambda |x|->x ":" port ))`
 
 Lambda expressions can be used to define additional anonymous functions. They can be assigned to yaml nodes as values and referenced with path expressions to call the function with approriate arguments in other dynaml expressions. For the final document they are mapped to string values.
@@ -1150,7 +1186,7 @@ string: "|x|->x \":\" port"
 lvalue: (( lambda string ))
 ```
 
-evaluates an expression to a function or a string. If the expression is evaluated to a string it parses the function from the string.
+evaluates the result of an expression to a function. The expression must evaluate to a function or string. If the expression is evaluated to a string it parses the function from the string.
 
 Since the evaluation result of a lambda expression is a regular value, it can also be passed as argument to function calls and merged as value along stub processing.
 

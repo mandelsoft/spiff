@@ -2819,6 +2819,95 @@ msg: |+
 		})
 	})
 
+	Describe("when transforming a list to a map", func() {
+		It("handles standard key", func() {
+			source := parseYAML(`
+---
+list:
+  - name: alice
+    age: 24
+  - name: bob
+    age: 30
+
+map: (( list_to_map(list) ))
+
+`)
+			resolved := parseYAML(`
+---
+list:
+  - name: alice
+    age: 24
+  - name: bob
+    age: 30
+
+map:
+  alice:
+    age: 24
+  bob:
+    age: 30
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles inline key", func() {
+			source := parseYAML(`
+---
+list:
+  - key:key: alice
+    age: 24
+  - key: bob
+    age: 30
+
+map: (( list_to_map(list) ))
+
+`)
+			resolved := parseYAML(`
+---
+list:
+  - key: alice
+    age: 24
+  - key: bob
+    age: 30
+
+map:
+  alice:
+    age: 24
+  bob:
+    age: 30
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles explicit key", func() {
+			source := parseYAML(`
+---
+list:
+  - key: alice
+    age: 24
+  - key: bob
+    age: 30
+
+map: (( list_to_map(list,"key") ))
+
+`)
+			resolved := parseYAML(`
+---
+list:
+  - key: alice
+    age: 24
+  - key: bob
+    age: 30
+
+map:
+  alice:
+    age: 24
+  bob:
+    age: 30
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
 	Describe("when doing a mapping", func() {
 		Context("for a list", func() {
 			It("maps simple expression", func() {

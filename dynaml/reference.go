@@ -59,5 +59,6 @@ func (e ReferenceExpr) find(f func(int, []string) (node yaml.Node, x bool), bind
 	}
 
 	debug.Debug("reference %v -> %+v\n", e.Path, step)
+	info.KeyName = step.KeyName()
 	return value(yaml.ReferencedNode(step)), info, true
 }
