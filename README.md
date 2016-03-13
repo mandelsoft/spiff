@@ -52,6 +52,7 @@ Contents:
 		- [(( join( ", ", list) ))](#-join---list-)
 		- [(( split( ",", string) ))](#-split--string-)
 		- [(( trim(string) ))](#-trimstring-)
+		- [(( uniq(list) ))](#-uniqlist-)
 		- [(( length(list) ))](#-lengthlist-)
 		- [(( defined(foobar) ))](#-definedfoobar-)
 		- [(( exec( "command", arg1, arg2) ))](#-exec-command-arg1-arg2-)
@@ -867,6 +868,35 @@ yields:
 list:
   - alice
   - bob
+```
+
+### `(( uniq(list) ))`
+
+Uniq provides a list without dupliates.
+
+e.g.:
+
+```yaml
+list:
+- a
+- b
+- a
+- c
+- a
+- b
+- 0
+- "0"
+uniq: (( uniq(list) ))
+```
+
+yields for field `uniq`:
+
+```yaml
+uniq:
+- a
+- b
+- c
+- 0
 ```
 
 ### `(( length(list) ))`

@@ -2607,6 +2607,42 @@ foo:
 		})
 	})
 
+	Describe("when calling uniq", func() {
+		It("imits duplicates", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- b
+- a
+- c
+- a
+- b
+- 0
+- "0"
+uniq: (( uniq(list) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- b
+- a
+- c
+- a
+- b
+- 0
+- "0"
+uniq:
+- a
+- b
+- c
+- 0
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
 	Describe("calling length", func() {
 		It("calculates string length", func() {
 			source := parseYAML(`

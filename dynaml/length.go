@@ -9,7 +9,7 @@ func func_length(arguments []interface{}, binding Binding) (interface{}, Evaluat
 	info := DefaultInfo()
 
 	if len(arguments) != 1 {
-		return info.Error("length takes exactly 1 arguments")
+		return info.Error("length takes exactly 1 argument")
 	}
 
 	switch v := arguments[0].(type) {

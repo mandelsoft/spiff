@@ -75,6 +75,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "length":
 		result, sub, ok = func_length(values, binding)
 
+	case "uniq":
+		result, sub, ok = func_uniq(values, binding)
+
 	case "exec":
 		result, sub, ok = func_exec(values, binding)
 
