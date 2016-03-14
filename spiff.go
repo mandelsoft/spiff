@@ -121,7 +121,11 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 
 	flowed, err := flow.Cascade(templateYAML, partial, stubs...)
 	if !partial && err != nil {
-		log.Fatalln("error generating manifest:", err)
+		legend := "\nerror classification:\n" +
+			" *: error in local dynaml expression\n" +
+			" @: dependent of or involved in a cycle\n" +
+			" -: depending on a node with an error"
+		log.Fatalln("error generating manifest:", err, legend)
 	}
 	if err != nil {
 		flowed = dynaml.ResetUnresolvedNodes(flowed)

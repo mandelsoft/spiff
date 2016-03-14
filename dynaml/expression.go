@@ -6,7 +6,7 @@ import (
 
 type Status interface {
 	error
-	Issue(fmt string, args ...interface{}) yaml.Issue
+	Issue(fmt string, args ...interface{}) (issue yaml.Issue, localError bool, failed bool)
 	HasError() bool
 }
 
@@ -41,6 +41,7 @@ type EvaluationInfo struct {
 	KeyName      string
 	Source       string
 	LocalError   bool
+	Failed       bool
 	Issue        yaml.Issue
 }
 
@@ -49,22 +50,25 @@ func (e EvaluationInfo) SourceName() string {
 }
 
 func DefaultInfo() EvaluationInfo {
-	return EvaluationInfo{nil, false, false, false, "", "", false, yaml.Issue{}}
+	return EvaluationInfo{nil, false, false, false, "", "", false, false, yaml.Issue{}}
 }
 
 type Expression interface {
 	Evaluate(Binding, bool) (interface{}, EvaluationInfo, bool)
 }
 
-func (i *EvaluationInfo) Error(fmt interface{}, args ...interface{}) (interface{}, EvaluationInfo, bool) {
-	issue, ok := fmt.(yaml.Issue)
-	if ok {
-		i.Issue = issue
-	} else {
-		i.Issue = yaml.NewIssue(fmt.(string), args...)
-	}
+func (i *EvaluationInfo) Error(msgfmt interface{}, args ...interface{}) (interface{}, EvaluationInfo, bool) {
 	i.LocalError = true
+	i.Issue = yaml.NewIssue(msgfmt.(string), args...)
 	return nil, *i, false
+}
+
+func (i *EvaluationInfo) PropagateError(value interface{}, state Status, msgfmt string, args ...interface{}) (interface{}, EvaluationInfo, bool) {
+	i.Issue, i.LocalError, i.Failed = state.Issue(msgfmt, args...)
+	if i.LocalError {
+		value = nil
+	}
+	return value, *i, !i.LocalError
 }
 
 func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {
@@ -79,6 +83,12 @@ func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {
 	}
 	if o.Issue.Issue != "" {
 		i.Issue = o.Issue
+	}
+	if o.LocalError {
+		i.LocalError = true
+	}
+	if o.Failed {
+		i.Failed = true
 	}
 	return i
 }

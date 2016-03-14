@@ -18,15 +18,23 @@ type UnresolvedNode struct {
 	Path    []string
 }
 
-func (e UnresolvedNodes) Issue(msgfmt string, args ...interface{}) yaml.Issue {
-	result := yaml.NewIssue(msgfmt, args...)
+func (e UnresolvedNodes) Issue(msgfmt string, args ...interface{}) (result yaml.Issue, localError bool, failed bool) {
 	format := ""
+	result = yaml.NewIssue(msgfmt, args...)
+	localError = false
+	failed = true
 
 	for _, node := range e.Nodes {
 		issue := node.Issue()
 		msg := issue.Issue
 		if msg != "" {
-			msg = "\t" + msg
+			msg = "\t" + tag(node) + msg
+		}
+		if node.HasError() {
+			localError = true
+		}
+		if !node.Failed() {
+			failed = false
 		}
 		switch node.Value().(type) {
 		case Expression:
@@ -45,7 +53,7 @@ func (e UnresolvedNodes) Issue(msgfmt string, args ...interface{}) yaml.Issue {
 		issue.Issue = message
 		result.Nested = append(result.Nested, issue)
 	}
-	return result
+	return
 }
 
 func (e UnresolvedNodes) HasError() bool {
@@ -64,14 +72,10 @@ func (e UnresolvedNodes) Error() string {
 	format := ""
 
 	for _, node := range e.Nodes {
-		tag := " "
-		if node.HasError() {
-			tag = "*"
-		}
 		issue := node.Issue()
 		msg := issue.Issue
 		if msg != "" {
-			msg = "\t" + tag + msg
+			msg = "\t" + tag(node) + msg
 		}
 		switch node.Value().(type) {
 		case Expression:
@@ -92,6 +96,19 @@ func (e UnresolvedNodes) Error() string {
 	}
 
 	return message
+}
+
+func tag(node yaml.Node) string {
+	tag := " "
+	if !node.Failed() {
+		tag = "@"
+	} else {
+		tag = "-"
+	}
+	if node.HasError() {
+		tag = "*"
+	}
+	return tag
 }
 
 func nestedIssues(gap string, issue yaml.Issue) string {
@@ -160,7 +177,7 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (result []Unresolved
 			_, err := Parse(*s, dummy, dummy)
 			if err != nil {
 				nodes = append(nodes, UnresolvedNode{
-					Node:    yaml.IssueNode(root, true, yaml.Issue{Issue: fmt.Sprintf("unparseable expression")}),
+					Node:    yaml.IssueNode(root, true, false, yaml.Issue{Issue: fmt.Sprintf("unparseable expression")}),
 					Context: context,
 					Path:    []string{},
 				})
@@ -174,7 +191,12 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (result []Unresolved
 		}
 	}
 	for _, n := range nodes {
-		if !n.GetAnnotation().HasError() {
+		if !n.GetAnnotation().HasError() && !n.GetAnnotation().Failed() {
+			result = append(result, n)
+		}
+	}
+	for _, n := range nodes {
+		if !n.GetAnnotation().HasError() && n.GetAnnotation().Failed() {
 			result = append(result, n)
 		}
 	}

@@ -2051,15 +2051,28 @@ If a dynaml expression cannot be resolved to a value, it is reported by the
 `spiff merge` operation using the following layout:
 
 ```
-	(( <failed expression> ))	in <file>	<path to node>	(<referred path>)	<issue>
+	(( <failed expression> ))	in <file>	<path to node>	(<referred path>)	<tag><issue>
 ```
 	
 e.g.:
 
 ```	
-	(( min_ip("10") ))	in source.yml	node.a.[0]	()	CIDR argument required
+	(( min_ip("10") ))	in source.yml	node.a.[0]	()	*CIDR argument required
 ```
 	
 Cyclic dependencies are detected by iterative evaluation until the document is unchanged after a step.
 Nodes involved in a cycle are therefore typically reported just as unresolved node without a specific issue.
-Dedicated evaluation issues are marked with a star (`*`) and listed in front of follow-up issues.
+
+The order of the reported unresolved nodes depends on a classification of the problem, denoted by a dedicated
+tag. The following tags are used (in reporting order):
+
+| Tag | Meaning |
+| --- | ------- |
+| `*` | error in local dynaml expression |
+| `@` | dependent or involved in cyclic dependencies |
+| `-` | follow up error because of refering to a yaml node with an error |
+
+Problems occuring during inline template processing are reported as nested problems. The classification is
+propagated to the outer node.
+
+ 

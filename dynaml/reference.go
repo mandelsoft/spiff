@@ -48,6 +48,7 @@ func (e ReferenceExpr) find(f func(int, []string) (node yaml.Node, x bool), bind
 			} else {
 				info.Issue = yaml.NewIssue("'%s' not complete", strings.Join(e.Path[0:i+1], "."))
 			}
+			info.Failed = step.Failed() || step.HasError()
 			return e, info, true
 		}
 	}
@@ -55,6 +56,7 @@ func (e ReferenceExpr) find(f func(int, []string) (node yaml.Node, x bool), bind
 	if !locally && !isResolvedValue(step.Value()) {
 		debug.Debug("  unresolved\n")
 		info.Issue = yaml.NewIssue("'%s' unresolved", strings.Join(e.Path, "."))
+		info.Failed = step.Failed() || step.HasError()
 		return e, info, true
 	}
 

@@ -23,33 +23,31 @@ func (e TemplateExpr) String() string {
 
 type SubstitutionExpr struct {
 	Template Expression
+	Val      TemplateValue
 	Node     yaml.Node
 }
 
 func (e SubstitutionExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
-	var val TemplateValue
 	if e.Node == nil {
 		debug.Debug("evaluating expression to determine template\n")
 		n, info, ok := e.Template.Evaluate(binding, false)
 		if !ok || isExpression(n) {
 			return e, info, ok
 		}
-		val, ok = n.(TemplateValue)
+		e.Val, ok = n.(TemplateValue)
 		if !ok {
 			return info.Error("template value required")
 		} else {
-			e.Node = node_copy(val.Prepared)
+			e.Node = node_copy(e.Val.Prepared)
 		}
-	} else {
-		val, _ = e.Node.Value().(TemplateValue)
 	}
-	debug.Debug("resolving template %s\n", strings.Join(val.Path, "."))
+	debug.Debug("resolving template '%s'\n", strings.Join(e.Val.Path, "."))
 	result, state := binding.Flow(e.Node, false)
 	info := DefaultInfo()
 	if state != nil {
 		if state.HasError() {
 			debug.Debug("resolving template failed: " + state.Error())
-			return info.Error(state.Issue("resolution of template '%s' failed", strings.Join(val.Path, ".")))
+			return info.PropagateError(e, state, "resolution of template '%s' failed", strings.Join(e.Val.Path, "."))
 		} else {
 			debug.Debug("resolving template delayed: " + state.Error())
 			return e, info, true
