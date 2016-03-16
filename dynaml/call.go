@@ -78,6 +78,12 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "uniq":
 		result, sub, ok = func_uniq(values, binding)
 
+	case "contains":
+		result, sub, ok = func_contains(values, binding)
+
+	case "match":
+		result, sub, ok = func_match(values, binding)
+
 	case "exec":
 		result, sub, ok = func_exec(values, binding)
 

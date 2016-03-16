@@ -2608,7 +2608,7 @@ foo:
 	})
 
 	Describe("when calling uniq", func() {
-		It("imits duplicates", func() {
+		It("omits duplicates", func() {
 			source := parseYAML(`
 ---
 list:
@@ -2638,6 +2638,119 @@ uniq:
 - b
 - c
 - 0
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling contains", func() {
+		It("finds ints", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- b
+- 0
+- c
+contains: (( contains(list, "0") ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- b
+- 0
+- c
+
+contains: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("finds string", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- b
+- "0"
+- c
+contains: (( contains(list, "0") ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- b
+- "0"
+- c
+
+contains: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("works for no match", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- b
+- 0
+- c
+contains: (( contains(list, "d") ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- b
+- 0
+- c
+
+contains: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when matching regexps", func() {
+		It("matches strings", func() {
+			source := parseYAML(`
+---
+match: (( match("^f.*r$","foobar") ))
+`)
+			resolved := parseYAML(`
+---
+match:
+  - foobar
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("matches non-matching strings", func() {
+			source := parseYAML(`
+---
+match: (( match("^f.*r$","foobal") ))
+`)
+			resolved := parseYAML(`
+---
+match: []
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("matches sub expressions strings", func() {
+			source := parseYAML(`
+---
+match: (( match("^(f.*)(b.*)$","foobar") ))
+`)
+			resolved := parseYAML(`
+---
+match:
+  - foobar
+  - foo
+  - bar
 `)
 			Expect(source).To(FlowAs(resolved))
 		})

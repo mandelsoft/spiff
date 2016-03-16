@@ -53,6 +53,8 @@ Contents:
 		- [(( split( ",", string) ))](#-split--string-)
 		- [(( trim(string) ))](#-trimstring-)
 		- [(( uniq(list) ))](#-uniqlist-)
+		- [(( contains(list, "foobar") ))](#-containslist-foobar-)
+		- [(( match("(f.*)(b.*)", "xxxfoobar") ))](#-matchfb-xxxfoobar-)
 		- [(( length(list) ))](#-lengthlist-)
 		- [(( defined(foobar) ))](#-definedfoobar-)
 		- [(( exec( "command", arg1, arg2) ))](#-exec-command-arg1-arg2-)
@@ -897,6 +899,49 @@ uniq:
 - b
 - c
 - 0
+```
+
+### `(( contains(list, "foobar") ))`
+
+Checks whether a list contains a dedicated value. Values might also be lists or maps.
+
+e.g.:
+
+```yaml
+list:
+  - foo
+  - bar
+  - foobar
+contains: (( contains(list, "foobar") ))
+```
+
+yields:
+
+```yaml
+list:
+  - foo
+  - bar
+  - foobar
+contains: true
+```
+
+### `(( match("(f.*)(b.*)", "xxxfoobar") ))`
+
+Returns the match of a regular expression for a given string value. The match is a list of the matched values for the sub expressions contained in the regular expression. Index 0 refers to the match of the complete regular expression. If the string value does not match an empty list is returned.
+
+e.g.:
+
+```yaml
+matches: (( match("(f.*)*(b.*)", "xxxfoobar") ))
+```
+
+yields:
+
+```yaml
+matches:
+- foobar
+- foo
+- bar
 ```
 
 ### `(( length(list) ))`
