@@ -105,6 +105,8 @@ spiff merge cf-release/templates/cf-deployment.yml my-cloud-stub.yml
 
 The ` merge` command offers the option `--partial`. If this option is given spiff handles incomplete expression evaluation. All errors are ignored and the unresolvable parts of the yaml document are returned as strings.
 
+It is possible to read one file from standard input by using the file name `-`. It may be used only once. This allows using spiff as part of a pipeline to just process a single stream or to process a stream based on several templates/stubs.
+
 ### `spiff diff manifest.yml other-manifest.yml`
 
 Show structural differences between two deployment manifests.
@@ -2115,7 +2117,7 @@ tag. The following tags are used (in reporting order):
 | --- | ------- |
 | `*` | error in local dynaml expression |
 | `@` | dependent or involved in cyclic dependencies |
-| `-` | follow up error because of refering to a yaml node with an error |
+| `-` | subsequent error because of refering to a yaml node with an error |
 
 Problems occuring during inline template processing are reported as nested problems. The classification is
 propagated to the outer node.
