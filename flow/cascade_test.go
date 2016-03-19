@@ -394,4 +394,139 @@ values: 3
 			})
 		})
 	})
+
+	Describe("using temporary nodes", func() {
+		Context("simplple usage", func() {
+			It("omits temporary map nodes", func() {
+				source := parseYAML(`
+---
+temp:
+  <<: (( &temporary ))
+  foo: bar
+alice: (( temp.foo ))
+`)
+				resolved := parseYAML(`
+---
+alice: bar
+`)
+				Expect(source).To(CascadeAs(resolved))
+			})
+
+			It("omits temporary list entries", func() {
+				source := parseYAML(`
+---
+temp:
+  - <<: (( &temporary ))
+    foo: bar
+  - peter: paul
+alice: (( temp.[0].foo ))
+`)
+				resolved := parseYAML(`
+---
+temp:
+  - peter: paul
+alice: bar
+`)
+				Expect(source).To(CascadeAs(resolved))
+			})
+		})
+
+		Context("combined usage", func() {
+			It("omits temporary template nodes", func() {
+				source := parseYAML(`
+---
+temp:
+  <<: (( &temporary &template ))
+  foo: bar
+alice: (( (*temp).foo ))
+`)
+				resolved := parseYAML(`
+---
+alice: bar
+`)
+				Expect(source).To(CascadeAs(resolved))
+			})
+		})
+
+		Context("with value", func() {
+			It("omits temporary map nodes but provides fields", func() {
+				source := parseYAML(`
+---
+temp:
+  <<: (( &temporary ( default ) ))
+  foo: bar
+default:
+  peter: paul
+
+alice: (( temp.peter ))
+`)
+				resolved := parseYAML(`
+---
+default:
+  peter: paul
+alice: paul
+`)
+				Expect(source).To(CascadeAs(resolved))
+			})
+
+			It("omits temporary value nodes but provides value", func() {
+				source := parseYAML(`
+---
+temp:
+  peter: paul
+  foo: (( &temporary ( peter ) ))
+
+alice: (( temp.foo ))
+`)
+				resolved := parseYAML(`
+---
+temp:
+  peter: paul
+alice: paul
+`)
+				Expect(source).To(CascadeAs(resolved))
+			})
+		})
+
+		Context("merging", func() {
+			It("overrides", func() {
+				source := parseYAML(`
+---
+temp: (( &temporary ))
+
+alice: (( temp.foo ))
+`)
+
+				stub := parseYAML(`
+---
+temp:
+  foo: bar
+`)
+
+				resolved := parseYAML(`
+---
+alice: bar
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+
+			It("omits temporary value nodes but provides value", func() {
+				source := parseYAML(`
+---
+temp:
+  peter: paul
+  foo: (( &temporary ( peter ) ))
+
+alice: (( temp.foo ))
+`)
+				resolved := parseYAML(`
+---
+temp:
+  peter: paul
+alice: paul
+`)
+				Expect(source).To(CascadeAs(resolved))
+			})
+		})
+	})
 })

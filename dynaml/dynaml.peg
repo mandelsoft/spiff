@@ -2,9 +2,13 @@ package dynaml
 
 type DynamlGrammar Peg {}
 
-Dynaml <- (Prefer / Template / Expression) !.
+Dynaml <- (Prefer / MarkedExpression / Expression) !.
 Prefer <- ws 'prefer' req_ws Expression
-Template <- ws '&template' ws
+
+MarkedExpression <- ws Marker ( req_ws SubsequentMarker )* ws ( Grouped )? ws
+SubsequentMarker <- Marker
+Marker <- '&' ( 'template' / 'temporary' )
+
 Expression <- ws ( LambdaExpr / Level7 ) ws
 
 Level7 <- Level6 ( req_ws Or )*

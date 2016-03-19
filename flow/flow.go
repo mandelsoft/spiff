@@ -19,6 +19,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 		return root
 	}
 
+	temporary := root.Temporary()
 	replace := root.ReplaceFlag()
 	redirect := root.RedirectPath()
 	preferred := root.Preferred()
@@ -45,6 +46,8 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 				env = env.WithSource(root.SourceName())
 			}
 			eval, info, ok := val.Evaluate(env, false)
+			replace = replace || info.Replace
+			temporary = temporary || info.Temporary
 			debug.Debug("??? ---> %+v\n", eval)
 			if !ok {
 				root = yaml.IssueNode(root, true, false, info.Issue)
@@ -52,7 +55,6 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 				if !shouldOverride {
 					return root
 				}
-				replace = replace || info.Replace
 			} else {
 				if info.SourceName() != "" {
 					source = info.SourceName()
@@ -86,7 +88,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 					result = yaml.RedirectNode(result.Value(), result, redirect)
 				}
 
-				if replace || info.Replace {
+				if replace {
 					debug.Debug("   REPLACE\n")
 					result = yaml.ReplaceNode(result.Value(), result, redirect)
 				} else {
@@ -94,6 +96,9 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 						debug.Debug("   MERGED\n")
 						result = yaml.MergedNode(result)
 					}
+				}
+				if temporary && !result.Temporary() {
+					result = yaml.TemporaryNode(result)
 				}
 				if expr || result.Merged() || !shouldOverride || result.Preferred() {
 					debug.Debug("   prefer expression over override")
@@ -126,13 +131,18 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 				root = yaml.KeyNameNode(root, keyName)
 			}
 			if replace {
-				return yaml.ReplaceNode(root.Value(), root, redirect)
+				root = yaml.ReplaceNode(root.Value(), root, redirect)
+			} else {
+				if redirect != nil {
+					root = yaml.RedirectNode(root.Value(), root, redirect)
+				} else {
+					if merged {
+						root = yaml.MergedNode(root)
+					}
+				}
 			}
-			if redirect != nil {
-				return yaml.RedirectNode(root.Value(), root, redirect)
-			}
-			if merged {
-				return yaml.MergedNode(root)
+			if temporary && !root.Temporary() {
+				root = yaml.TemporaryNode(root)
 			}
 		}
 	}
@@ -157,6 +167,7 @@ func simpleMergeCompatibilityCheck(initial bool, node yaml.Node) bool {
 func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 	processed := true
 	template := false
+	temporary := false
 	rootMap := root.Value().(map[string]yaml.Node)
 
 	env = env.WithScope(rootMap)
@@ -180,8 +191,15 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 			debug.Debug("flow to %#v\n", base.Value())
 			_, ok := base.Value().(dynaml.Expression)
 			if ok {
-				_, ok := base.Value().(dynaml.TemplateExpr)
+				m, ok := base.Value().(dynaml.MarkerExpr)
 				if ok {
+					debug.Debug("found marker\n")
+					temporary = m.Has(dynaml.TEMPORARY)
+					if temporary {
+						debug.Debug("found temporary declaration\n")
+					}
+				}
+				if ok && m.Has(dynaml.TEMPLATE) {
 					debug.Debug("found template declaration\n")
 					template = true
 					continue
@@ -227,10 +245,17 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 	} else {
 		result = newMap
 	}
+	var node yaml.Node
 	if replace {
-		return yaml.ReplaceNode(result, root, redirect)
+		node = yaml.ReplaceNode(result, root, redirect)
+	} else {
+		node = yaml.RedirectNode(result, root, redirect)
 	}
-	return yaml.RedirectNode(result, root, redirect)
+	if temporary {
+		return yaml.TemporaryNode(node)
+	} else {
+		return node
+	}
 }
 
 func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {

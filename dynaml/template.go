@@ -8,19 +8,6 @@ import (
 	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
-type TemplateExpr struct {
-}
-
-func (e TemplateExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
-	info := DefaultInfo()
-	info.Issue = yaml.NewIssue("&template only usable to declare templates")
-	return nil, info, false
-}
-
-func (e TemplateExpr) String() string {
-	return fmt.Sprintf("&template")
-}
-
 type SubstitutionExpr struct {
 	Template Expression
 	Val      TemplateValue

@@ -64,6 +64,7 @@ Contents:
 		- [(( static_ips(0, 1, 3) ))](#-static_ips0-1-3-)
 		- [(( list_to_map(list, "key") ))](#-list_to_maplist-key-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
+	- [(( &temporary ))](#-temporary-)
 	- [Mappings](#mappings)
 		- [(( map[list|elem|->dynaml-expr] ))](#-maplistelem-dynaml-expr-)
 		- [(( map[list|idx,elem|->dynaml-expr] ))](#-maplistidxelem-dynaml-expr-)
@@ -1327,6 +1328,44 @@ value: (( .mult2(3) ))
 ```
 
 If a complete expression is a lambda expression the keyword `lambda` can be omitted.
+
+## `(( &temporary ))`
+
+Map or value nodes can be marked as *temporary*. Temporary nodes are removed from the final output document, but are available during merging and dynaml evaluation.
+
+e.g.:
+
+```yaml
+temp:
+  <<: (( &temporary ))
+  foo: bar
+
+value: (( temp.foo ))
+```
+
+yields:
+
+```yaml
+value: bar
+```
+
+The temporary marker can be combined with regular dynaml expressions to tag plain fields. Hereby the
+parenthesised expression is just appended to the marker
+
+e.g.:
+
+```yaml
+data:
+  alice: (( &temporary ( "bar" ) ))
+  foo: (( alice ))
+```
+
+yields:
+
+```yaml
+data:
+  foo: bar
+```
 
 ## Mappings
 
