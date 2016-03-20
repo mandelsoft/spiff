@@ -396,7 +396,7 @@ values: 3
 	})
 
 	Describe("using temporary nodes", func() {
-		Context("simplple usage", func() {
+		Context("simple usage", func() {
 			It("omits temporary map nodes", func() {
 				source := parseYAML(`
 ---
@@ -449,6 +449,26 @@ alice: bar
 		})
 
 		Context("with value", func() {
+			It("omits temporary list nodes but provides fields", func() {
+				source := parseYAML(`
+---
+temp:
+  - <<: (( &temporary ( default ) ))
+  - foobar
+default:
+  - peter
+
+alice: (( temp.[0] ))
+`)
+				resolved := parseYAML(`
+---
+default:
+  - peter
+alice: peter
+`)
+				Expect(source).To(CascadeAs(resolved))
+			})
+
 			It("omits temporary map nodes but provides fields", func() {
 				source := parseYAML(`
 ---
@@ -500,6 +520,28 @@ alice: (( temp.foo ))
 				stub := parseYAML(`
 ---
 temp:
+  foo: bar
+`)
+
+				resolved := parseYAML(`
+---
+alice: bar
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+
+			It("inherits temporary mode", func() {
+				source := parseYAML(`
+---
+temp: (( merge ))
+
+alice: (( temp.foo ))
+`)
+
+				stub := parseYAML(`
+---
+temp:
+  <<: (( &temporary ))
   foo: bar
 `)
 

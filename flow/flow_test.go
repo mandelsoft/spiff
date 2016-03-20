@@ -1301,6 +1301,33 @@ properties:
 			Expect(source).To(FlowAs(resolved))
 		})
 
+		It("merges merged map into list", func() {
+			source := parseYAML(`
+---
+properties:
+  something:
+    - a
+    - <<: (( map ))
+      foo: bar
+    - b
+  map:
+    alice: bob
+`)
+
+			resolved := parseYAML(`
+---
+properties:
+  something:
+    - a
+    - alice: bob
+      foo: bar
+    - b
+  map:
+    alice: bob
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
 		It("merges stub", func() {
 			source := parseYAML(`
 ---
@@ -3452,7 +3479,182 @@ sum: 8
 	})
 
 	Describe("using templates", func() {
-		Context("direct usage", func() {
+		Context("direct usage in list", func() {
+			It("uses usage context", func() {
+				source := parseYAML(`
+---
+verb: hates
+
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verb " alice" ))
+
+use:
+  verb: loves
+  subst: (( *foo.bar ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verb " alice" ))
+use:
+  subst:
+    - loves alice
+  verb: loves
+verb: hates
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("uses usage context without falling back to default", func() {
+				source := parseYAML(`
+---
+verb: hates
+
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verb " alice" ))
+
+use:
+  verb: loves
+  subst: (( *foo.bar || "failed" ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verb " alice" ))
+use:
+  subst:
+    - loves alice
+  verb: loves
+verb: hates
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("handles independent usage", func() {
+				source := parseYAML(`
+---
+verb: hates
+
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verb " alice" ))
+
+use1:
+  verb: loves
+  subst: (( *foo.bar || "failed" ))
+use2:
+  verb: works
+  subst: (( *foo.bar || "failed" ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verb " alice" ))
+use1:
+  subst:
+    - loves alice
+  verb: loves
+use2:
+  subst:
+    - works alice
+  verb: works
+verb: hates
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("defaults failures", func() {
+				source := parseYAML(`
+---
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verb " alice" ))
+
+use:
+  subst: (( *foo.bar || "failed" ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verb " alice" ))
+use:
+  subst: failed
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("defaults deep failures", func() {
+				source := parseYAML(`
+---
+verbs: (( merge || nil ))
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verbs.verb " alice" ))
+
+use:
+  subst: (( *foo.bar || "failed" ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+verbs: ~
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verbs.verb " alice" ))
+use:
+  subst: failed
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("merges list templates", func() {
+				source := parseYAML(`
+---
+foo:
+  bar:
+  - <<: (( &template ))
+  - (( verb " alice" ))
+
+use:
+  verb: loves
+  subst:
+  - a
+  - <<: (( *foo.bar || "failed" ))
+  - b
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+foo:
+  bar:
+  - <<: (( &template ))
+  - (( verb " alice" ))
+use:
+  verb: loves
+  subst:
+  - a
+  - loves alice
+  - b
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("direct usage for map", func() {
 			It("uses usage context", func() {
 				source := parseYAML(`
 ---

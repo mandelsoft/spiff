@@ -92,7 +92,7 @@ Some of spiff's dependencies have changed since the last official release, and s
 
 # Usage
 
-### `spiff merge template.yml [template2.ymll ...]`
+### `spiff merge template.yml [template2.yml ...]`
 
 Merge a bunch of template files into one manifest, printing it out.
 
@@ -1331,7 +1331,7 @@ If a complete expression is a lambda expression the keyword `lambda` can be omit
 
 ## `(( &temporary ))`
 
-Map or value nodes can be marked as *temporary*. Temporary nodes are removed from the final output document, but are available during merging and dynaml evaluation.
+Maps, lists or simple value nodes can be marked as *temporary*. Temporary nodes are removed from the final output document, but are available during merging and dynaml evaluation.
 
 e.g.:
 
@@ -1348,6 +1348,7 @@ yields:
 ```yaml
 value: bar
 ```
+Adding `- <<: (( &temporary ))` to a list can be used to mark a list as temporary.
 
 The temporary marker can be combined with regular dynaml expressions to tag plain fields. Hereby the
 parenthesised expression is just appended to the marker
@@ -1366,6 +1367,8 @@ yields:
 data:
   foo: bar
 ```
+
+The temporary marker can be combined with the [template marker](#templates) to omit templates from the final output.
 
 ## Mappings
 
@@ -1576,6 +1579,10 @@ foo:
 ```
 
 The template will be the value of the node `foo.bar`. As such it can be overwritten as a whole by settings in a stub during the merge process. Dynaml expressions in the template are not evaluated.
+
+Adding `- <<: (( &template ))` to a list it is also possible to define list templates.
+
+The template marker can be combined with the [temporary marker](#-temporary-) to omit templates from the final output.
 
 ### `(( *foo.bar ))`
 

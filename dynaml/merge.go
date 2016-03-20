@@ -25,6 +25,7 @@ func (e MergeExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluat
 		info.Replace = e.Replace
 		info.Merged = true
 		info.Source = node.SourceName()
+		info.Temporary = node.Temporary()
 		return node.Value(), info, ok
 	} else {
 		return info.Error("'%s' not found in any stub", strings.Join(e.Path, "."))
