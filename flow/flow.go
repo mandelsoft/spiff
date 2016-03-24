@@ -201,8 +201,14 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 				}
 				if ok && m.Has(dynaml.TEMPLATE) {
 					debug.Debug("found template declaration\n")
+					processed = false
 					template = true
-					continue
+					val = m.TemplateExpression(root)
+					if val == nil {
+						continue
+					}
+					debug.Debug("  insert expression: %v\n", val)
+					//val = yaml.SubstituteNode(map[string]yaml.Node{"<<": val}, root)
 				} else {
 					if simpleMergeCompatibilityCheck(initial, base) {
 						continue
@@ -363,7 +369,11 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 						debug.Debug("found template declaration\n")
 						template = true
 						process = false
-						continue
+						result = m.TemplateExpression(orig)
+						if result == nil {
+							continue
+						}
+						debug.Debug("  insert expression: %v\n", result)
 					}
 				}
 				newMap := make(map[string]yaml.Node)

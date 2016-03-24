@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cloudfoundry-incubator/spiff/debug"
 	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
@@ -60,6 +61,25 @@ func (e MarkerExpr) Has(t string) bool {
 func (e MarkerExpr) add(m string) MarkerExpr {
 	e.list = append(e.list, m)
 	return e
+}
+
+func (e MarkerExpr) TemplateExpression(orig yaml.Node) yaml.Node {
+	nlist := []string{}
+	for _, m := range e.list {
+		if m != TEMPLATE {
+			debug.Debug(" preserving marker %s", m)
+			nlist = append(nlist, m)
+		} else {
+			debug.Debug(" omitting marker %s", m)
+		}
+	}
+	if len(nlist) > 0 {
+		return yaml.SubstituteNode(fmt.Sprintf("(( %s ))", MarkerExpr{nlist, e.expr}), orig)
+	}
+	if e.expr != nil {
+		return yaml.SubstituteNode(fmt.Sprintf("(( %s ))", e.expr), orig)
+	}
+	return nil
 }
 
 func newMarkerExpr(m string) MarkerExpr {

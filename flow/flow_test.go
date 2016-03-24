@@ -3654,6 +3654,173 @@ use:
 			})
 		})
 
+		Context("list template overriding", func() {
+			It("overrides template substitution expression", func() {
+				source := parseYAML(`
+---
+templ:
+  - <<: (( &template ))
+  - name: foo
+    attr: 24
+  - name: bar
+    attr: 25
+
+inst: (( *templ ))
+`)
+				stub := parseYAML(`
+---
+inst:
+  - name: foo
+    add: all
+    attr: 34
+  - name: alice
+    attr: 35
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ:
+  - <<: (( &template ))
+  - name: foo
+    attr: 24
+  - name: bar
+    attr: 25
+
+inst:
+  - name: foo
+    add: all
+    attr: 34
+  - name: alice
+    attr: 35
+`))
+				Expect(source).To(FlowAs(resolved, stub))
+			})
+
+			It("overrides template substitution", func() {
+				source := parseYAML(`
+---
+templ:
+  - <<: (( &template ))
+  - name: foo
+    attr: 24
+  - name: bar
+    attr: 25
+
+inst: (( prefer *templ ))
+`)
+				stub := parseYAML(`
+---
+inst:
+  - name: foo
+    add: all
+    attr: 34
+  - name: alice
+    attr: 35
+
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ:
+  - <<: (( &template ))
+  - name: foo
+    attr: 24
+  - name: bar
+    attr: 25
+
+inst:
+  - name: foo
+    attr: 34
+  - name: bar
+    attr: 25
+`))
+				Expect(source).To(FlowAs(resolved, stub))
+			})
+
+			It("inserts into template substitution", func() {
+				source := parseYAML(`
+---
+templ:
+  - <<: (( &template ))
+  - name: foo
+    <<: (( merge ))
+    attr: 24
+  - name: bar
+    attr: 25
+
+inst: (( prefer *templ ))
+`)
+				stub := parseYAML(`
+---
+inst:
+  - name: foo
+    add: all
+    attr: 34
+  - name: alice
+    attr: 35l
+
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ:
+  - <<: (( &template ))
+  - name: foo
+    <<: (( merge ))
+    attr: 24
+  - name: bar
+    attr: 25
+
+inst:
+  - name: foo
+    add: all
+    attr: 34
+  - name: bar
+    attr: 25
+`))
+				Expect(source).To(FlowAs(resolved, stub))
+			})
+
+			It("supports extended marker", func() {
+				source := parseYAML(`
+---
+templ:
+  - <<: (( &template (merge) ))
+  - name: foo
+    attr: 24
+  - name: bar
+    attr: 25
+
+inst: (( prefer *templ ))
+`)
+				stub := parseYAML(`
+---
+inst:
+  - name: foo
+    add: all
+    attr: 34
+  - name: alice
+    attr: 35
+
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ:
+  - <<: (( &template (merge) ))
+  - name: foo
+    attr: 24
+  - name: bar
+    attr: 25
+
+inst:
+  - name: alice
+    attr: 35
+  - name: foo
+    attr: 34
+  - name: bar
+    attr: 25
+`))
+				Expect(source).To(FlowAs(resolved, stub))
+			})
+		})
+
 		Context("direct usage for map", func() {
 			It("uses usage context", func() {
 				source := parseYAML(`
@@ -3812,6 +3979,146 @@ use:
   subst: failed
 `))
 				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("map template overriding", func() {
+			It("overrides template substitution expression", func() {
+				source := parseYAML(`
+---
+templ:
+  <<: (( &template ))
+  foo:
+    bar: x
+
+inst: (( *templ ))
+`)
+				stub := parseYAML(`
+---
+inst:
+  bar: a 
+  foo:
+    bar: b 
+    add: all
+
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ:
+  <<: (( &template ))
+  foo:
+    bar: x
+
+inst:
+  bar: a 
+  foo:
+    bar: b 
+    add: all
+`))
+				Expect(source).To(FlowAs(resolved, stub))
+			})
+
+			It("overrides template substitution", func() {
+				source := parseYAML(`
+---
+templ:
+  <<: (( &template ))
+  foo:
+    bar: x
+
+inst: (( prefer *templ ))
+`)
+				stub := parseYAML(`
+---
+inst:
+  bar: a 
+  foo:
+    bar: b 
+    add: all
+
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ:
+  <<: (( &template ))
+  foo:
+    bar: x
+
+inst:
+  foo:
+    bar: b 
+`))
+				Expect(source).To(FlowAs(resolved, stub))
+			})
+
+			It("inserts into template substitution", func() {
+				source := parseYAML(`
+---
+templ:
+  <<: (( &template ))
+  foo:
+    <<: (( merge ))
+    bar: x
+
+inst: (( prefer *templ ))
+`)
+				stub := parseYAML(`
+---
+inst:
+  bar: a 
+  foo:
+    bar: b 
+    add: all
+
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ:
+  <<: (( &template ))
+  foo:
+    <<: (( merge ))
+    bar: x
+
+inst:
+  foo:
+    add: all
+    bar: b 
+`))
+				Expect(source).To(FlowAs(resolved, stub))
+			})
+
+			It("supports extended marker", func() {
+				source := parseYAML(`
+---
+templ:
+  <<: (( &template (merge) ))
+  foo:
+    bar: x
+
+inst: (( prefer *templ ))
+`)
+				stub := parseYAML(`
+---
+inst:
+  bar: a 
+  foo:
+    bar: b 
+    add: all
+
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ:
+  <<: (( &template (merge) ))
+  foo:
+    bar: x
+
+inst:
+  bar: a 
+  foo:
+    bar: b 
+`))
+				Expect(source).To(FlowAs(resolved, stub))
 			})
 		})
 
