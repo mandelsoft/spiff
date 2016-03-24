@@ -165,12 +165,12 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (result []Unresolved
 		})
 
 	case TemplateValue:
-		context := addContext(context, fmt.Sprintf("&"))
+		//		context := addContext(context, fmt.Sprintf("&"))
 
-		nodes = append(
-			nodes,
-			FindUnresolvedNodes(val.Orig, context...)...,
-		)
+		//		nodes = append(
+		//			nodes,
+		//			FindUnresolvedNodes(val.Orig, context...)...,
+		//		)
 
 	case string:
 		if s := yaml.EmbeddedDynaml(root); s != nil {
