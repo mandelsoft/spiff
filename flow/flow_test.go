@@ -3483,6 +3483,27 @@ sum: 8
 			It("uses usage context", func() {
 				source := parseYAML(`
 ---
+templ: (( &template ( a + 1 ) ))
+foo:
+  a: 2
+  bar: (( *templ ))
+`)
+
+				resolved, _ := Flow(parseYAML(`
+---
+templ: (( &template ( a + 1 ) ))
+foo:
+  a: 2
+  bar: 3
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+		
+		Context("direct usage in list", func() {
+			It("uses usage context", func() {
+				source := parseYAML(`
+---
 verb: hates
 
 foo:

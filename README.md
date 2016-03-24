@@ -1578,9 +1578,11 @@ foo:
     bob: (( verb " " alice ))
 ```
 
-The template will be the value of the node `foo.bar`. As such it can be overwritten as a whole by settings in a stub during the merge process. Dynaml expressions in the template are not evaluated.
+The template will be the value of the node `foo.bar`. As such it can be overwritten as a whole by settings in a stub during the merge process. Dynaml expressions in the template are not evaluated. A map can have only a single `<<` field. Therefore it is possible to combine the template marker with an expression just by adding the expression in parenthesis.
 
 Adding `- <<: (( &template ))` to a list it is also possible to define list templates.
+It is also possible to convert a single expression value into a simple template by adding the template
+marker to the expression, for example `foo: (( &template (expression) ))`
 
 The template marker can be combined with the [temporary marker](#-temporary-) to omit templates from the final output.
 

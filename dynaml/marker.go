@@ -82,6 +82,10 @@ func (e MarkerExpr) TemplateExpression(orig yaml.Node) yaml.Node {
 	return nil
 }
 
+func (e MarkerExpr) MarshalYAML() (tag string, value interface{}, err error) {
+	return "", fmt.Sprintf("(( %s ))", e.String()), nil
+}
+
 func newMarkerExpr(m string) MarkerExpr {
 	return MarkerExpr{list: []string{m}}
 }

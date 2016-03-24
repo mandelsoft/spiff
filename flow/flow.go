@@ -45,7 +45,24 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 			if root.SourceName() != env.SourceName() {
 				env = env.WithSource(root.SourceName())
 			}
-			eval, info, ok := val.Evaluate(env, false)
+			info := dynaml.DefaultInfo()
+			var eval interface{} = nil
+			m, ok := val.(dynaml.MarkerExpr)
+			if ok && m.Has(dynaml.TEMPLATE) {
+				debug.Debug("found template declaration\n")
+				val := m.TemplateExpression(root)
+				if val == nil {
+					root = yaml.IssueNode(root, true, false, yaml.NewIssue("empty template value"))
+					debug.Debug("??? failed ---> KEEP\n")
+					if !shouldOverride {
+						return root
+					}
+				}
+				debug.Debug("  value template %s", val)
+				eval = dynaml.TemplateValue{env.Path(), val, root}
+			} else {
+				eval, info, ok = val.Evaluate(env, false)
+			}
 			replace = replace || info.Replace
 			temporary = temporary || info.Temporary
 			debug.Debug("??? ---> %+v\n", eval)
@@ -208,7 +225,6 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 						continue
 					}
 					debug.Debug("  insert expression: %v\n", val)
-					//val = yaml.SubstituteNode(map[string]yaml.Node{"<<": val}, root)
 				} else {
 					if simpleMergeCompatibilityCheck(initial, base) {
 						continue
