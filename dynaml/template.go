@@ -2,52 +2,39 @@ package dynaml
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cloudfoundry-incubator/spiff/debug"
 	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
-type TemplateExpr struct {
-}
-
-func (e TemplateExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
-	info := DefaultInfo()
-	info.Issue = yaml.NewIssue("&template only usable to declare templates")
-	return nil, info, false
-}
-
-func (e TemplateExpr) String() string {
-	return fmt.Sprintf("&template")
-}
-
 type SubstitutionExpr struct {
 	Template Expression
+	Val      TemplateValue
 	Node     yaml.Node
 }
 
-func (e SubstitutionExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e SubstitutionExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	if e.Node == nil {
 		debug.Debug("evaluating expression to determine template\n")
-		n, info, ok := e.Template.Evaluate(binding)
+		n, info, ok := e.Template.Evaluate(binding, false)
 		if !ok || isExpression(n) {
 			return e, info, ok
 		}
-		val, ok := n.(TemplateValue)
+		e.Val, ok = n.(TemplateValue)
 		if !ok {
-			info.Issue = yaml.NewIssue("template value required")
-			return nil, info, false
+			return info.Error("template value required")
 		} else {
-			e.Node = node_copy(val.Prepared)
+			e.Node = node_copy(e.Val.Prepared)
 		}
 	}
-	debug.Debug("resolving template\n")
+	debug.Debug("resolving template '%s'\n", strings.Join(e.Val.Path, "."))
 	result, state := binding.Flow(e.Node, false)
 	info := DefaultInfo()
 	if state != nil {
 		if state.HasError() {
 			debug.Debug("resolving template failed: " + state.Error())
-			info.Issue = state.Issue("template resolution failed")
-			return e, info, false
+			return info.PropagateError(e, state, "resolution of template '%s' failed", strings.Join(e.Val.Path, "."))
 		} else {
 			debug.Debug("resolving template delayed: " + state.Error())
 			return e, info, true
@@ -63,6 +50,7 @@ func (e SubstitutionExpr) String() string {
 }
 
 type TemplateValue struct {
+	Path     []string
 	Prepared yaml.Node
 	Orig     yaml.Node
 }

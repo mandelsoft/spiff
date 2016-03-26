@@ -12,7 +12,7 @@ type LambdaExpr struct {
 	E     Expression
 }
 
-func (e LambdaExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e LambdaExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 	return LambdaValue{e, binding.GetLocalBinding()}, info, true
 }
@@ -31,10 +31,10 @@ type LambdaRefExpr struct {
 	StubPath []string
 }
 
-func (e LambdaRefExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e LambdaRefExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	var lambda LambdaValue
 	resolved := true
-	value, info, ok := ResolveExpressionOrPushEvaluation(&e.Source, &resolved, nil, binding)
+	value, info, ok := ResolveExpressionOrPushEvaluation(&e.Source, &resolved, nil, binding, false)
 	if !ok {
 		return nil, info, false
 	}
@@ -51,19 +51,17 @@ func (e LambdaRefExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, b
 		expr, err := Parse(v, e.Path, e.StubPath)
 		if err != nil {
 			debug.Debug("cannot parse: %s\n", err.Error())
-			info.Issue = yaml.NewIssue("cannot parse lamba expression '%s'")
-			return nil, info, false
+			return info.Error("cannot parse lamba expression '%s'")
 		}
 		lexpr, ok := expr.(LambdaExpr)
 		if !ok {
 			debug.Debug("no lambda expression: %T\n", expr)
-			info.Issue = yaml.NewIssue("'%s' is no lambda expression", v)
-			return nil, info, false
+			return info.Error("'%s' is no lambda expression", v)
 		}
 		lambda = LambdaValue{lexpr, binding.GetLocalBinding()}
 
 	default:
-		info.Issue = yaml.NewIssue("lambda reference must resolve to lambda value or string")
+		return info.Error("lambda reference must resolve to lambda value or string")
 	}
 	debug.Debug("found lambda: %s\n", lambda)
 	return lambda, info, true
@@ -96,7 +94,7 @@ func (e LambdaValue) MarshalYAML() (tag string, value interface{}, err error) {
 	return "", e.String(), nil
 }
 
-func (e LambdaValue) Evaluate(args []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e LambdaValue) Evaluate(args []interface{}, binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 
 	if len(args) > len(e.lambda.Names) {
@@ -119,5 +117,5 @@ func (e LambdaValue) Evaluate(args []interface{}, binding Binding) (interface{},
 		return LambdaValue{LambdaExpr{rest, e.lambda.E}, inp}, DefaultInfo(), true
 	}
 
-	return e.lambda.E.Evaluate(binding.WithLocalScope(inp))
+	return e.lambda.E.Evaluate(binding.WithLocalScope(inp), locally)
 }

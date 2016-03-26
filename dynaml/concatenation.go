@@ -13,18 +13,18 @@ type ConcatenationExpr struct {
 	B Expression
 }
 
-func (e ConcatenationExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e ConcatenationExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 
 	debug.Debug("CONCAT %+v,%+v\n", e.A, e.B)
 
-	a, infoa, ok := ResolveExpressionOrPushEvaluation(&e.A, &resolved, nil, binding)
+	a, infoa, ok := ResolveExpressionOrPushEvaluation(&e.A, &resolved, nil, binding, false)
 	if !ok {
 		debug.Debug("  eval a failed\n")
 		return nil, infoa, false
 	}
 
-	b, info, ok := ResolveExpressionOrPushEvaluation(&e.B, &resolved, &infoa, binding)
+	b, info, ok := ResolveExpressionOrPushEvaluation(&e.B, &resolved, &infoa, binding, false)
 	if !ok {
 		debug.Debug("  eval b failed\n")
 		return nil, info, false
@@ -47,8 +47,7 @@ func (e ConcatenationExpr) Evaluate(binding Binding) (interface{}, EvaluationInf
 	if !aok {
 		amap, aok := a.(map[string]yaml.Node)
 		if !aok {
-			info.Issue = yaml.NewIssue("simple value can only be concatenated with simple values")
-			return nil, info, false
+			return info.Error("simple value can only be concatenated with simple values")
 		}
 		switch bmap := b.(type) {
 		case map[string]yaml.Node:
@@ -59,8 +58,7 @@ func (e ConcatenationExpr) Evaluate(binding Binding) (interface{}, EvaluationInf
 		case nil:
 			return a, info, true
 		default:
-			info.Issue = yaml.NewIssue("simple value can only be concatenated with simple values")
-			return nil, info, false
+			return info.Error("simple value can only be concatenated with simple values")
 		}
 	} else {
 		switch b.(type) {

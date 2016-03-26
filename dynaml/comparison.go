@@ -15,15 +15,15 @@ type ComparisonExpr struct {
 	B  Expression
 }
 
-func (e ComparisonExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e ComparisonExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 
-	a, info, ok := ResolveExpressionOrPushEvaluation(&e.A, &resolved, nil, binding)
+	a, info, ok := ResolveExpressionOrPushEvaluation(&e.A, &resolved, nil, binding, false)
 	if !ok {
 		return nil, info, false
 	}
 
-	b, info, ok := ResolveExpressionOrPushEvaluation(&e.B, &resolved, &info, binding)
+	b, info, ok := ResolveExpressionOrPushEvaluation(&e.B, &resolved, &info, binding, false)
 	if !ok {
 		return nil, info, false
 	}
@@ -51,13 +51,11 @@ func (e ComparisonExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, 
 		var va, vb int64
 		va, ok = a.(int64)
 		if !ok {
-			infor.Issue = yaml.NewIssue("comparision %s only for integers", e.Op)
-			break
+			return infor.Error("comparision %s only for integers", e.Op)
 		}
 		vb, ok = b.(int64)
 		if !ok {
-			infor.Issue = yaml.NewIssue("comparision %s only for integers", e.Op)
-			break
+			return infor.Error("comparision %s only for integers", e.Op)
 		}
 		switch e.Op {
 		case "<=":

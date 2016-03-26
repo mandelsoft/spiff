@@ -2,28 +2,32 @@ package dynaml
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/cloudfoundry-incubator/spiff/debug"
 	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
-type MapExpr struct {
+type SumExpr struct {
 	A      Expression
+	I      Expression
 	Lambda Expression
 }
 
-func (e MapExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
+func (e SumExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 
-	debug.Debug("evaluate mapping\n")
+	debug.Debug("evaluate sum")
 	value, info, ok := ResolveExpressionOrPushEvaluation(&e.A, &resolved, nil, binding, true)
+	if !ok {
+		return nil, info, false
+	}
+	initial, info, ok := ResolveExpressionOrPushEvaluation(&e.I, &resolved, &info, binding, false)
 	if !ok {
 		return nil, info, false
 	}
 	lvalue, infoe, ok := ResolveExpressionOrPushEvaluation(&e.Lambda, &resolved, nil, binding, false)
 	if !ok {
-		return nil, info, false
+		return nil, infoe, false
 	}
 
 	if !resolved {
@@ -32,20 +36,20 @@ func (e MapExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluatio
 
 	lambda, ok := lvalue.(LambdaValue)
 	if !ok {
-		return infoe.Error("mapping requires a lambda value")
+		return infoe.Error("sum requires a lambda value")
 	}
 
 	debug.Debug("map: using lambda %+v\n", lambda)
-	var result []yaml.Node
+	var result interface{}
 	switch value.(type) {
 	case []yaml.Node:
-		result, info, ok = mapList(value.([]yaml.Node), lambda, binding)
+		result, info, ok = sumList(value.([]yaml.Node), lambda, initial, binding)
 
 	case map[string]yaml.Node:
-		result, info, ok = mapMap(value.(map[string]yaml.Node), lambda, binding)
+		result, info, ok = sumMap(value.(map[string]yaml.Node), lambda, initial, binding)
 
 	default:
-		return info.Error("map or list required for mapping")
+		return info.Error("map or list required for sum")
 	}
 	if !ok {
 		return nil, info, false
@@ -53,31 +57,35 @@ func (e MapExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluatio
 	if result == nil {
 		return e, info, true
 	}
-	debug.Debug("map: --> %+v\n", result)
+	debug.Debug("sum: --> %+v\n", result)
 	return result, info, true
 }
 
-func (e MapExpr) String() string {
+func (e SumExpr) String() string {
 	lambda, ok := e.Lambda.(LambdaExpr)
 	if ok {
-		return fmt.Sprintf("map[%s%s]", e.A, fmt.Sprintf("%s", lambda)[len("lambda"):])
+		return fmt.Sprintf("sum[%s|%s%s]", e.A, e.I, fmt.Sprintf("%s", lambda)[len("lambda"):])
 	} else {
-		return fmt.Sprintf("map[%s|%s]", e.A, e.Lambda)
+		return fmt.Sprintf("sum[%s|%s|%s]", e.A, e.I, e.Lambda)
 	}
 }
 
-func mapList(source []yaml.Node, e LambdaValue, binding Binding) ([]yaml.Node, EvaluationInfo, bool) {
+func sumList(source []yaml.Node, e LambdaValue, initial interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
 	inp := make([]interface{}, len(e.lambda.Names))
-	result := []yaml.Node{}
+	result := initial
 	info := DefaultInfo()
 
-	if len(e.lambda.Names) > 2 {
-		info.Error("mapping expression take a maximum of 2 arguments")
-		return nil, info, false
+	if len(e.lambda.Names) > 3 {
+		return info.Error("mapping expression take a maximum of 3 arguments")
 	}
+	if len(e.lambda.Names) < 2 {
+		return info.Error("mapping expression take a minimum of 2 arguments")
+	}
+
 	for i, n := range source {
 		debug.Debug("map:  mapping for %d: %+v\n", i, n)
-		inp[0] = i
+		inp[0] = result
+		inp[1] = i
 		inp[len(inp)-1] = n.Value()
 		mapped, info, ok := e.Evaluate(inp, binding, false)
 		if !ok {
@@ -91,23 +99,22 @@ func mapList(source []yaml.Node, e LambdaValue, binding Binding) ([]yaml.Node, E
 			return nil, info, true
 		}
 		debug.Debug("map:  %d --> %+v\n", i, mapped)
-		if mapped != nil {
-			result = append(result, node(mapped, info))
-		}
+		result = mapped
 	}
 	return result, info, true
 }
 
-func mapMap(source map[string]yaml.Node, e LambdaValue, binding Binding) ([]yaml.Node, EvaluationInfo, bool) {
+func sumMap(source map[string]yaml.Node, e LambdaValue, initial interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
 	inp := make([]interface{}, len(e.lambda.Names))
-	result := []yaml.Node{}
+	result := initial
 	info := DefaultInfo()
 
 	keys := getSortedKeys(source)
 	for _, k := range keys {
 		n := source[k]
 		debug.Debug("map:  mapping for %s: %+v\n", k, n)
-		inp[0] = k
+		inp[0] = result
+		inp[1] = k
 		inp[len(inp)-1] = n.Value()
 		mapped, info, ok := e.Evaluate(inp, binding, false)
 		if !ok {
@@ -121,20 +128,7 @@ func mapMap(source map[string]yaml.Node, e LambdaValue, binding Binding) ([]yaml
 			return nil, info, true
 		}
 		debug.Debug("map:  %s --> %+v\n", k, mapped)
-		if mapped != nil {
-			result = append(result, node(mapped, info))
-		}
+		result = mapped
 	}
 	return result, info, true
-}
-
-func getSortedKeys(unsortedMap map[string]yaml.Node) []string {
-	keys := make([]string, len(unsortedMap))
-	i := 0
-	for k, _ := range unsortedMap {
-		keys[i] = k
-		i++
-	}
-	sort.Strings(keys)
-	return keys
 }

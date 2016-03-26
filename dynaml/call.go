@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/cloudfoundry-incubator/spiff/debug"
-	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
 type CallExpr struct {
@@ -13,7 +12,7 @@ type CallExpr struct {
 	Arguments []Expression
 }
 
-func (e CallExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 	funcName := ""
 	var value interface{}
@@ -23,12 +22,12 @@ func (e CallExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) 
 	if ok && len(ref.Path) == 1 && ref.Path[0] != "" && ref.Path[0] != "_" {
 		funcName = ref.Path[0]
 	} else {
-		value, info, ok = ResolveExpressionOrPushEvaluation(&e.Function, &resolved, &info, binding)
+		value, info, ok = ResolveExpressionOrPushEvaluation(&e.Function, &resolved, &info, binding, false)
 		if ok {
 			_, ok = value.(LambdaValue)
 			if !ok {
 				debug.Debug("function: no string or lambda value: %T\n", value)
-				info.Issue = yaml.NewIssue("function call '%s' requires function name or lambda value", e.Function)
+				return info.Error("function call '%s' requires function name or lambda value", e.Function)
 			}
 		}
 	}
@@ -42,7 +41,7 @@ func (e CallExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) 
 		return e.defined(binding)
 	}
 
-	values, info, ok := ResolveExpressionListOrPushEvaluation(&e.Arguments, &resolved, nil, binding)
+	values, info, ok := ResolveExpressionListOrPushEvaluation(&e.Arguments, &resolved, nil, binding, false)
 
 	if !ok {
 		debug.Debug("call args failed\n")
@@ -59,7 +58,7 @@ func (e CallExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) 
 	switch funcName {
 	case "":
 		debug.Debug("calling lambda function %#v\n", value)
-		result, sub, ok = value.(LambdaValue).Evaluate(values, binding)
+		result, sub, ok = value.(LambdaValue).Evaluate(values, binding, false)
 
 	case "static_ips":
 		result, sub, ok = func_static_ips(e.Arguments, binding)
@@ -76,11 +75,20 @@ func (e CallExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) 
 	case "length":
 		result, sub, ok = func_length(values, binding)
 
+	case "uniq":
+		result, sub, ok = func_uniq(values, binding)
+
+	case "contains":
+		result, sub, ok = func_contains(values, binding)
+
+	case "match":
+		result, sub, ok = func_match(values, binding)
+
 	case "exec":
 		result, sub, ok = func_exec(values, binding)
 
 	case "eval":
-		result, sub, ok = func_eval(values, binding)
+		result, sub, ok = func_eval(values, binding, locally)
 
 	case "env":
 		result, sub, ok = func_env(values, binding)
@@ -103,9 +111,11 @@ func (e CallExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) 
 	case "num_ip":
 		result, sub, ok = func_numIP(values, binding)
 
+	case "list_to_map":
+		result, sub, ok = func_list_to_map(e.Arguments[0], values, binding)
+
 	default:
-		info.Issue = yaml.NewIssue("unknown function '%s'", funcName)
-		return nil, info, false
+		return info.Error("unknown function '%s'", funcName)
 	}
 
 	if ok && (result == nil || isExpression(result)) {

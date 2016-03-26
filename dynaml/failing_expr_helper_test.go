@@ -2,6 +2,6 @@ package dynaml
 
 type FailingExpr struct{}
 
-func (FailingExpr) Evaluate(Binding) (interface{}, EvaluationInfo, bool) {
+func (FailingExpr) Evaluate(Binding, bool) (interface{}, EvaluationInfo, bool) {
 	return nil, DefaultInfo(), false
 }

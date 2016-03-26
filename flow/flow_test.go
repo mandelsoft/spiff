@@ -266,7 +266,7 @@ foo: (( auto ))
 						Node: yaml.IssueNode(yaml.NewNode(
 							dynaml.AutoExpr{Path: []string{"foo"}},
 							"test",
-						), yaml.NewIssue("auto only allowed for size entry in resource pools")),
+						), true, false, yaml.NewIssue("auto only allowed for size entry in resource pools")),
 						Context: []string{"foo"},
 						Path:    []string{"foo"},
 					},
@@ -1298,6 +1298,33 @@ properties:
     - d
 `)
 
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("merges merged map into list", func() {
+			source := parseYAML(`
+---
+properties:
+  something:
+    - a
+    - <<: (( map ))
+      foo: bar
+    - b
+  map:
+    alice: bob
+`)
+
+			resolved := parseYAML(`
+---
+properties:
+  something:
+    - a
+    - alice: bob
+      foo: bar
+    - b
+  map:
+    alice: bob
+`)
 			Expect(source).To(FlowAs(resolved))
 		})
 
@@ -2607,6 +2634,155 @@ foo:
 		})
 	})
 
+	Describe("when calling uniq", func() {
+		It("omits duplicates", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- b
+- a
+- c
+- a
+- b
+- 0
+- "0"
+uniq: (( uniq(list) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- b
+- a
+- c
+- a
+- b
+- 0
+- "0"
+uniq:
+- a
+- b
+- c
+- 0
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling contains", func() {
+		It("finds ints", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- b
+- 0
+- c
+contains: (( contains(list, "0") ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- b
+- 0
+- c
+
+contains: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("finds string", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- b
+- "0"
+- c
+contains: (( contains(list, "0") ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- b
+- "0"
+- c
+
+contains: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("works for no match", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- b
+- 0
+- c
+contains: (( contains(list, "d") ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- b
+- 0
+- c
+
+contains: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when matching regexps", func() {
+		It("matches strings", func() {
+			source := parseYAML(`
+---
+match: (( match("^f.*r$","foobar") ))
+`)
+			resolved := parseYAML(`
+---
+match:
+  - foobar
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("matches non-matching strings", func() {
+			source := parseYAML(`
+---
+match: (( match("^f.*r$","foobal") ))
+`)
+			resolved := parseYAML(`
+---
+match: []
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("matches sub expressions strings", func() {
+			source := parseYAML(`
+---
+match: (( match("^(f.*)(b.*)$","foobar") ))
+`)
+			resolved := parseYAML(`
+---
+match:
+  - foobar
+  - foo
+  - bar
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
 	Describe("calling length", func() {
 		It("calculates string length", func() {
 			source := parseYAML(`
@@ -2814,6 +2990,95 @@ list:
 msg: |+
   - alice
   - bob
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when transforming a list to a map", func() {
+		It("handles standard key", func() {
+			source := parseYAML(`
+---
+list:
+  - name: alice
+    age: 24
+  - name: bob
+    age: 30
+
+map: (( list_to_map(list) ))
+
+`)
+			resolved := parseYAML(`
+---
+list:
+  - name: alice
+    age: 24
+  - name: bob
+    age: 30
+
+map:
+  alice:
+    age: 24
+  bob:
+    age: 30
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles inline key", func() {
+			source := parseYAML(`
+---
+list:
+  - key:key: alice
+    age: 24
+  - key: bob
+    age: 30
+
+map: (( list_to_map(list) ))
+
+`)
+			resolved := parseYAML(`
+---
+list:
+  - key: alice
+    age: 24
+  - key: bob
+    age: 30
+
+map:
+  alice:
+    age: 24
+  bob:
+    age: 30
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles explicit key", func() {
+			source := parseYAML(`
+---
+list:
+  - key: alice
+    age: 24
+  - key: bob
+    age: 30
+
+map: (( list_to_map(list,"key") ))
+
+`)
+			resolved := parseYAML(`
+---
+list:
+  - key: alice
+    age: 24
+  - key: bob
+    age: 30
+
+map:
+  alice:
+    age: 24
+  bob:
+    age: 30
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
@@ -3089,8 +3354,495 @@ mapped:
 		})
 	})
 
+	Describe("when doing a sum", func() {
+		Context("for a list", func() {
+			It("sums simple expression", func() {
+				source := parseYAML(`
+---
+list:
+  - 1
+  - 2
+sum: (( sum[list|0|s,x|->s + x] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - 1
+  - 2
+sum: 3
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("sums provides index and value", func() {
+				source := parseYAML(`
+---
+list:
+  - 1
+  - 2
+  - 3
+sum: (( sum[list|0|s,i,x|->s + i * x] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - 1
+  - 2
+  - 3
+sum: 8
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("works with failing expressions", func() {
+				source := parseYAML(`
+---
+list:
+  - 1
+  - 2
+sum: (( sum[list|0|s,x|->s + x + y] || "failed" ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - 1
+  - 2
+sum: failed
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("maps with referenced expression", func() {
+				source := parseYAML(`
+---
+map: "|s,x|->s + x"
+list:
+  - 1
+  - 2
+sum: (( sum[list|0|lambda map] ))
+`)
+				resolved := parseYAML(`
+---
+map: "|s,x|->s + x"
+list:
+  - 1
+  - 2
+sum: 3
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("for a map", func() {
+			It("sums simple expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 1
+  bob: 2
+sum: (( sum[map|0|s,x|->s + x] ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 1
+  bob: 2
+sum: 3
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("sums provides access to key", func() {
+				source := parseYAML(`
+---
+factors:
+  alice: 2
+  bob: 3
+map:
+  alice: 1
+  bob: 2
+sum: (( sum[map|0|s,k,x|->s + eval("factors." k) * x] ))
+`)
+				resolved := parseYAML(`
+---
+factors:
+  alice: 2
+  bob: 3
+map:
+  alice: 1
+  bob: 2
+sum: 8
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
 	Describe("using templates", func() {
-		Context("direct usage", func() {
+		Context("direct usage in list", func() {
+			It("uses usage context", func() {
+				source := parseYAML(`
+---
+templ: (( &template ( a + 1 ) ))
+foo:
+  a: 2
+  bar: (( *templ ))
+`)
+
+				resolved, _ := Flow(parseYAML(`
+---
+templ: (( &template ( a + 1 ) ))
+foo:
+  a: 2
+  bar: 3
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("direct usage in list", func() {
+			It("uses usage context", func() {
+				source := parseYAML(`
+---
+verb: hates
+
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verb " alice" ))
+
+use:
+  verb: loves
+  subst: (( *foo.bar ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verb " alice" ))
+use:
+  subst:
+    - loves alice
+  verb: loves
+verb: hates
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("uses usage context without falling back to default", func() {
+				source := parseYAML(`
+---
+verb: hates
+
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verb " alice" ))
+
+use:
+  verb: loves
+  subst: (( *foo.bar || "failed" ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verb " alice" ))
+use:
+  subst:
+    - loves alice
+  verb: loves
+verb: hates
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("handles independent usage", func() {
+				source := parseYAML(`
+---
+verb: hates
+
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verb " alice" ))
+
+use1:
+  verb: loves
+  subst: (( *foo.bar || "failed" ))
+use2:
+  verb: works
+  subst: (( *foo.bar || "failed" ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verb " alice" ))
+use1:
+  subst:
+    - loves alice
+  verb: loves
+use2:
+  subst:
+    - works alice
+  verb: works
+verb: hates
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("defaults failures", func() {
+				source := parseYAML(`
+---
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verb " alice" ))
+
+use:
+  subst: (( *foo.bar || "failed" ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verb " alice" ))
+use:
+  subst: failed
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("defaults deep failures", func() {
+				source := parseYAML(`
+---
+verbs: (( merge || nil ))
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verbs.verb " alice" ))
+
+use:
+  subst: (( *foo.bar || "failed" ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+verbs: ~
+foo:
+  bar:
+    - <<: (( &template ))
+    - (( verbs.verb " alice" ))
+use:
+  subst: failed
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("merges list templates", func() {
+				source := parseYAML(`
+---
+foo:
+  bar:
+  - <<: (( &template ))
+  - (( verb " alice" ))
+
+use:
+  verb: loves
+  subst:
+  - a
+  - <<: (( *foo.bar || "failed" ))
+  - b
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+foo:
+  bar:
+  - <<: (( &template ))
+  - (( verb " alice" ))
+use:
+  verb: loves
+  subst:
+  - a
+  - loves alice
+  - b
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("list template overriding", func() {
+			It("overrides template substitution expression", func() {
+				source := parseYAML(`
+---
+templ:
+  - <<: (( &template ))
+  - name: foo
+    attr: 24
+  - name: bar
+    attr: 25
+
+inst: (( *templ ))
+`)
+				stub := parseYAML(`
+---
+inst:
+  - name: foo
+    add: all
+    attr: 34
+  - name: alice
+    attr: 35
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ:
+  - <<: (( &template ))
+  - name: foo
+    attr: 24
+  - name: bar
+    attr: 25
+
+inst:
+  - name: foo
+    add: all
+    attr: 34
+  - name: alice
+    attr: 35
+`))
+				Expect(source).To(FlowAs(resolved, stub))
+			})
+
+			It("overrides template substitution", func() {
+				source := parseYAML(`
+---
+templ:
+  - <<: (( &template ))
+  - name: foo
+    attr: 24
+  - name: bar
+    attr: 25
+
+inst: (( prefer *templ ))
+`)
+				stub := parseYAML(`
+---
+inst:
+  - name: foo
+    add: all
+    attr: 34
+  - name: alice
+    attr: 35
+
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ:
+  - <<: (( &template ))
+  - name: foo
+    attr: 24
+  - name: bar
+    attr: 25
+
+inst:
+  - name: foo
+    attr: 34
+  - name: bar
+    attr: 25
+`))
+				Expect(source).To(FlowAs(resolved, stub))
+			})
+
+			It("inserts into template substitution", func() {
+				source := parseYAML(`
+---
+templ:
+  - <<: (( &template ))
+  - name: foo
+    <<: (( merge ))
+    attr: 24
+  - name: bar
+    attr: 25
+
+inst: (( prefer *templ ))
+`)
+				stub := parseYAML(`
+---
+inst:
+  - name: foo
+    add: all
+    attr: 34
+  - name: alice
+    attr: 35l
+
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ:
+  - <<: (( &template ))
+  - name: foo
+    <<: (( merge ))
+    attr: 24
+  - name: bar
+    attr: 25
+
+inst:
+  - name: foo
+    add: all
+    attr: 34
+  - name: bar
+    attr: 25
+`))
+				Expect(source).To(FlowAs(resolved, stub))
+			})
+
+			It("supports extended marker", func() {
+				source := parseYAML(`
+---
+templ:
+  - <<: (( &template (merge) ))
+  - name: foo
+    attr: 24
+  - name: bar
+    attr: 25
+
+inst: (( prefer *templ ))
+`)
+				stub := parseYAML(`
+---
+inst:
+  - name: foo
+    add: all
+    attr: 34
+  - name: alice
+    attr: 35
+
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ:
+  - <<: (( &template (merge) ))
+  - name: foo
+    attr: 24
+  - name: bar
+    attr: 25
+
+inst:
+  - name: alice
+    attr: 35
+  - name: foo
+    attr: 34
+  - name: bar
+    attr: 25
+`))
+				Expect(source).To(FlowAs(resolved, stub))
+			})
+		})
+
+		Context("direct usage for map", func() {
 			It("uses usage context", func() {
 				source := parseYAML(`
 ---
@@ -3248,6 +4000,146 @@ use:
   subst: failed
 `))
 				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("map template overriding", func() {
+			It("overrides template substitution expression", func() {
+				source := parseYAML(`
+---
+templ:
+  <<: (( &template ))
+  foo:
+    bar: x
+
+inst: (( *templ ))
+`)
+				stub := parseYAML(`
+---
+inst:
+  bar: a 
+  foo:
+    bar: b 
+    add: all
+
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ:
+  <<: (( &template ))
+  foo:
+    bar: x
+
+inst:
+  bar: a 
+  foo:
+    bar: b 
+    add: all
+`))
+				Expect(source).To(FlowAs(resolved, stub))
+			})
+
+			It("overrides template substitution", func() {
+				source := parseYAML(`
+---
+templ:
+  <<: (( &template ))
+  foo:
+    bar: x
+
+inst: (( prefer *templ ))
+`)
+				stub := parseYAML(`
+---
+inst:
+  bar: a 
+  foo:
+    bar: b 
+    add: all
+
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ:
+  <<: (( &template ))
+  foo:
+    bar: x
+
+inst:
+  foo:
+    bar: b 
+`))
+				Expect(source).To(FlowAs(resolved, stub))
+			})
+
+			It("inserts into template substitution", func() {
+				source := parseYAML(`
+---
+templ:
+  <<: (( &template ))
+  foo:
+    <<: (( merge ))
+    bar: x
+
+inst: (( prefer *templ ))
+`)
+				stub := parseYAML(`
+---
+inst:
+  bar: a 
+  foo:
+    bar: b 
+    add: all
+
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ:
+  <<: (( &template ))
+  foo:
+    <<: (( merge ))
+    bar: x
+
+inst:
+  foo:
+    add: all
+    bar: b 
+`))
+				Expect(source).To(FlowAs(resolved, stub))
+			})
+
+			It("supports extended marker", func() {
+				source := parseYAML(`
+---
+templ:
+  <<: (( &template (merge) ))
+  foo:
+    bar: x
+
+inst: (( prefer *templ ))
+`)
+				stub := parseYAML(`
+---
+inst:
+  bar: a 
+  foo:
+    bar: b 
+    add: all
+
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ:
+  <<: (( &template (merge) ))
+  foo:
+    bar: x
+
+inst:
+  bar: a 
+  foo:
+    bar: b 
+`))
+				Expect(source).To(FlowAs(resolved, stub))
 			})
 		})
 

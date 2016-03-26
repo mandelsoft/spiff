@@ -14,10 +14,13 @@ type Node interface {
 	Value() interface{}
 	SourceName() string
 	RedirectPath() []string
+	Temporary() bool
 	ReplaceFlag() bool
 	Preferred() bool
 	Merged() bool
 	KeyName() string
+	HasError() bool
+	Failed() bool
 	Issue() Issue
 
 	GetAnnotation() Annotation
@@ -41,10 +44,13 @@ func NewIssue(msg string, args ...interface{}) Issue {
 
 type Annotation struct {
 	redirectPath []string
+	temporary    bool
 	replace      bool
 	preferred    bool
 	merged       bool
 	keyName      string
+	error        bool
+	failed       bool
 	issue        Issue
 }
 
@@ -52,6 +58,9 @@ func NewNode(value interface{}, sourcePath string) Node {
 	return AnnotatedNode{massageType(value), sourcePath, EmptyAnnotation()}
 }
 
+func ReplaceValue(value interface{}, node Node) Node {
+	return AnnotatedNode{value, node.SourceName(), node.GetAnnotation()}
+}
 func ReferencedNode(node Node) Node {
 	return AnnotatedNode{node.Value(), node.SourceName(), NewReferencedAnnotation(node)}
 }
@@ -80,8 +89,12 @@ func KeyNameNode(node Node, keyName string) Node {
 	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().AddKeyName(keyName)}
 }
 
-func IssueNode(node Node, issue Issue) Node {
-	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().AddIssue(issue)}
+func IssueNode(node Node, error bool, failed bool, issue Issue) Node {
+	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().AddIssue(error, failed, issue)}
+}
+
+func TemporaryNode(node Node) Node {
+	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().SetTemporary()}
 }
 
 func massageType(value interface{}) interface{} {
@@ -93,15 +106,19 @@ func massageType(value interface{}) interface{} {
 }
 
 func EmptyAnnotation() Annotation {
-	return Annotation{nil, false, false, false, "", Issue{}}
+	return Annotation{nil, false, false, false, false, "", false, false, Issue{}}
 }
 
 func NewReferencedAnnotation(node Node) Annotation {
-	return Annotation{nil, false, false, false, node.KeyName(), node.Issue()}
+	return Annotation{nil, false, false, false, false, node.KeyName(), node.HasError(), node.Failed(), node.Issue()}
 }
 
 func (n Annotation) RedirectPath() []string {
 	return n.redirectPath
+}
+
+func (n Annotation) Temporary() bool {
+	return n.temporary
 }
 
 func (n Annotation) ReplaceFlag() bool {
@@ -120,8 +137,21 @@ func (n Annotation) KeyName() string {
 	return n.keyName
 }
 
+func (n Annotation) HasError() bool {
+	return n.error
+}
+
+func (n Annotation) Failed() bool {
+	return n.failed
+}
+
 func (n Annotation) Issue() Issue {
 	return n.issue
+}
+
+func (n Annotation) SetTemporary() Annotation {
+	n.temporary = true
+	return n
 }
 
 func (n Annotation) SetRedirectPath(redirect []string) Annotation {
@@ -151,10 +181,12 @@ func (n Annotation) AddKeyName(keyName string) Annotation {
 	return n
 }
 
-func (n Annotation) AddIssue(issue Issue) Annotation {
+func (n Annotation) AddIssue(error bool, failed bool, issue Issue) Annotation {
 	if issue.Issue != "" {
 		n.issue = issue
 	}
+	n.error = error
+	n.failed = failed
 	return n
 }
 

@@ -2,7 +2,7 @@ package dynaml
 
 type NilExpr struct{}
 
-func (e NilExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e NilExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	return nil, DefaultInfo(), true
 }
 

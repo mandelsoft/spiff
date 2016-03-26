@@ -8,7 +8,7 @@ type StringExpr struct {
 	Value string
 }
 
-func (e StringExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e StringExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	return e.Value, DefaultInfo(), true
 }
 

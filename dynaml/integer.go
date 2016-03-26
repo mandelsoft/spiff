@@ -8,7 +8,7 @@ type IntegerExpr struct {
 	Value int64
 }
 
-func (e IntegerExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e IntegerExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	return e.Value, DefaultInfo(), true
 }
 

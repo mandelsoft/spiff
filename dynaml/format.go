@@ -17,8 +17,7 @@ func format(name string, arguments []interface{}, binding Binding) (interface{},
 	info := DefaultInfo()
 
 	if len(arguments) < 1 {
-		info.Issue = yaml.NewIssue("alt least one argument required for '%s'", name)
-		return nil, info, false
+		return info.Error("alt least one argument required for '%s'", name)
 	}
 
 	args := make([]interface{}, len(arguments))
@@ -51,8 +50,7 @@ func format(name string, arguments []interface{}, binding Binding) (interface{},
 
 	f, ok := args[0].(string)
 	if !ok {
-		info.Issue = yaml.NewIssue("%s: format must be string", format)
-		return nil, info, false
+		return info.Error("%s: format must be string", format)
 	}
 	return fmt.Sprintf(f, args[1:]...), info, true
 }

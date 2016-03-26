@@ -7,7 +7,7 @@ func (e CallExpr) defined(binding Binding) (interface{}, EvaluationInfo, bool) {
 
 	copy(pushed, e.Arguments)
 	for i, _ := range pushed {
-		_, _, ok = ResolveExpressionOrPushEvaluation(&pushed[i], &resolved, nil, binding)
+		_, _, ok = ResolveExpressionOrPushEvaluation(&pushed[i], &resolved, nil, binding, true)
 		if resolved && !ok {
 			return false, DefaultInfo(), true
 		}

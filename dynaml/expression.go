@@ -6,7 +6,7 @@ import (
 
 type Status interface {
 	error
-	Issue(string) yaml.Issue
+	Issue(fmt string, args ...interface{}) (issue yaml.Issue, localError bool, failed bool)
 	HasError() bool
 }
 
@@ -35,11 +35,14 @@ type Binding interface {
 
 type EvaluationInfo struct {
 	RedirectPath []string
+	Temporary    bool
 	Replace      bool
 	Merged       bool
 	Preferred    bool
 	KeyName      string
 	Source       string
+	LocalError   bool
+	Failed       bool
 	Issue        yaml.Issue
 }
 
@@ -48,11 +51,25 @@ func (e EvaluationInfo) SourceName() string {
 }
 
 func DefaultInfo() EvaluationInfo {
-	return EvaluationInfo{nil, false, false, false, "", "", yaml.Issue{}}
+	return EvaluationInfo{nil, false, false, false, false, "", "", false, false, yaml.Issue{}}
 }
 
 type Expression interface {
-	Evaluate(Binding) (interface{}, EvaluationInfo, bool)
+	Evaluate(Binding, bool) (interface{}, EvaluationInfo, bool)
+}
+
+func (i *EvaluationInfo) Error(msgfmt interface{}, args ...interface{}) (interface{}, EvaluationInfo, bool) {
+	i.LocalError = true
+	i.Issue = yaml.NewIssue(msgfmt.(string), args...)
+	return nil, *i, false
+}
+
+func (i *EvaluationInfo) PropagateError(value interface{}, state Status, msgfmt string, args ...interface{}) (interface{}, EvaluationInfo, bool) {
+	i.Issue, i.LocalError, i.Failed = state.Issue(msgfmt, args...)
+	if i.LocalError {
+		value = nil
+	}
+	return value, *i, !i.LocalError
 }
 
 func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {
@@ -68,11 +85,18 @@ func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {
 	if o.Issue.Issue != "" {
 		i.Issue = o.Issue
 	}
+	if o.LocalError {
+		i.LocalError = true
+	}
+	if o.Failed {
+		i.Failed = true
+	}
+	i.Temporary = i.Temporary || o.Temporary
 	return i
 }
 
-func ResolveExpressionOrPushEvaluation(e *Expression, resolved *bool, info *EvaluationInfo, binding Binding) (interface{}, EvaluationInfo, bool) {
-	val, infoe, ok := (*e).Evaluate(binding)
+func ResolveExpressionOrPushEvaluation(e *Expression, resolved *bool, info *EvaluationInfo, binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
+	val, infoe, ok := (*e).Evaluate(binding, locally)
 	if info != nil {
 		infoe = (*info).Join(infoe)
 	}
@@ -89,8 +113,8 @@ func ResolveExpressionOrPushEvaluation(e *Expression, resolved *bool, info *Eval
 	}
 }
 
-func ResolveIntegerExpressionOrPushEvaluation(e *Expression, resolved *bool, info *EvaluationInfo, binding Binding) (int64, EvaluationInfo, bool) {
-	value, infoe, ok := ResolveExpressionOrPushEvaluation(e, resolved, info, binding)
+func ResolveIntegerExpressionOrPushEvaluation(e *Expression, resolved *bool, info *EvaluationInfo, binding Binding, locally bool) (int64, EvaluationInfo, bool) {
+	value, infoe, ok := ResolveExpressionOrPushEvaluation(e, resolved, info, binding, locally)
 
 	if value == nil {
 		return 0, infoe, ok
@@ -105,7 +129,7 @@ func ResolveIntegerExpressionOrPushEvaluation(e *Expression, resolved *bool, inf
 	}
 }
 
-func ResolveExpressionListOrPushEvaluation(list *[]Expression, resolved *bool, info *EvaluationInfo, binding Binding) ([]interface{}, EvaluationInfo, bool) {
+func ResolveExpressionListOrPushEvaluation(list *[]Expression, resolved *bool, info *EvaluationInfo, binding Binding, locally bool) ([]interface{}, EvaluationInfo, bool) {
 	values := make([]interface{}, len(*list))
 	pushed := make([]Expression, len(*list))
 	infoe := EvaluationInfo{}
@@ -114,7 +138,7 @@ func ResolveExpressionListOrPushEvaluation(list *[]Expression, resolved *bool, i
 	copy(pushed, *list)
 
 	for i, _ := range pushed {
-		values[i], infoe, ok = ResolveExpressionOrPushEvaluation(&pushed[i], resolved, info, binding)
+		values[i], infoe, ok = ResolveExpressionOrPushEvaluation(&pushed[i], resolved, info, binding, locally)
 		info = &infoe
 		if !ok {
 			return nil, infoe, false

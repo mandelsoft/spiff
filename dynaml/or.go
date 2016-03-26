@@ -10,8 +10,8 @@ type OrExpr struct {
 	B Expression
 }
 
-func (e OrExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
-	a, infoa, ok := e.A.Evaluate(binding)
+func (e OrExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
+	a, infoa, ok := e.A.Evaluate(binding, false)
 	if ok {
 		if reflect.DeepEqual(a, e.A) {
 			return nil, infoa, false
@@ -22,7 +22,7 @@ func (e OrExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
 		return a, infoa, true
 	}
 
-	b, infob, ok := e.B.Evaluate(binding)
+	b, infob, ok := e.B.Evaluate(binding, false)
 	return b, infoa.Join(infob), ok
 }
 

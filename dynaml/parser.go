@@ -10,7 +10,7 @@ import (
 
 type helperNode struct{}
 
-func (e helperNode) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e helperNode) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	panic("not intended to be evaluated")
 }
 
@@ -61,8 +61,18 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 		switch token.pegRule {
 		case ruleDynaml:
 			return tokens.Pop()
-		case ruleTemplate:
-			return TemplateExpr{}
+
+		case ruleMarker:
+			tokens.Push(newMarkerExpr(contents))
+		case ruleSubsequentMarker:
+			tokens.Pop()
+			tokens.Push(tokens.Pop().(MarkerExpr).add(contents))
+		case ruleMarkedExpression:
+			rhs := tokens.Pop()
+			if _, ok := rhs.(MarkerExpr); !ok {
+				rhs = tokens.Pop().(MarkerExpr).setExpression(rhs)
+			}
+			tokens.Push(rhs)
 		case rulePrefer:
 			tokens.Push(PreferExpr{tokens.Pop()})
 		case ruleAuto:
@@ -202,6 +212,12 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			rhs := tokens.Pop()
 			lhs := tokens.Pop()
 			tokens.Push(MapExpr{Lambda: rhs, A: lhs})
+
+		case ruleSum:
+			rhs := tokens.Pop()
+			ini := tokens.Pop()
+			lhs := tokens.Pop()
+			tokens.Push(SumExpr{Lambda: rhs, A: lhs, I: ini})
 
 		case ruleLambda:
 

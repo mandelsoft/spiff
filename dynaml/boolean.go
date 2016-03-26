@@ -8,7 +8,7 @@ type BooleanExpr struct {
 	Value bool
 }
 
-func (e BooleanExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e BooleanExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	return e.Value, DefaultInfo(), true
 }
 

@@ -53,6 +53,9 @@ Contents:
 		- [(( join( ", ", list) ))](#-join---list-)
 		- [(( split( ",", string) ))](#-split--string-)
 		- [(( trim(string) ))](#-trimstring-)
+		- [(( uniq(list) ))](#-uniqlist-)
+		- [(( contains(list, "foobar") ))](#-containslist-foobar-)
+		- [(( match("(f.*)(b.*)", "xxxfoobar") ))](#-matchfb-xxxfoobar-)
 		- [(( length(list) ))](#-lengthlist-)
 		- [(( defined(foobar) ))](#-definedfoobar-)
 		- [(( exec( "command", arg1, arg2) ))](#-exec-command-arg1-arg2-)
@@ -60,11 +63,17 @@ Contents:
 		- [(( env( "HOME" ) ))](#-env-HOME--)
 		- [(( read("file.yml") ))](#-readfileyml-)
 		- [(( static_ips(0, 1, 3) ))](#-static_ips0-1-3-)
+		- [(( list_to_map(list, "key") ))](#-list_to_maplist-key-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
+	- [(( &temporary ))](#-temporary-)
 	- [Mappings](#mappings)
 		- [(( map[list|elem|->dynaml-expr] ))](#-maplistelem-dynaml-expr-)
 		- [(( map[list|idx,elem|->dynaml-expr] ))](#-maplistidxelem-dynaml-expr-)
 		- [(( map[map|key,value|->dynaml-expr] ))](#-mapmapkeyvalue-dynaml-expr-)
+	- [Aggregations](#aggregations)
+		- [(( sum[list|initial|sum,elem|->dynaml-expr] ))](#-sumlistinitialsumelem-dynaml-expr-)
+		- [(( sum[list|initial|sum,idx,elem|->dynaml-expr] ))](#-sumlistinitialsumidxelem-dynaml-expr-)
+		- [(( sum[map|initial|sum,key,value|->dynaml-expr] ))](#-summapinitialsumkeyvalue-dynaml-expr-)
 	- [Templates](#templates)
 		- [<<: (( &template ))](#--template-)
 		- [(( *foo.bar ))](#-foobar-)
@@ -84,7 +93,7 @@ Some of spiff's dependencies have changed since the last official release, and s
 
 # Usage
 
-### `spiff merge template.yml [template2.ymll ...]`
+### `spiff merge template.yml [template2.yml ...]`
 
 Merge a bunch of template files into one manifest, printing it out.
 
@@ -97,6 +106,8 @@ spiff merge cf-release/templates/cf-deployment.yml my-cloud-stub.yml
 ```
 
 The ` merge` command offers the option `--partial`. If this option is given spiff handles incomplete expression evaluation. All errors are ignored and the unresolvable parts of the yaml document are returned as strings.
+
+It is possible to read one file from standard input by using the file name `-`. It may be used only once. This allows using spiff as part of a pipeline to just process a single stream or to process a stream based on several templates/stubs.
 
 ### `spiff diff manifest.yml other-manifest.yml`
 
@@ -768,7 +779,7 @@ num: 192.168.0.0+256=192.168.1.0
 ## `(( a > 1 ? foo :bar ))`
 
 Dynaml supports the comparison operators `<`, `<=`, `==`, `!=`, `>=` and `>`. The comparison operators work on
-integer values. The check for equality also works on lists and maps. The result is always a boolean value.
+integer values. The checks for equality also work on lists and maps. The result is always a boolean value. To negate a condition the unary not opertor (`!`) can be used.
 
 Additionally there is the ternary conditional operator `?:`, that can be used to evaluate expressions depending on a condition. The first operand is used as condition. The expression is evaluated to the second operand, if the condition is true, and to the third one, otherwise.
 
@@ -785,13 +796,13 @@ yields the value `bob` for the property `name`.
 
 **Remark**
 
-The use of the symbol `:` may collide with the yaml syntax, if the complete expression is not a quoated string value.
+The use of the symbol `:` may collide with the yaml syntax, if the complete expression is not a quoted string value.
 
 The operators `-or` and `-and` can be used to combine comparison operators to compose more complex conditions.
 
 **Remark:**
 
-The more traditional operator symbol `||` (and `&&`) cannot be used here, because the operator `||` already exists in dynam with a different semantic, that does not hold for logical operations. The expression `false || true` evaluates to `false`, because it yields the first operand, if it is defined, regardless of its value. To be as compatible as possible this cannot be changed and the bare symbols `or` and `and` cannot be be used, because this would invalidate the concatenation of references with such names. 
+The more traditional operator symbol `||` (and `&&`) cannot be used here, because the operator `||` already exists in dynaml with a different semantic, that does not hold for logical operations. The expression `false || true` evaluates to `false`, because it yields the first operand, if it is defined, regardless of its value. To be as compatible as possible this cannot be changed and the bare symbols `or` and `and` cannot be be used, because this would invalidate the concatenation of references with such names. 
 
 ## `(( 5 -or 6 ))`
 
@@ -863,6 +874,78 @@ yields:
 list:
   - alice
   - bob
+```
+
+### `(( uniq(list) ))`
+
+Uniq provides a list without dupliates.
+
+e.g.:
+
+```yaml
+list:
+- a
+- b
+- a
+- c
+- a
+- b
+- 0
+- "0"
+uniq: (( uniq(list) ))
+```
+
+yields for field `uniq`:
+
+```yaml
+uniq:
+- a
+- b
+- c
+- 0
+```
+
+### `(( contains(list, "foobar") ))`
+
+Checks whether a list contains a dedicated value. Values might also be lists or maps.
+
+e.g.:
+
+```yaml
+list:
+  - foo
+  - bar
+  - foobar
+contains: (( contains(list, "foobar") ))
+```
+
+yields:
+
+```yaml
+list:
+  - foo
+  - bar
+  - foobar
+contains: true
+```
+
+### `(( match("(f.*)(b.*)", "xxxfoobar") ))`
+
+Returns the match of a regular expression for a given string value. The match is a list of the matched values for the sub expressions contained in the regular expression. Index 0 refers to the match of the complete regular expression. If the string value does not match an empty list is returned.
+
+e.g.:
+
+```yaml
+matches: (( match("(f.*)*(b.*)", "xxxfoobar") ))
+```
+
+yields:
+
+```yaml
+matches:
+- foobar
+- foo
+- bar
 ```
 
 ### `(( length(list) ))`
@@ -985,6 +1068,7 @@ If the file suffix is `.yml`, by default the yaml type is used. An optional seco
 to explicitly specifiy the desired return type: `yaml` or `text`.
 
 #### yaml documents
+
 A yaml document will be parsed and the tree is returned. The  elements of the tree can be accessed by regular dynaml expressions.
 
 Additionally the yaml file may again contain dynaml expressions. All included dynaml expressions will be evaluated in the context of the reading expression. This means that the same file included at different places in a yaml document may result in different sub trees, depending on the used dynaml expressions. 
@@ -1130,6 +1214,40 @@ networks:
   type: manual
 ```
 
+### `(( list_to_map(list, "key") ))`
+
+A list of map entries with explicit name/key fields will be mapped to a map with the dedicated keys. By default the key field `name` is used, which can changed by the optional second argument. An explicitly denoted key field in the list will also be taken into account.
+
+e.g.:
+
+```yaml
+list:
+  - key:foo: alice
+    age: 24
+  - foo: bob
+    age: 30
+
+map: (( list_to_map(list) ))
+```
+
+will be mapped to
+
+```yaml
+list:
+  - foo: alice
+    age: 24
+  - foo: bob
+    age: 30
+
+map:
+  alice:
+    age: 24
+  bob:
+    age: 30
+```
+
+In combination with templates and lambda expressions this can be used to generate maps with arbitrarily named key values, although dynaml expressions are not allowed for key values.
+
 ## `(( lambda |x|->x ":" port ))`
 
 Lambda expressions can be used to define additional anonymous functions. They can be assigned to yaml nodes as values and referenced with path expressions to call the function with approriate arguments in other dynaml expressions. For the final document they are mapped to string values.
@@ -1147,7 +1265,7 @@ string: "|x|->x \":\" port"
 lvalue: (( lambda string ))
 ```
 
-evaluates an expression to a function or a string. If the expression is evaluated to a string it parses the function from the string.
+evaluates the result of an expression to a function. The expression must evaluate to a function or string. If the expression is evaluated to a string it parses the function from the string.
 
 Since the evaluation result of a lambda expression is a regular value, it can also be passed as argument to function calls and merged as value along stub processing.
 
@@ -1212,9 +1330,50 @@ value: (( .mult2(3) ))
 
 If a complete expression is a lambda expression the keyword `lambda` can be omitted.
 
+## `(( &temporary ))`
+
+Maps, lists or simple value nodes can be marked as *temporary*. Temporary nodes are removed from the final output document, but are available during merging and dynaml evaluation.
+
+e.g.:
+
+```yaml
+temp:
+  <<: (( &temporary ))
+  foo: bar
+
+value: (( temp.foo ))
+```
+
+yields:
+
+```yaml
+value: bar
+```
+Adding `- <<: (( &temporary ))` to a list can be used to mark a list as temporary.
+
+The temporary marker can be combined with regular dynaml expressions to tag plain fields. Hereby the
+parenthesised expression is just appended to the marker
+
+e.g.:
+
+```yaml
+data:
+  alice: (( &temporary ( "bar" ) ))
+  foo: (( alice ))
+```
+
+yields:
+
+```yaml
+data:
+  foo: bar
+```
+
+The temporary marker can be combined with the [template marker](#templates) to omit templates from the final output.
+
 ## Mappings
 
-Mappings are used to produce a new list from the entries of a _list_ or _map_ containing the entries processed by a dynaml expression. The expression is given by a [lambda function](#-lambda-x-x--port-). There are two basic forms of the mapping function: It can be inlined as in`(( map[list|x|->x ":" port] ))`, or it can be determined by a regular dynaml expression evaluating to a lambda function as in `(( map[list|mapping.expression))` (here the mapping is taken from the property `mapping.expression`, which should hold an approriate lambda function).
+Mappings are used to produce a new list from the entries of a _list_ or _map_ containing the entries processed by a dynaml expression. The expression is given by a [lambda function](#-lambda-x-x--port-). There are two basic forms of the mapping function: It can be inlined as in `(( map[list|x|->x ":" port] ))`, or it can be determined by a regular dynaml expression evaluating to a lambda function as in `(( map[list|mapping.expression))` (here the mapping is taken from the property `mapping.expression`, which should hold an approriate lambda function).
 
 
 ### `(( map[list|elem|->dynaml-expr] ))`
@@ -1322,6 +1481,85 @@ keys:
 - bob
 ```
 
+## Aggregations
+
+Aggregations are used to produce a single result from the entries of a _list_ or _map_ aggregating the entries by a dynaml expression. The expression is given by a [lambda function](#-lambda-x-x--port-). There are two basic forms of the aggregation function: It can be inlined as in `(( sum[list|0|s,x|->s + x] ))`, or it can be determined by a regular dynaml expression evaluating to a lambda function as in `(( sum[list|0|aggregation.expression))` (here the aggregation function  is taken from the property `aggregation.expression`, which should hold an approriate lambda function).
+
+
+### `(( sum[list|initial|sum,elem|->dynaml-expr] ))`
+
+Execute an aggregation expression on members of a list to produce an aggregation result. The first expression (`list`) must resolve to a list. The second expression is used as initial value for the aggregation. The last expression (`s + x`) defines the aggregation expression used to aggregate all members of the given list. Inside this expression an arbitrarily declared simple reference name (here `s`) can be used to access the intermediate aggregation result and a second reference name (here `x`) can be used to access the actually processed list element.
+
+e.g.
+
+```yaml
+list:
+  - 1
+  - 2
+sum: (( sum[list|0|s,x|->s + x] ))
+```
+
+yields
+
+```yaml
+list:
+  - 1
+  - 2
+sum: 3
+```
+
+### `(( sum[list|initial|sum,idx,elem|->dynaml-expr] ))`
+
+In this variant, the second argument `idx` is provided with the index and the
+third `elem` with the value for the index.
+
+e.g.
+
+```yaml
+list:
+  - 1
+  - 2
+  - 3
+	
+prod: (( sum[list|0|s,i,x|->s + i * x ] ))
+```
+ 
+yields
+
+```yaml
+list:
+  - 1
+  - 2
+  - 3
+	
+prod: 8
+```
+
+### `(( sum[map|initial|sum,key,value|->dynaml-expr] ))`
+
+Aggregation of the elements of a map to a single result using an aggregation expression. The expression may have access to the key and/or the value. The first argument is always the intermediate aggregation result. If three references are declared, both values are passed to the expression, the second one is provided with the key and the third one with the value for the key. If two references are declared, only the second one is provided with the value of the map entry.
+
+e.g.
+
+```yaml
+ages:
+  alice: 25
+  bob: 24
+
+sum: (( map[ages|0|s,k,v|->s + v] ))
+
+```
+
+yields
+
+```yaml
+ages:
+  alice: 25
+  bob: 24
+
+sum: 49
+```
+
 ## Templates
 
 A map can be tagged by a dynaml expression to be used as template. Dynaml expressions in a template are not evaluated at its definition location in the document, but can be inserted at other locations using dynaml.
@@ -1341,7 +1579,13 @@ foo:
     bob: (( verb " " alice ))
 ```
 
-The template will be the value of the node `foo.bar`. As such it can be overwritten as a whole by settings in a stub during the merge process. Dynaml expressions in the template are not evaluated.
+The template will be the value of the node `foo.bar`. As such it can be overwritten as a whole by settings in a stub during the merge process. Dynaml expressions in the template are not evaluated. A map can have only a single `<<` field. Therefore it is possible to combine the template marker with an expression just by adding the expression in parenthesis.
+
+Adding `- <<: (( &template ))` to a list it is also possible to define list templates.
+It is also possible to convert a single expression value into a simple template by adding the template
+marker to the expression, for example `foo: (( &template (expression) ))`
+
+The template marker can be combined with the [temporary marker](#-temporary-) to omit templates from the final output.
 
 ### `(( *foo.bar ))`
 
@@ -1864,6 +2108,31 @@ networks:
 	banda:
       bob: loves alice
   ```
+
+- _Aggregations may yield complex values by using templates_
+
+  The expression of an aggregation may return complex values by returning inline lists or instantiated templates. The binding of the function will be available (as usual) for the evaluation of the template. In the example below the aggregation provides a map with both the sum and the product of the list entries containing the integers from 1 to 4.
+
+  e.g.:
+
+  ```yaml
+  sum: (( sum[[1..4]|init|s,e|->*temp] ))
+
+  temp:
+    <<: (( &template ))
+    sum: (( s.sum + e ))
+    prd: (( s.prd * e ))
+  init:
+    sum: 0
+    prd: 1
+	```
+
+  yields for `sum` the value
+  ```
+  sum:
+    prd: 24
+    sum: 10
+  ```
  
 # Error Reporting
 
@@ -1878,14 +2147,28 @@ If a dynaml expression cannot be resolved to a value, it is reported by the
 `spiff merge` operation using the following layout:
 
 ```
-	(( <failed expression> ))	in <file>	<path to node>	(<referred path>)	<issue>
+	(( <failed expression> ))	in <file>	<path to node>	(<referred path>)	<tag><issue>
 ```
 	
 e.g.:
 
 ```	
-	(( min_ip("10") ))	in source.yml	node.a.[0]	()	CIDR argument required
+	(( min_ip("10") ))	in source.yml	node.a.[0]	()	*CIDR argument required
 ```
 	
 Cyclic dependencies are detected by iterative evaluation until the document is unchanged after a step.
-Nodes involved in a cycle are therefore typically reported without an issue.
+Nodes involved in a cycle are therefore typically reported just as unresolved node without a specific issue.
+
+The order of the reported unresolved nodes depends on a classification of the problem, denoted by a dedicated
+tag. The following tags are used (in reporting order):
+
+| Tag | Meaning |
+| --- | ------- |
+| `*` | error in local dynaml expression |
+| `@` | dependent or involved in cyclic dependencies |
+| `-` | subsequent error because of refering to a yaml node with an error |
+
+Problems occuring during inline template processing are reported as nested problems. The classification is
+propagated to the outer node.
+
+ 

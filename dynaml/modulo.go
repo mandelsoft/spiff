@@ -2,8 +2,6 @@ package dynaml
 
 import (
 	"fmt"
-
-	"github.com/cloudfoundry-incubator/spiff/yaml"
 )
 
 type ModuloExpr struct {
@@ -11,15 +9,15 @@ type ModuloExpr struct {
 	B Expression
 }
 
-func (e ModuloExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool) {
+func (e ModuloExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 
-	aint, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.A, &resolved, nil, binding)
+	aint, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.A, &resolved, nil, binding, false)
 	if !ok {
 		return nil, info, false
 	}
 
-	bint, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.B, &resolved, &info, binding)
+	bint, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.B, &resolved, &info, binding, false)
 	if !ok {
 		return nil, info, false
 	}
@@ -29,8 +27,7 @@ func (e ModuloExpr) Evaluate(binding Binding) (interface{}, EvaluationInfo, bool
 	}
 
 	if bint == 0 {
-		info.Issue = yaml.NewIssue("division by zero")
-		return nil, info, false
+		return info.Error("division by zero")
 	}
 	return aint % bint, info, true
 }

@@ -15,14 +15,12 @@ func func_read(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 	info := DefaultInfo()
 
 	if len(arguments) > 2 {
-		info.Issue = yaml.NewIssue("read takes a maximum of two arguments")
-		return nil, info, false
+		return info.Error("read takes a maximum of two arguments")
 	}
 
 	file, ok := arguments[0].(string)
 	if !ok {
-		info.Issue = yaml.NewIssue("string value requiredfor file path")
-		return nil, info, false
+		return info.Error("string value requiredfor file path")
 	}
 
 	t := "text"
@@ -32,8 +30,7 @@ func func_read(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 	if len(arguments) > 1 {
 		t, ok = arguments[1].(string)
 		if !ok {
-			info.Issue = yaml.NewIssue("string value required for type")
-			return nil, info, false
+			return info.Error("string value required for type")
 		}
 
 	}
@@ -45,8 +42,7 @@ func func_read(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 		debug.Debug("reading %s file %s\n", t, file)
 		data, err = ioutil.ReadFile(file)
 		if err != nil {
-			info.Issue = yaml.NewIssue("error reading [%s]: %s", path.Clean(file), err)
-			return nil, info, false
+			return info.Error("error reading [%s]: %s", path.Clean(file), err)
 		}
 		fileCache[file] = data
 	}
@@ -55,15 +51,13 @@ func func_read(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 	case "yaml":
 		node, err := yaml.Parse(file, data)
 		if err != nil {
-			info.Issue = yaml.NewIssue("error parsing stub [%s]: %s", path.Clean(file), err)
-			return nil, info, false
+			return info.Error("error parsing stub [%s]: %s", path.Clean(file), err)
 		}
 		debug.Debug("resolving yaml file\n")
 		result, state := binding.Flow(node, false)
 		if state != nil {
 			debug.Debug("resolving yaml file failed: " + state.Error())
-			info.Issue = state.Issue("yaml file resolution failed")
-			return nil, info, true
+			return info.Error("yaml file resolution failed")
 		}
 		debug.Debug("resolving yaml file succeeded")
 		info.Source = file
@@ -74,8 +68,6 @@ func func_read(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 		return string(data), info, true
 
 	default:
-		info.Issue = yaml.NewIssue("invalid file type [%s] %s", path.Clean(file), t)
-		return nil, info, false
+		return info.Error("invalid file type [%s] %s", path.Clean(file), t)
 	}
-
 }
