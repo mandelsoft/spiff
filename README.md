@@ -2019,7 +2019,7 @@ networks:
     - alice: 25
 	
   people:
-    - alice: 24
+    - alice: 13
   ```
 
   To request an auto-merge of the structure resulting from the expression evaluation, the expression has to be preceeded with the modifier `prefer` (`(( prefer women men ))`). This would yield the desired result:
@@ -2031,7 +2031,7 @@ networks:
     - alice: 25
 	
   people:
-    - alice: 24
+    - alice: 13
     - bob: 24
   ```
 
