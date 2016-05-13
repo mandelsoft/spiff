@@ -14,21 +14,47 @@ var (
 
 func func_static_ips(arguments []Expression, binding Binding) (interface{}, EvaluationInfo, bool) {
 
-	indices := make([]int, len(arguments))
-	for i, arg := range arguments {
+	indices := []int{}
+	for _, arg := range arguments {
 		index, info, ok := arg.Evaluate(binding, false)
 		if !ok {
 			return nil, info, false
 		}
 
 		index64, ok := index.(int64)
-		if !ok {
-			return nil, info, false
+		if ok {
+			indices = append(indices, int(index64))
+		} else {
+			list, ok := index.([]yaml.Node)
+			if !ok {
+				return info.Error("arguments to static_ips must be integer or list of integers")
+			}
+			_, info, ok = getIndices(&indices, list, info)
 		}
-		indices[i] = int(index64)
 	}
 
 	return generateStaticIPs(binding, indices)
+}
+
+func getIndices(indices *[]int, list []yaml.Node, info EvaluationInfo) (interface{}, EvaluationInfo, bool) {
+	for _, elem := range list {
+		if elem != nil && elem.Value() != nil {
+			index64, ok := elem.Value().(int64)
+			if ok {
+				*indices = append(*indices, int(index64))
+			} else {
+				list, ok := elem.Value().([]yaml.Node)
+				if !ok {
+					return info.Error("arguments to static_ips must be integer or list of integers")
+				}
+				_, info, ok = getIndices(indices, list, info)
+				if !ok {
+					return nil, info, false
+				}
+			}
+		}
+	}
+	return nil, info, true
 }
 
 func generateStaticIPs(binding Binding, indices []int) (interface{}, EvaluationInfo, bool) {

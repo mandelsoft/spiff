@@ -1214,6 +1214,12 @@ networks:
   type: manual
 ```
 
+`static_ips`also accepts list arguments, as long as all transitivly contained elements are either again lists or integer values. This allows to abbreviate the list of IPs as follows:
+
+```
+  static_ips: (( static_ips([1..5]) )) 
+```
+
 ### `(( list_to_map(list, "key") ))`
 
 A list of map entries with explicit name/key fields will be mapped to a map with the dedicated keys. By default the key field `name` is used, which can changed by the optional second argument. An explicitly denoted key field in the list will also be taken into account.
