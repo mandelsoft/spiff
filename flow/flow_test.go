@@ -1122,6 +1122,65 @@ jobs:
 			Expect(source).To(FlowAs(resolved))
 		})
 
+		It("evaluates the node with list arguments", func() {
+			source := parseYAML(`
+---
+networks:
+  some_network:
+    type: manual
+    subnets:
+      - range: 10.10.16.0/20
+        name: default_unused
+        reserved:
+          - 10.10.16.2 - 10.10.16.9
+          - 10.10.16.255 - 10.10.16.255
+        static:
+          - 10.10.16.10 - 10.10.16.254
+        gateway: 10.10.16.1
+        dns:
+          - 10.10.0.2
+
+jobs:
+- name: some_job
+  resource_pool: some_pool
+  instances: 3
+  networks:
+  - name: some_network
+    static_ips: (( static_ips(0, [[4..1]]) ))
+`)
+
+			resolved := parseYAML(`
+---
+networks:
+  some_network:
+    type: manual
+    subnets:
+      - range: 10.10.16.0/20
+        name: default_unused
+        reserved:
+          - 10.10.16.2 - 10.10.16.9
+          - 10.10.16.255 - 10.10.16.255
+        static:
+          - 10.10.16.10 - 10.10.16.254
+        gateway: 10.10.16.1
+        dns:
+          - 10.10.0.2
+
+jobs:
+- name: some_job
+  resource_pool: some_pool
+  instances: 3
+  networks:
+  - name: some_network
+    static_ips:
+    - 10.10.16.10
+    - 10.10.16.14
+    - 10.10.16.13
+`)
+
+			Expect(source).To(FlowAs(resolved))
+		})
+
 		It("evaluates the node with indirection combined with default", func() {
 			source := parseYAML(`
 ---
@@ -3499,7 +3558,7 @@ foo:
 				Expect(source).To(FlowAs(resolved))
 			})
 		})
-		
+
 		Context("direct usage in list", func() {
 			It("uses usage context", func() {
 				source := parseYAML(`
