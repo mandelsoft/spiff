@@ -29,6 +29,7 @@ func main() {
 			Name:      "merge",
 			ShortName: "m",
 			Usage:     "merge stub files into a manifest template",
+			SkipFlagParsing: true,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "debug",
