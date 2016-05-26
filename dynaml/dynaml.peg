@@ -37,7 +37,7 @@ Multiplication <- '*' req_ws Level0
 Division <-  '/' req_ws Level0
 Modulo <-  '%' req_ws Level0
 
-Level0 <- String / Integer / Boolean / EmptyHash / Nil / Not /
+Level0 <- String / Integer / Boolean / EmptyHash / Undefined / Nil / Not /
           Substitution / Merge / Auto / Lambda / Chained 
 
 Chained <- (( Mapping / Sum / List / Range / ( Grouped / Reference ) ChainedCall* ) ) ( ChainedQualifiedExpression ChainedCall+)* ChainedQualifiedExpression?
@@ -55,7 +55,8 @@ Integer <- '-'? [0-9] [0-9_]*
 String <- '"' ('\\"' / !'"' .)* '"'
 Boolean <- 'true' / 'false'
 Nil <- 'nil' / '~'
-EmptyHash <- '{}'
+Undefined <- '~~'
+EmptyHash <- '{' ws '}'
 
 List <- '[' Contents? ']'
 Contents <- Expression (NextExpression)*

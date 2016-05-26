@@ -4317,4 +4317,138 @@ foo:
 			Expect(source).To(FlowAs(resolved))
 		})
 	})
+
+	Describe("require values", func() {
+		It("checks for undefined values", func() {
+			source := parseYAML(`
+---
+foo: (( require(bar) || "not set" ))
+`)
+
+			resolved := parseYAML(`
+---
+foo: not set
+`)
+
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("checks for nil values", func() {
+			source := parseYAML(`
+---
+foo: (( require(bar) || "not set" ))
+bar: ~
+`)
+
+			resolved := parseYAML(`
+---
+foo: not set
+bar: ~
+`)
+
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("checks for no values", func() {
+			source := parseYAML(`
+---
+foo: (( require(bar) || "not set" ))
+bar:
+`)
+
+			resolved := parseYAML(`
+---
+foo: not set
+bar:
+`)
+
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("passes values", func() {
+			source := parseYAML(`
+---
+foo: (( require(bar) || "not set" ))
+bar: x
+`)
+
+			resolved := parseYAML(`
+---
+foo: x
+bar: x
+`)
+
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("meets docu", func() {
+			source := parseYAML(`
+---
+foo: ~
+bob: (( foo || "default" ))
+alice: (( require(foo) || "default" ))
+`)
+
+			resolved := parseYAML(`
+---
+foo: ~
+bob: ~
+alice: default
+`)
+
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("undefined values", func() {
+		It("eliminates undefined entries", func() {
+			source := parseYAML(`
+---
+foo:
+  alice: 24
+  bob: (( ~~ ))
+`)
+
+			resolved := parseYAML(`
+---
+foo:
+  alice: 24
+`)
+
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("eliminates entries evaluating to undefined", func() {
+			source := parseYAML(`
+---
+foo:
+  alice: 24
+  bob: (( bar || ~~ ))
+`)
+
+			resolved := parseYAML(`
+---
+foo:
+  alice: 24
+`)
+
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("meets docu", func() {
+			source := parseYAML(`
+---
+foo: (( ~~ ))
+bob: (( foo || ~~ ))
+alice: (( bob || "default"))
+`)
+
+			resolved := parseYAML(`
+---
+alice: default
+`)
+
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
 })

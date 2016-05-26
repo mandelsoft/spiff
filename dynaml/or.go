@@ -23,7 +23,9 @@ func (e OrExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluation
 	}
 
 	b, infob, ok := e.B.Evaluate(binding, false)
-	return b, infoa.Join(infob), ok
+	info := infoa.Join(infob)
+	info.Undefined = infob.Undefined
+	return b, info, ok
 }
 
 func (e OrExpr) String() string {

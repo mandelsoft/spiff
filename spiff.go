@@ -26,9 +26,9 @@ func main() {
 
 	app.Commands = []cli.Command{
 		{
-			Name:      "merge",
-			ShortName: "m",
-			Usage:     "merge stub files into a manifest template",
+			Name:            "merge",
+			ShortName:       "m",
+			Usage:           "merge stub files into a manifest template",
 			SkipFlagParsing: true,
 			Flags: []cli.Flag{
 				cli.BoolFlag{

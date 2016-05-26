@@ -37,8 +37,11 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		return nil, info, false
 	}
 
-	if funcName == "defined" {
+	switch funcName {
+	case "defined":
 		return e.defined(binding)
+	case "require":
+		return e.require(binding)
 	}
 
 	values, info, ok := ResolveExpressionListOrPushEvaluation(&e.Arguments, &resolved, nil, binding, false)

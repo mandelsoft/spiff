@@ -43,6 +43,7 @@ type EvaluationInfo struct {
 	Source       string
 	LocalError   bool
 	Failed       bool
+	Undefined    bool
 	Issue        yaml.Issue
 }
 
@@ -51,7 +52,7 @@ func (e EvaluationInfo) SourceName() string {
 }
 
 func DefaultInfo() EvaluationInfo {
-	return EvaluationInfo{nil, false, false, false, false, "", "", false, false, yaml.Issue{}}
+	return EvaluationInfo{nil, false, false, false, false, "", "", false, false, false, yaml.Issue{}}
 }
 
 type Expression interface {
@@ -90,6 +91,9 @@ func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {
 	}
 	if o.Failed {
 		i.Failed = true
+	}
+	if o.Undefined {
+		i.Undefined = true
 	}
 	i.Temporary = i.Temporary || o.Temporary
 	return i

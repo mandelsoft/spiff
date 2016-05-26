@@ -571,4 +571,25 @@ alice: paul
 			})
 		})
 	})
+
+	Describe("merging undefined values", func() {
+		It("omits merge", func() {
+			source := parseYAML(`
+---
+alice: 24
+bob: 25
+`)
+			stub := parseYAML(`
+---
+alice: (( config.alice || ~ ))
+bob: (( config.bob || ~~ ))
+`)
+			resolved := parseYAML(`
+---
+alice: ~
+bob: 25
+`)
+			Expect(source).To(CascadeAs(resolved, stub))
+		})
+	})
 })
