@@ -57,7 +57,7 @@ type Annotation struct {
 }
 
 func NewNode(value interface{}, sourcePath string) Node {
-	return AnnotatedNode{massageType(value), sourcePath, EmptyAnnotation()}
+	return AnnotatedNode{MassageType(value), sourcePath, EmptyAnnotation()}
 }
 
 func ReplaceValue(value interface{}, node Node) Node {
@@ -68,15 +68,15 @@ func ReferencedNode(node Node) Node {
 }
 
 func SubstituteNode(value interface{}, node Node) Node {
-	return AnnotatedNode{massageType(value), node.SourceName(), node.GetAnnotation()}
+	return AnnotatedNode{MassageType(value), node.SourceName(), node.GetAnnotation()}
 }
 
 func RedirectNode(value interface{}, node Node, redirect []string) Node {
-	return AnnotatedNode{massageType(value), node.SourceName(), node.GetAnnotation().SetRedirectPath(redirect)}
+	return AnnotatedNode{MassageType(value), node.SourceName(), node.GetAnnotation().SetRedirectPath(redirect)}
 }
 
 func ReplaceNode(value interface{}, node Node, redirect []string) Node {
-	return AnnotatedNode{massageType(value), node.SourceName(), node.GetAnnotation().SetReplaceFlag().SetRedirectPath(redirect)}
+	return AnnotatedNode{MassageType(value), node.SourceName(), node.GetAnnotation().SetReplaceFlag().SetRedirectPath(redirect)}
 }
 
 func PreferredNode(node Node) Node {
@@ -103,7 +103,7 @@ func TemporaryNode(node Node) Node {
 	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().SetTemporary()}
 }
 
-func massageType(value interface{}) interface{} {
+func MassageType(value interface{}) interface{} {
 	switch value.(type) {
 	case int, int8, int16, int32:
 		value = reflect.ValueOf(value).Int()

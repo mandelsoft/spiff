@@ -22,5 +22,5 @@ func func_length(arguments []interface{}, binding Binding) (interface{}, Evaluat
 	default:
 		return info.Error("invalid type for function length")
 	}
-	return result, info, true
+	return yaml.MassageType(result), info, true
 }
