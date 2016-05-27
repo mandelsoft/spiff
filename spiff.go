@@ -22,13 +22,14 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "spiff"
 	app.Usage = "BOSH deployment manifest toolkit"
-	app.Version = "1.0.8-ms.3"
+	app.Version = "1.0.8-ms.4"
 
 	app.Commands = []cli.Command{
 		{
-			Name:      "merge",
-			ShortName: "m",
-			Usage:     "merge stub files into a manifest template",
+			Name:            "merge",
+			ShortName:       "m",
+			Usage:           "merge stub files into a manifest template",
+			SkipFlagParsing: true,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "debug",

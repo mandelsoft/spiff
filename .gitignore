@@ -2,3 +2,4 @@ tags
 spiff
 spiff++/spiff++
 *.coverprofile
+/spiff

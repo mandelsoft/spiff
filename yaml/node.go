@@ -21,6 +21,7 @@ type Node interface {
 	KeyName() string
 	HasError() bool
 	Failed() bool
+	Undefined() bool
 	Issue() Issue
 
 	GetAnnotation() Annotation
@@ -51,11 +52,12 @@ type Annotation struct {
 	keyName      string
 	error        bool
 	failed       bool
+	undefined    bool
 	issue        Issue
 }
 
 func NewNode(value interface{}, sourcePath string) Node {
-	return AnnotatedNode{massageType(value), sourcePath, EmptyAnnotation()}
+	return AnnotatedNode{MassageType(value), sourcePath, EmptyAnnotation()}
 }
 
 func ReplaceValue(value interface{}, node Node) Node {
@@ -66,15 +68,15 @@ func ReferencedNode(node Node) Node {
 }
 
 func SubstituteNode(value interface{}, node Node) Node {
-	return AnnotatedNode{massageType(value), node.SourceName(), node.GetAnnotation()}
+	return AnnotatedNode{MassageType(value), node.SourceName(), node.GetAnnotation()}
 }
 
 func RedirectNode(value interface{}, node Node, redirect []string) Node {
-	return AnnotatedNode{massageType(value), node.SourceName(), node.GetAnnotation().SetRedirectPath(redirect)}
+	return AnnotatedNode{MassageType(value), node.SourceName(), node.GetAnnotation().SetRedirectPath(redirect)}
 }
 
 func ReplaceNode(value interface{}, node Node, redirect []string) Node {
-	return AnnotatedNode{massageType(value), node.SourceName(), node.GetAnnotation().SetReplaceFlag().SetRedirectPath(redirect)}
+	return AnnotatedNode{MassageType(value), node.SourceName(), node.GetAnnotation().SetReplaceFlag().SetRedirectPath(redirect)}
 }
 
 func PreferredNode(node Node) Node {
@@ -93,11 +95,15 @@ func IssueNode(node Node, error bool, failed bool, issue Issue) Node {
 	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().AddIssue(error, failed, issue)}
 }
 
+func UndefinedNode(node Node) Node {
+	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().SetUndefined()}
+}
+
 func TemporaryNode(node Node) Node {
 	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().SetTemporary()}
 }
 
-func massageType(value interface{}) interface{} {
+func MassageType(value interface{}) interface{} {
 	switch value.(type) {
 	case int, int8, int16, int32:
 		value = reflect.ValueOf(value).Int()
@@ -106,11 +112,11 @@ func massageType(value interface{}) interface{} {
 }
 
 func EmptyAnnotation() Annotation {
-	return Annotation{nil, false, false, false, false, "", false, false, Issue{}}
+	return Annotation{nil, false, false, false, false, "", false, false, false, Issue{}}
 }
 
 func NewReferencedAnnotation(node Node) Annotation {
-	return Annotation{nil, false, false, false, false, node.KeyName(), node.HasError(), node.Failed(), node.Issue()}
+	return Annotation{nil, false, false, false, false, node.KeyName(), node.HasError(), node.Failed(), node.Undefined(), node.Issue()}
 }
 
 func (n Annotation) RedirectPath() []string {
@@ -145,6 +151,10 @@ func (n Annotation) Failed() bool {
 	return n.failed
 }
 
+func (n Annotation) Undefined() bool {
+	return n.undefined
+}
+
 func (n Annotation) Issue() Issue {
 	return n.issue
 }
@@ -171,6 +181,11 @@ func (n Annotation) SetPreferred() Annotation {
 
 func (n Annotation) SetMerged() Annotation {
 	n.merged = true
+	return n
+}
+
+func (n Annotation) SetUndefined() Annotation {
+	n.undefined = true
 	return n
 }
 

@@ -87,6 +87,10 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 				if len(info.Issue.Issue) != 0 {
 					result = yaml.IssueNode(result, false, info.Failed, info.Issue)
 				}
+				if info.Undefined {
+					debug.Debug("   UNDEFINED")
+					result = yaml.UndefinedNode(result)
+				}
 				// preserve accumulated node attributes
 				if preferred || info.Preferred {
 					debug.Debug("   PREFERRED")
@@ -256,7 +260,9 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 		}
 
 		debug.Debug("MAP (%s)%s\n", val.KeyName(), key)
-		newMap[key] = val
+		if !val.Undefined() {
+			newMap[key] = val
+		}
 	}
 
 	debug.Debug("MAP DONE %v\n", env.Path())
@@ -295,7 +301,10 @@ func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
 		for idx, val := range merged.([]yaml.Node) {
 			step := stepName(idx, val, keyName)
 			debug.Debug("  step %s\n", step)
-			newList = append(newList, flow(val, env.WithPath(step), false))
+			val = flow(val, env.WithPath(step), false)
+			if !val.Undefined() {
+				newList = append(newList, val)
+			}
 		}
 
 		merged = newList

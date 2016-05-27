@@ -571,4 +571,58 @@ alice: paul
 			})
 		})
 	})
+
+	Describe("merging undefined values", func() {
+		It("omits merge down of undefined field", func() {
+			source := parseYAML(`
+---
+alice: 24
+bob: 25
+`)
+			stub := parseYAML(`
+---
+alice: (( config.alice || ~ ))
+bob: (( config.bob || ~~ ))
+`)
+			resolved := parseYAML(`
+---
+alice: ~
+bob: 25
+`)
+			Expect(source).To(CascadeAs(resolved, stub))
+		})
+
+		It("enables merge of values from upstream", func() {
+			source := parseYAML(`
+---
+alice: 24
+bob: 25
+peter: 26
+`)
+			stub1 := parseYAML(`
+---
+config:
+  alice: (( ~~ ))
+  bob: (( ~~ ))
+alice: (( config.alice || ~~ ))
+bob: (( config.bob || ~~ ))
+peter: (( config.peter || ~~ ))
+`)
+
+			stub2 := parseYAML(`
+---
+config:
+  alice: 4711
+  peter: 0815
+`)
+
+			resolved := parseYAML(`
+---
+alice: 4711
+bob: 25
+peter: 26
+`)
+			Expect(source).To(CascadeAs(resolved, stub1, stub2))
+		})
+	})
 })

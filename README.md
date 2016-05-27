@@ -58,6 +58,7 @@ Contents:
 		- [(( match("(f.*)(b.*)", "xxxfoobar") ))](#-matchfb-xxxfoobar-)
 		- [(( length(list) ))](#-lengthlist-)
 		- [(( defined(foobar) ))](#-definedfoobar-)
+		- [(( require(foobar) ))](#-requirefoobar-)
 		- [(( exec( "command", arg1, arg2) ))](#-exec-command-arg1-arg2-)
 		- [(( eval( foo "." bar ) ))](#-eval-foo--bar--)
 		- [(( env( "HOME" ) ))](#-env-HOME--)
@@ -77,6 +78,7 @@ Contents:
 	- [Templates](#templates)
 		- [<<: (( &template ))](#--template-)
 		- [(( *foo.bar ))](#-foobar-)
+	- [Special Literals](#special-literals)
 	- [Access to evaluation context](#access-to-evaluation-context)
 	- [Operation Priorities](#operation-priorities)
 - [Structural Auto-Merge](#structural-auto-merge)
@@ -994,6 +996,26 @@ null_def: false
 
 This function can be used in combination of the [conditional operator](#-a--1--foo-bar-) to evaluate expressions depending on the resolvability of another expression.
 
+### `(( require(foobar) ))`
+
+The function `require` yields an error if the given argument is undefined or `nil`, otherwise it yields the given value.
+
+e.g.:
+
+```yaml
+foo: ~
+bob: (( foo || "default" ))
+alice: (( require(foo) || "default" ))
+```
+
+evaluates to
+
+```yaml
+foo: ~
+bob: ~
+alice: default
+```
+
 ### `(( exec( "command", arg1, arg2) ))`
 
 Execute a command. Arguments can be any dynaml expressions including reference expressions evaluated to lists or maps. Lists or maps are passed as single arguments containing a yaml document with the given fragment.
@@ -1633,6 +1655,38 @@ use:
 verb: hates
 ```
 
+## Special Literals
+
+### `(( {} ))`
+
+Provides an empty map.
+
+### `(( [] ))`
+
+Provides an empty list. Basically this is not a dedicated literal, but just a regular list expression without a value.
+
+### `(( ~ ))`
+
+Provides the *null* value.
+
+### `(( ~~ ))`
+
+This literal evaluates to an *undefined* expression. The element (list entry or map field) carrying this value, although defined, will be removed from the document and handled as undefined for further merges and the evaluation of referential expressions.
+
+e.g.:
+
+```yaml
+foo: (( ~~ ))
+bob: (( foo || ~~ ))
+alice: (( bob || "default"))
+```
+
+evaluates to
+
+```yaml
+alice: default
+```
+
 ## Access to evaluation context
 
 Inside every dynaml expression a virtual field `__ctx` is available. It allows access to information about the actual evaluation context. It can be accessed by a relative reference expression.
@@ -2140,6 +2194,90 @@ networks:
     sum: 10
   ```
  
+- _Taking advantage of the *undefined* value_
+
+  At first glance it might look strange to introduce a value for *undefined*. But it can be really
+  useful as will become apparent with the following examples.
+
+  - Whenever a stub syntactically defines a field it overwrites the default in the template during 
+    merging. Therefore it would not be possible to define some expression for that field that eventually 
+	keeps the default value. Here the *undefined* value can help:
+
+    e.g.: merging
+
+    **template.yml**
+    ```yaml
+    alice: 24
+    bob: 25
+    ```
+
+    with
+
+    **stub.yml**
+    ```yaml
+
+    alice: (( config.alice * 2 || ~ ))
+    bob: (( config.bob * 3 || ~~ ))
+    ```
+
+    yields
+
+    ```yaml
+    alice: ~
+    bob: 25
+    ```
+
+  * There is a problem accessing upstream values. This is only possible if the local stub contains
+    the definition of the field to use. But then there will always be a value for this field, even
+	if the upstream does not overwrite it.
+	
+    Here the *undefined* value can help by providing optional access to upstream values.
+	Optional means, that the field is only defined, if there is an upstream value. Otherwise it is
+	undefined for the expressions in the local stub and potential downstream templates. This is
+	possible because the field is formally defined, and will therefore be merged, only after evaluating
+	the expression if it is not merged it will be removed again.
+
+    e.g.: merging
+
+    **template.yml**
+    ```yaml
+    alice: 24
+    bob: 25
+    peter: 26
+    ```
+
+    with
+
+    **mapping.yml**
+    ```yaml
+    config:
+      alice: (( ~~ ))
+	  bob: (( ~~ ))
+	
+    alice: (( config.alice || ~~ ))
+    bob: (( config.bob || ~~ ))
+    peter: (( config.peter || ~~ ))
+    ```
+
+    and 
+
+    **config.yml**
+    ```yaml
+    config:
+      alice: 4711
+	  peter: 0815
+    ```
+    yields
+
+    ```yaml
+    alice: 4711  # transferred from config's config value
+    bob: 25      # kept default value, because not set in config.yml
+    peter: 26    # kept, because mapping source not available in mapping.yml
+    ```
+  
+  This can be used to add an intermediate stub, that offers a dedicated configuration interface and
+  contains logic to map this interface to a manifest structure already defining default values.
+
 # Error Reporting
 
 The evaluation of dynaml expressions may fail because of several reasons:
