@@ -1703,6 +1703,59 @@ properties:
 
 			Expect(source).To(FlowAs(resolved, stub))
 		})
+
+		It("merges appropriate list entry for lists with explicitly merged maps", func() {
+			source := parseYAML(`
+---
+list:
+  - name: alice
+    married: bob
+    <<: (( merge ))
+`)
+			stub := parseYAML(`
+---
+list:
+  - name: mary
+    married: no
+  - name: alice
+    married: peter
+    age: 25
+`)
+			resolved := parseYAML(`
+---
+list:
+  - name: alice
+    married: peter
+    age: 25
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("merges appropriate list entry for lists with key expressions", func() {
+			source := parseYAML(`
+---
+name: foobar
+list:
+  - name: (( .name ))
+    value: alice
+`)
+			stub := parseYAML(`
+---
+list:
+  - name: foo
+    value: peter
+  - name: foobar
+    value: bob
+`)
+			resolved := parseYAML(`
+---
+name: foobar
+list:
+  - name: foobar
+    value: bob
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
 	})
 
 	Describe("for list expressions", func() {

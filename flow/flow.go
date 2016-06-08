@@ -293,7 +293,7 @@ func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
 	merged, process, replaced, redirectPath, keyName, temporary := processMerges(root, rootList, env)
 
 	if process {
-
+		debug.Debug("process list (key: %s) %v\n", keyName, env.Path())
 		newList := []yaml.Node{}
 		if len(redirectPath) > 0 {
 			env = env.RedirectOverwrite(redirectPath)
@@ -359,6 +359,7 @@ func stepName(index int, value yaml.Node, keyName string, env dynaml.Binding) (s
 	step := fmt.Sprintf("[%d]", index)
 	v, ok := yaml.FindR(true, value, keyName)
 	if ok && v.Value() != nil {
+		debug.Debug("found raw %s", keyName)
 		_, ok := v.Value().(dynaml.Expression)
 		if ok {
 			v = flow(v, env.WithPath(step), false)
@@ -366,11 +367,13 @@ func stepName(index int, value yaml.Node, keyName string, env dynaml.Binding) (s
 			if ok {
 				return step, false
 			}
-			name, ok = v.Value().(string)
-			if ok {
-				return keyName + ":" + name, true
-			}
 		}
+		name, ok = v.Value().(string)
+		if ok {
+			return keyName + ":" + name, true
+		}
+	} else {
+		debug.Debug("raw %s not found", keyName)
 	}
 	return step, true
 }
