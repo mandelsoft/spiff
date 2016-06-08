@@ -299,9 +299,11 @@ func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
 			env = env.RedirectOverwrite(redirectPath)
 		}
 		for idx, val := range merged.([]yaml.Node) {
-			step := stepName(idx, val, keyName)
+			step, resolved := stepName(idx, val, keyName, env)
 			debug.Debug("  step %s\n", step)
-			val = flow(val, env.WithPath(step), false)
+			if resolved {
+				val = flow(val, env.WithPath(step), false)
+			}
 			if !val.Undefined() {
 				newList = append(newList, val)
 			}
@@ -345,16 +347,32 @@ func flowString(root yaml.Node, env dynaml.Binding) yaml.Node {
 	return yaml.SubstituteNode(expr, root)
 }
 
-func stepName(index int, value yaml.Node, keyName string) string {
+func stepName(index int, value yaml.Node, keyName string, env dynaml.Binding) (string, bool) {
 	if keyName == "" {
 		keyName = "name"
 	}
 	name, ok := yaml.FindString(value, keyName)
 	if ok {
-		return keyName + ":" + name
+		return keyName + ":" + name, true
 	}
 
-	return fmt.Sprintf("[%d]", index)
+	step := fmt.Sprintf("[%d]", index)
+	v, ok := yaml.FindR(true, value, keyName)
+	if ok && v.Value() != nil {
+		_, ok := v.Value().(dynaml.Expression)
+		if ok {
+			v = flow(v, env.WithPath(step), false)
+			_, ok := v.Value().(dynaml.Expression)
+			if ok {
+				return step, false
+			}
+			name, ok = v.Value().(string)
+			if ok {
+				return keyName + ":" + name, true
+			}
+		}
+	}
+	return step, true
 }
 
 func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interface{}, bool, bool, []string, string, bool) {

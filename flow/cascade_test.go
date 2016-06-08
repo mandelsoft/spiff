@@ -625,4 +625,32 @@ peter: 26
 			Expect(source).To(CascadeAs(resolved, stub1, stub2))
 		})
 	})
+
+	Describe("lists with key expressions", func() {
+		It("merges appropriate list entry", func() {
+			source := parseYAML(`
+---
+name: foobar
+list:
+  - name: (( .name ))
+    value: alice
+`)
+			stub := parseYAML(`
+---
+list:
+  - name: foo
+    value: peter
+  - name: foobar
+    value: bob
+`)
+			resolved := parseYAML(`
+---
+name: foobar
+list:
+  - name: foobar
+    value: bob
+`)
+			Expect(source).To(CascadeAs(resolved, stub))
+		})
+	})
 })
