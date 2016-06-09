@@ -54,9 +54,13 @@ Contents:
 		- [(( trim(string) ))](#-trimstring-)
 		- [(( uniq(list) ))](#-uniqlist-)
 		- [(( contains(list, "foobar") ))](#-containslist-foobar-)
+		- [(( index(list, "foobar") ))](#-indexlist-foobar-)
+		- [(( lastindex(list, "foobar") ))](#-lastindexlist-foobar-)
+		- [(( replace(string, "foo", "bar") ))](#-replacestring-foo-bar-)
 		- [(( match("(f.*)(b.*)", "xxxfoobar") ))](#-matchfb-xxxfoobar-)
 		- [(( length(list) ))](#-lengthlist-)
 		- [(( defined(foobar) ))](#-definedfoobar-)
+		- [(( valid(foobar) ))](#-validfoobar-)
 		- [(( require(foobar) ))](#-requirefoobar-)
 		- [(( exec( "command", arg1, arg2) ))](#-exec-command-arg1-arg2-)
 		- [(( eval( foo "." bar ) ))](#-eval-foo--bar--)
@@ -930,6 +934,68 @@ list:
 contains: true
 ```
 
+The function `contains` also works on strings to look for sub strings.
+
+e.g.:
+
+```yaml
+contains: (( contains("foobar", "bar") ))
+```
+
+yields `true`.
+
+### `(( index(list, "foobar") ))`
+
+Checks whether a list contains a dedicated value and returns the index of the first match.
+Values might also be lists or maps. If no entry could be found `-1` is returned.
+
+e.g.:
+
+```yaml
+list:
+  - foo
+  - bar
+  - foobar
+index: (( index(list, "foobar") ))
+```
+
+yields:
+
+```yaml
+list:
+  - foo
+  - bar
+  - foobar
+index: 2
+```
+
+The function `index` also works on strings to look for sub strings.
+
+e.g.:
+
+```yaml
+index: (( index("foobar", "bar") ))
+```
+
+yields `3`.
+
+### `(( lastindex(list, "foobar") ))`
+
+The function `lastindex` works like [`index`](#-indexlist-foobar-) but the index of the last occurence is returned.
+
+### `(( replace(string, "foo", "bar") ))`
+
+Replace all occurences of a sub string in a string by a replacement string. With an optional
+fourth integer argument the number of substitutions can be limited (-1 mean unlimited).
+
+e.g.:
+
+```yaml
+string: (( replace("foobar", "o", "u") ))
+```
+
+yields `fuubar`.
+
 ### `(( match("(f.*)(b.*)", "xxxfoobar") ))`
 
 Returns the match of a regular expression for a given string value. The match is a list of the matched values for the sub expressions contained in the regular expression. Index 0 refers to the match of the complete regular expression. If the string value does not match an empty list is returned.
@@ -994,6 +1060,40 @@ null_def: false
 ```
 
 This function can be used in combination of the [conditional operator](#-a--1--foo-bar-) to evaluate expressions depending on the resolvability of another expression.
+
+### `(( valid(foobar) ))`
+
+The function `valid` checks whether an expression can successfully be evaluated and evaluates to a defined value not equals to `nil`. It yields the boolean value `true`, if the expression can be evaluated, and `false` otherwise.
+
+e.g.:
+
+```yaml
+zero: 0
+empty:
+map: {}
+list: []
+div_ok: (( valid(1 / zero ) ))
+zero_def: (( valid( zero ) ))
+null_def: (( valid( ~ ) ))
+empty_def: (( valid( empty ) ))
+map_def: (( valid( map ) ))
+list_def: (( valid( list ) ))
+```
+
+evaluates to
+
+```yaml
+zero: 0
+empty: null
+map: {}
+list: []
+div_ok:   false
+zero_def: true
+null_def: false
+empty_def: false
+map_def:  true
+list_def: true
+```
 
 ### `(( require(foobar) ))`
 
