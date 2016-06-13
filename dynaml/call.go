@@ -125,6 +125,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "num_ip":
 		result, sub, ok = func_numIP(values, binding)
 
+	case "makemap":
+		result, sub, ok = func_makemap(values, binding)
+
 	case "list_to_map":
 		result, sub, ok = func_list_to_map(e.Arguments[0], values, binding)
 

@@ -68,6 +68,8 @@ Contents:
 		- [(( read("file.yml") ))](#-readfileyml-)
 		- [(( static_ips(0, 1, 3) ))](#-static_ips0-1-3-)
 		- [(( list_to_map(list, "key") ))](#-list_to_maplist-key-)
+		- [(( makemap(fieldlist) ))](#-makemapfieldlist-)
+		- [(( makemap(key, value) ))](#-makemapkey-value-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
 	- [(( &temporary ))](#-temporary-)
 	- [Mappings](#mappings)
@@ -1374,6 +1376,66 @@ map:
 ```
 
 In combination with templates and lambda expressions this can be used to generate maps with arbitrarily named key values, although dynaml expressions are not allowed for key values.
+
+### `(( makemap(fieldlist) ))`
+
+In this flavor `makemap` creates a map with entries described by the given field list. 
+The list is expected to contain maps with the entries `key` and `value`, describing
+dedicated map entries.
+
+e.g.:
+
+```yaml
+list:
+  - key: alice
+    value: 24
+  - key: bob 
+    value: 25
+  - key: 5
+    value: 25
+
+map: (( makemap(list) ))
+```
+
+yields 
+
+
+```yaml
+list:
+  - key: alice
+    value: 24
+  - key: bob 
+    value: 25
+  - key: 5
+    value: 25
+
+map:
+  "5": 25
+  alice: 24
+  bob: 25
+```
+
+If the key value is a boolean or an integer it will be mapped to a string.
+
+### `(( makemap(key, value) ))`
+
+In this flavor `makemap` creates a map with entries described by the given argument
+pairs. The arguments may be a sequence of key/values pairs (given by separate arguments). 
+
+e.g.:
+
+```yaml
+map: (( makemap("peter", 23, "paul", 22) ))
+```
+
+yields 
+
+
+```yaml
+map:
+  paul: 22
+  peter: 23
+```
 
 ## `(( lambda |x|->x ":" port ))`
 

@@ -3478,6 +3478,54 @@ map:
 		})
 	})
 
+	Describe("when making a map", func() {
+		It("handles entries given by a list", func() {
+			source := parseYAML(`
+---
+list:
+  - key: alice
+    value: 24
+  - key: bob 
+    value: 25
+  - key: 5
+    value: 25
+
+map: (( makemap(list) ))
+
+`)
+			resolved := parseYAML(`
+---
+list:
+  - key: alice
+    value: 24
+  - key: bob 
+    value: 25
+  - key: 5
+    value: 25
+
+map:
+  "5": 25
+  alice: 24
+  bob: 25
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles a entries given by arguments", func() {
+			source := parseYAML(`
+---
+map: (( makemap("peter", 23, "paul", 22) ))
+`)
+			resolved := parseYAML(`
+---
+map:
+  paul: 22
+  peter: 23
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
 	Describe("when doing a mapping", func() {
 		Context("for a list", func() {
 			It("maps simple expression", func() {
