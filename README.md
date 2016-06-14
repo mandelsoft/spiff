@@ -609,6 +609,9 @@ bar:
   b: 3
 ```
 
+This expression just adds new entries to the actual list. It does not merge
+existing entries with the content described by the merge expression.
+
 #### Merging lists
 
 ```yaml
@@ -2474,8 +2477,91 @@ networks:
     peter: 26    # kept, because mapping source not available in mapping.yml
     ```
   
-  This can be used to add an intermediate stub, that offers a dedicated configuration interface and
-  contains logic to map this interface to a manifest structure already defining default values.
+  This can be used to add an intermediate stub, that offers a dedicated
+  configuration interface and contains logic to map this interface to a manifest
+  structure already defining default values.
+
+- _Templates versus map literals_
+
+  As described earlier templates can be used inside functions and mappings to
+  easily describe complex data structures based on expressions refering to 
+  parameters. Before the introduction of map literals this was the only way
+  to achieve such behaviour. The advantage is the possibility to describe
+  the complex structure as regular part of a yaml document, which allows using
+  the regular yaml formatting  facilitating readability.
+
+  e.g.:
+
+  ```yaml
+  scaling:
+    runner_z1: 10
+    router_z1: 4
+
+    jobs: (( sum[scaling|[]|s,k,v|->s [ *templates.job ] ] ))
+
+  templates:
+    job:
+      <<: (( &template ))
+      name: (( k ))
+      instances: (( v ))
+  ```
+
+  evaluates to
+
+  ```yaml
+  scaling:
+    runner_z1: 10
+    router_z1: 4
+
+  jobs:
+    - instances: 4
+      name: router_z1
+    - instances: 10
+      name: runner_z1
+    ...
+  ```
+
+  With map literals this construct can significantly be simplified
+
+  ```yaml
+  scaling:
+    runner_z1: 10
+    router_z1: 4
+
+  jobs:  (( sum[scaling|[]|s,k,v|->s [ {"name"=k, "value"=v} ] ] ))
+  ```
+
+  Nevertheless the first, template based version might still be useful, if
+  the data structures are more complex, deeper or with complex value expressions.
+  For such a scenario the description of the data structure as template should be
+  preferred. It provides a much better readability, because every field, list
+  entry and value expression can be put into dedicated lines.
+
+  But there is still a qualitative difference. While map literals are part of a
+  single expression always evaluated as a whole before map fields are available
+  for referencing, templates are evaluated as regular yaml documents that might
+  contain multiple fields with separate expressions referencing each other.
+
+  e.g.:
+
+  ```yaml
+  range: (( (|cidr,first,size|->(*templates.addr).range)("10.0.0.0/16",10,255) ))
+  
+  templates:
+    addr:
+      <<: (( &template ))
+      base: (( min_ip(cidr) ))
+      start: (( base + first ))
+	  end: (( start + size - 1 ))
+	  range: (( start " - " end ))
+  ```
+
+  evaluates `range` to
+
+  ```yaml
+  range: 10.0.0.10 - 10.0.1.8
+  ...
+  ```
 
 # Error Reporting
 
