@@ -3524,6 +3524,50 @@ map:
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
+
+		It("handles map literals", func() {
+			source := parseYAML(`
+---
+peter:
+  name: peter
+  age: 23
+paul:
+  name: paul
+  age: 22
+map: (( { peter.name=peter.age, paul.name=paul.age } ))
+`)
+			resolved := parseYAML(`
+---
+peter:
+  name: peter
+  age: 23
+paul:
+  name: paul
+  age: 22
+map:
+  paul: 22
+  peter: 23
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles nested map literals", func() {
+			source := parseYAML(`
+---
+name: peter
+age: 23
+map: (( { "alice" = {}, name = age } ))
+`)
+			resolved := parseYAML(`
+---
+name: peter
+age: 23
+map:
+  alice: {}
+  peter: 23
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
 	})
 
 	Describe("when doing a mapping", func() {

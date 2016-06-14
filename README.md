@@ -23,6 +23,7 @@ Contents:
 	- [(( foo.bar.[1].baz ))](#-foobar1baz-)
 	- [(( "foo" ))](#-foo--1)
 	- [(( [ 1, 2, 3 ] ))](#--1-2-3--)
+	- [(( { "alice" = 25 } ))](#--alice--25--)
 	- [(( foo bar ))](#-foo-bar-)
 		- [(( "foo" bar ))](#-foo-bar--1)
 		- [(( [1,2] bar ))](#-12-bar-)
@@ -262,6 +263,40 @@ list:
   - 0
   - -1
 ```
+
+## `(( { "alice" = 25 } ))`
+
+The map literal can be used to describe maps as part of a dynaml expression. Both,
+the key and the value, might again be expressions, whereby the key expression must
+evaluate to a string. This way it is possible to create maps with non-static keys.
+The assignment operator `=` has been chosen instead of the regular colon `:`
+character used in yaml, because this would result in conflicts with the yaml
+syntax. 
+
+A map literal might consist of any number of field assignments separated by a
+comma `,`.
+
+e.g.:
+
+```yaml
+name: peter
+age: 23
+map: (( { "alice" = {}, name = age } ))
+```
+
+yields
+
+```yaml
+name: peter
+age: 23
+map:
+  alice: {}
+  peter: 23
+```
+
+Another way to compose lists based on expressions are the functions
+[`makemap`](#-makemapkey-value-) and [`list_to_map`](#-list_to_maplist-key-).
+
 
 ## `(( foo bar ))`
 
@@ -1436,6 +1471,9 @@ map:
   paul: 22
   peter: 23
 ```
+
+In contrast to the previous `makemap` flavor, this one could also be handled by
+[map literals](#--alice--25--).
 
 ## `(( lambda |x|->x ":" port ))`
 
