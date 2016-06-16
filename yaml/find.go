@@ -4,6 +4,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/cloudfoundry-incubator/spiff/debug"
 )
 
 var listIndex = regexp.MustCompile(`^\[(\d+)\]$`)
@@ -38,6 +40,7 @@ func FindString(root Node, path ...string) (string, bool) {
 func FindStringR(raw bool, root Node, path ...string) (string, bool) {
 	node, ok := FindR(raw, root, path...)
 	if !ok {
+		debug.Debug("%v not found", path)
 		return "", false
 	}
 

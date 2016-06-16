@@ -1,5 +1,8 @@
 tags
 spiff
 spiff++/spiff++
+spiff++/spiff_darwin_amd64.zip
+spiff++/spiff_linux_amd64.zip
 *.coverprofile
 /spiff
+

@@ -1703,6 +1703,59 @@ properties:
 
 			Expect(source).To(FlowAs(resolved, stub))
 		})
+
+		It("merges appropriate list entry for lists with explicitly merged maps", func() {
+			source := parseYAML(`
+---
+list:
+  - name: alice
+    married: bob
+    <<: (( merge ))
+`)
+			stub := parseYAML(`
+---
+list:
+  - name: mary
+    married: no
+  - name: alice
+    married: peter
+    age: 25
+`)
+			resolved := parseYAML(`
+---
+list:
+  - name: alice
+    married: peter
+    age: 25
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("merges appropriate list entry for lists with key expressions", func() {
+			source := parseYAML(`
+---
+name: foobar
+list:
+  - name: (( .name ))
+    value: alice
+`)
+			stub := parseYAML(`
+---
+list:
+  - name: foo
+    value: peter
+  - name: foobar
+    value: bob
+`)
+			resolved := parseYAML(`
+---
+name: foobar
+list:
+  - name: foobar
+    value: bob
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
 	})
 
 	Describe("for list expressions", func() {
@@ -2798,6 +2851,288 @@ contains: false
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
+
+		It("handles string contains", func() {
+			source := parseYAML(`
+---
+contains: (( contains("1234567890123", "0") ))
+`)
+			resolved := parseYAML(`
+---
+contains: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles string contains with int", func() {
+			source := parseYAML(`
+---
+contains: (( contains("1234567890123", 0) ))
+`)
+			resolved := parseYAML(`
+---
+contains: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles string contains and fails", func() {
+			source := parseYAML(`
+---
+contains: (( contains("1234567890123", "a") ))
+`)
+			resolved := parseYAML(`
+---
+contains: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling index", func() {
+		It("finds ints", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- b
+- 0
+- c
+- 0
+index: (( index(list, "0") ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- b
+- 0
+- c
+- 0
+
+index: 2
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("finds string", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- b
+- "0"
+- c
+- "0"
+index: (( index(list, "0") ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- b
+- "0"
+- c
+- "0"
+index: 2
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("works for no match", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- b
+- 0
+- c
+index: (( index(list, "d") ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- b
+- 0
+- c
+
+index: -1
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles string index", func() {
+			source := parseYAML(`
+---
+index: (( index("12345678901230", "0") ))
+`)
+			resolved := parseYAML(`
+---
+index: 9
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles string index with int", func() {
+			source := parseYAML(`
+---
+index: (( index("12345678901230", 0) ))
+`)
+			resolved := parseYAML(`
+---
+index: 9
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles string index and fails", func() {
+			source := parseYAML(`
+---
+index: (( index("1234567890123", "a") ))
+`)
+			resolved := parseYAML(`
+---
+index: -1
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling lastindex", func() {
+		It("finds ints", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- b
+- 0
+- c
+- 0
+index: (( lastindex(list, "0") ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- b
+- 0
+- c
+- 0
+
+index: 4
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("finds string", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- b
+- "0"
+- c
+- "0"
+index: (( lastindex(list, "0") ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- b
+- "0"
+- c
+- "0"
+index: 4
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("works for no match", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- b
+- 0
+- c
+index: (( lastindex(list, "d") ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- b
+- 0
+- c
+
+index: -1
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles string index", func() {
+			source := parseYAML(`
+---
+index: (( lastindex("12345678901230", "0") ))
+`)
+			resolved := parseYAML(`
+---
+index: 13
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles string index with int", func() {
+			source := parseYAML(`
+---
+index: (( lastindex("12345678901230", 0) ))
+`)
+			resolved := parseYAML(`
+---
+index: 13
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles string index and fails", func() {
+			source := parseYAML(`
+---
+index: (( lastindex("1234567890123", "a") ))
+`)
+			resolved := parseYAML(`
+---
+index: -1
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when replacing", func() {
+		It("replaces unlimited", func() {
+			source := parseYAML(`
+---
+result: (( replace("foobar","o", "u") ))
+`)
+			resolved := parseYAML(`
+---
+result: fuubar
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("replaces limited", func() {
+			source := parseYAML(`
+---
+result: (( replace("foobar","o", "u", 1) ))
+`)
+			resolved := parseYAML(`
+---
+result: fuobar
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
 	})
 
 	Describe("when matching regexps", func() {
@@ -3138,6 +3473,98 @@ map:
     age: 24
   bob:
     age: 30
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when making a map", func() {
+		It("handles entries given by a list", func() {
+			source := parseYAML(`
+---
+list:
+  - key: alice
+    value: 24
+  - key: bob 
+    value: 25
+  - key: 5
+    value: 25
+
+map: (( makemap(list) ))
+
+`)
+			resolved := parseYAML(`
+---
+list:
+  - key: alice
+    value: 24
+  - key: bob 
+    value: 25
+  - key: 5
+    value: 25
+
+map:
+  "5": 25
+  alice: 24
+  bob: 25
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles a entries given by arguments", func() {
+			source := parseYAML(`
+---
+map: (( makemap("peter", 23, "paul", 22) ))
+`)
+			resolved := parseYAML(`
+---
+map:
+  paul: 22
+  peter: 23
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles map literals", func() {
+			source := parseYAML(`
+---
+peter:
+  name: peter
+  age: 23
+paul:
+  name: paul
+  age: 22
+map: (( { peter.name=peter.age, paul.name=paul.age } ))
+`)
+			resolved := parseYAML(`
+---
+peter:
+  name: peter
+  age: 23
+paul:
+  name: paul
+  age: 22
+map:
+  paul: 22
+  peter: 23
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles nested map literals", func() {
+			source := parseYAML(`
+---
+name: peter
+age: 23
+map: (( { "alice" = {}, name = age } ))
+`)
+			resolved := parseYAML(`
+---
+name: peter
+age: 23
+map:
+  alice: {}
+  peter: 23
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
@@ -4313,6 +4740,94 @@ foo:
     - bar
     - path
     str: foo.bar.str
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("valid values", func() {
+		It("fails for undefined values", func() {
+			source := parseYAML(`
+---
+foo: (( valid(bar) ))
+`)
+
+			resolved := parseYAML(`
+---
+foo: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("fails for nil values", func() {
+			source := parseYAML(`
+---
+foo: (( valid(bar) ))
+bar: ~
+`)
+
+			resolved := parseYAML(`
+---
+foo: false
+bar: ~
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("fails for empty values", func() {
+			source := parseYAML(`
+---
+foo: (( valid(bar) ))
+bar:
+`)
+
+			resolved := parseYAML(`
+---
+foo: false
+bar:
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("succeeds for empty maps", func() {
+			source := parseYAML(`
+---
+foo: (( valid(bar) ))
+bar: {}
+`)
+
+			resolved := parseYAML(`
+---
+foo: true
+bar: {}
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("succeeds for empty arrays", func() {
+			source := parseYAML(`
+---
+foo: (( valid(bar) ))
+bar: []
+`)
+
+			resolved := parseYAML(`
+---
+foo: true
+bar: []
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("fails for nil value", func() {
+			source := parseYAML(`
+---
+foo: (( valid(~) ))
+`)
+
+			resolved := parseYAML(`
+---
+foo: false
 `)
 			Expect(source).To(FlowAs(resolved))
 		})

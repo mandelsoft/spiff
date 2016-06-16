@@ -122,8 +122,15 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			tokens.Push(NilExpr{})
 		case ruleUndefined:
 			tokens.Push(UndefinedExpr{})
-		case ruleEmptyHash:
-			tokens.Push(EmptyHashExpr{})
+		case ruleCreateMap:
+			tokens.Push(CreateMapExpr{})
+		case ruleAssignment:
+			rhs := tokens.Pop()
+			lhs := tokens.Pop()
+			m := tokens.Pop().(CreateMapExpr)
+			m.Assignments = append(m.Assignments, Assignment{lhs, rhs})
+			tokens.Push(m)
+
 		case ruleBoolean:
 			tokens.Push(BooleanExpr{contents == "true"})
 		case ruleString:
@@ -260,6 +267,8 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 		case ruleGrouped:
 		case ruleLevel0, ruleLevel1, ruleLevel2, ruleLevel3, ruleLevel4, ruleLevel5, ruleLevel6, ruleLevel7:
 		case ruleExpression:
+		case ruleMap:
+		case ruleAssignments:
 		case rulews:
 		case rulereq_ws:
 		default:
@@ -301,6 +310,15 @@ func (s *tokenStack) Pop() Expression {
 	}
 
 	s.Remove(front)
+
+	return front.Value.(Expression)
+}
+
+func (s *tokenStack) Peek() Expression {
+	front := s.Front()
+	if front == nil {
+		return nil
+	}
 
 	return front.Value.(Expression)
 }

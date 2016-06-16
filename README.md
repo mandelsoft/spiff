@@ -24,6 +24,7 @@ Contents:
 	- [(( foo.bar.[1].baz ))](#-foobar1baz-)
 	- [(( "foo" ))](#-foo--1)
 	- [(( [ 1, 2, 3 ] ))](#--1-2-3--)
+	- [(( { "alice" = 25 } ))](#--alice--25--)
 	- [(( foo bar ))](#-foo-bar-)
 		- [(( "foo" bar ))](#-foo-bar--1)
 		- [(( [1,2] bar ))](#-12-bar-)
@@ -55,9 +56,13 @@ Contents:
 		- [(( trim(string) ))](#-trimstring-)
 		- [(( uniq(list) ))](#-uniqlist-)
 		- [(( contains(list, "foobar") ))](#-containslist-foobar-)
+		- [(( index(list, "foobar") ))](#-indexlist-foobar-)
+		- [(( lastindex(list, "foobar") ))](#-lastindexlist-foobar-)
+		- [(( replace(string, "foo", "bar") ))](#-replacestring-foo-bar-)
 		- [(( match("(f.*)(b.*)", "xxxfoobar") ))](#-matchfb-xxxfoobar-)
 		- [(( length(list) ))](#-lengthlist-)
 		- [(( defined(foobar) ))](#-definedfoobar-)
+		- [(( valid(foobar) ))](#-validfoobar-)
 		- [(( require(foobar) ))](#-requirefoobar-)
 		- [(( exec( "command", arg1, arg2) ))](#-exec-command-arg1-arg2-)
 		- [(( eval( foo "." bar ) ))](#-eval-foo--bar--)
@@ -65,6 +70,8 @@ Contents:
 		- [(( read("file.yml") ))](#-readfileyml-)
 		- [(( static_ips(0, 1, 3) ))](#-static_ips0-1-3-)
 		- [(( list_to_map(list, "key") ))](#-list_to_maplist-key-)
+		- [(( makemap(fieldlist) ))](#-makemapfieldlist-)
+		- [(( makemap(key, value) ))](#-makemapkey-value-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
 	- [(( &temporary ))](#-temporary-)
 	- [Mappings](#mappings)
@@ -257,6 +264,40 @@ list:
   - 0
   - -1
 ```
+
+## `(( { "alice" = 25 } ))`
+
+The map literal can be used to describe maps as part of a dynaml expression. Both,
+the key and the value, might again be expressions, whereby the key expression must
+evaluate to a string. This way it is possible to create maps with non-static keys.
+The assignment operator `=` has been chosen instead of the regular colon `:`
+character used in yaml, because this would result in conflicts with the yaml
+syntax. 
+
+A map literal might consist of any number of field assignments separated by a
+comma `,`.
+
+e.g.:
+
+```yaml
+name: peter
+age: 23
+map: (( { "alice" = {}, name = age } ))
+```
+
+yields
+
+```yaml
+name: peter
+age: 23
+map:
+  alice: {}
+  peter: 23
+```
+
+Another way to compose lists based on expressions are the functions
+[`makemap`](#-makemapkey-value-) and [`list_to_map`](#-list_to_maplist-key-).
+
 
 ## `(( foo bar ))`
 
@@ -568,6 +609,9 @@ bar:
   a: 1
   b: 3
 ```
+
+This expression just adds new entries to the actual list. It does not merge
+existing entries with the content described by the merge expression.
 
 #### Merging lists
 
@@ -931,6 +975,68 @@ list:
 contains: true
 ```
 
+The function `contains` also works on strings to look for sub strings.
+
+e.g.:
+
+```yaml
+contains: (( contains("foobar", "bar") ))
+```
+
+yields `true`.
+
+### `(( index(list, "foobar") ))`
+
+Checks whether a list contains a dedicated value and returns the index of the first match.
+Values might also be lists or maps. If no entry could be found `-1` is returned.
+
+e.g.:
+
+```yaml
+list:
+  - foo
+  - bar
+  - foobar
+index: (( index(list, "foobar") ))
+```
+
+yields:
+
+```yaml
+list:
+  - foo
+  - bar
+  - foobar
+index: 2
+```
+
+The function `index` also works on strings to look for sub strings.
+
+e.g.:
+
+```yaml
+index: (( index("foobar", "bar") ))
+```
+
+yields `3`.
+
+### `(( lastindex(list, "foobar") ))`
+
+The function `lastindex` works like [`index`](#-indexlist-foobar-) but the index of the last occurence is returned.
+
+### `(( replace(string, "foo", "bar") ))`
+
+Replace all occurences of a sub string in a string by a replacement string. With an optional
+fourth integer argument the number of substitutions can be limited (-1 mean unlimited).
+
+e.g.:
+
+```yaml
+string: (( replace("foobar", "o", "u") ))
+```
+
+yields `fuubar`.
+
 ### `(( match("(f.*)(b.*)", "xxxfoobar") ))`
 
 Returns the match of a regular expression for a given string value. The match is a list of the matched values for the sub expressions contained in the regular expression. Index 0 refers to the match of the complete regular expression. If the string value does not match an empty list is returned.
@@ -995,6 +1101,40 @@ null_def: false
 ```
 
 This function can be used in combination of the [conditional operator](#-a--1--foo-bar-) to evaluate expressions depending on the resolvability of another expression.
+
+### `(( valid(foobar) ))`
+
+The function `valid` checks whether an expression can successfully be evaluated and evaluates to a defined value not equals to `nil`. It yields the boolean value `true`, if the expression can be evaluated, and `false` otherwise.
+
+e.g.:
+
+```yaml
+zero: 0
+empty:
+map: {}
+list: []
+div_ok: (( valid(1 / zero ) ))
+zero_def: (( valid( zero ) ))
+null_def: (( valid( ~ ) ))
+empty_def: (( valid( empty ) ))
+map_def: (( valid( map ) ))
+list_def: (( valid( list ) ))
+```
+
+evaluates to
+
+```yaml
+zero: 0
+empty: null
+map: {}
+list: []
+div_ok:   false
+zero_def: true
+null_def: false
+empty_def: false
+map_def:  true
+list_def: true
+```
 
 ### `(( require(foobar) ))`
 
@@ -1275,6 +1415,69 @@ map:
 ```
 
 In combination with templates and lambda expressions this can be used to generate maps with arbitrarily named key values, although dynaml expressions are not allowed for key values.
+
+### `(( makemap(fieldlist) ))`
+
+In this flavor `makemap` creates a map with entries described by the given field list. 
+The list is expected to contain maps with the entries `key` and `value`, describing
+dedicated map entries.
+
+e.g.:
+
+```yaml
+list:
+  - key: alice
+    value: 24
+  - key: bob 
+    value: 25
+  - key: 5
+    value: 25
+
+map: (( makemap(list) ))
+```
+
+yields 
+
+
+```yaml
+list:
+  - key: alice
+    value: 24
+  - key: bob 
+    value: 25
+  - key: 5
+    value: 25
+
+map:
+  "5": 25
+  alice: 24
+  bob: 25
+```
+
+If the key value is a boolean or an integer it will be mapped to a string.
+
+### `(( makemap(key, value) ))`
+
+In this flavor `makemap` creates a map with entries described by the given argument
+pairs. The arguments may be a sequence of key/values pairs (given by separate arguments). 
+
+e.g.:
+
+```yaml
+map: (( makemap("peter", 23, "paul", 22) ))
+```
+
+yields 
+
+
+```yaml
+map:
+  paul: 22
+  peter: 23
+```
+
+In contrast to the previous `makemap` flavor, this one could also be handled by
+[map literals](#--alice--25--).
 
 ## `(( lambda |x|->x ":" port ))`
 
@@ -2275,8 +2478,91 @@ networks:
     peter: 26    # kept, because mapping source not available in mapping.yml
     ```
   
-  This can be used to add an intermediate stub, that offers a dedicated configuration interface and
-  contains logic to map this interface to a manifest structure already defining default values.
+  This can be used to add an intermediate stub, that offers a dedicated
+  configuration interface and contains logic to map this interface to a manifest
+  structure already defining default values.
+
+- _Templates versus map literals_
+
+  As described earlier templates can be used inside functions and mappings to
+  easily describe complex data structures based on expressions refering to 
+  parameters. Before the introduction of map literals this was the only way
+  to achieve such behaviour. The advantage is the possibility to describe
+  the complex structure as regular part of a yaml document, which allows using
+  the regular yaml formatting  facilitating readability.
+
+  e.g.:
+
+  ```yaml
+  scaling:
+    runner_z1: 10
+    router_z1: 4
+
+    jobs: (( sum[scaling|[]|s,k,v|->s [ *templates.job ] ] ))
+
+  templates:
+    job:
+      <<: (( &template ))
+      name: (( k ))
+      instances: (( v ))
+  ```
+
+  evaluates to
+
+  ```yaml
+  scaling:
+    runner_z1: 10
+    router_z1: 4
+
+  jobs:
+    - instances: 4
+      name: router_z1
+    - instances: 10
+      name: runner_z1
+    ...
+  ```
+
+  With map literals this construct can significantly be simplified
+
+  ```yaml
+  scaling:
+    runner_z1: 10
+    router_z1: 4
+
+  jobs:  (( sum[scaling|[]|s,k,v|->s [ {"name"=k, "value"=v} ] ] ))
+  ```
+
+  Nevertheless the first, template based version might still be useful, if
+  the data structures are more complex, deeper or with complex value expressions.
+  For such a scenario the description of the data structure as template should be
+  preferred. It provides a much better readability, because every field, list
+  entry and value expression can be put into dedicated lines.
+
+  But there is still a qualitative difference. While map literals are part of a
+  single expression always evaluated as a whole before map fields are available
+  for referencing, templates are evaluated as regular yaml documents that might
+  contain multiple fields with separate expressions referencing each other.
+
+  e.g.:
+
+  ```yaml
+  range: (( (|cidr,first,size|->(*templates.addr).range)("10.0.0.0/16",10,255) ))
+  
+  templates:
+    addr:
+      <<: (( &template ))
+      base: (( min_ip(cidr) ))
+      start: (( base + first ))
+	  end: (( start + size - 1 ))
+	  range: (( start " - " end ))
+  ```
+
+  evaluates `range` to
+
+  ```yaml
+  range: 10.0.0.10 - 10.0.1.8
+  ...
+  ```
 
 # Error Reporting
 

@@ -9,6 +9,6 @@ import (
 
 var _ = Describe("empty", func() {
 	It("evaluates to empty hash", func() {
-		Expect(EmptyHashExpr{}).To(EvaluateAs(make(map[string]yaml.Node), FakeBinding{}))
+		Expect(CreateMapExpr{}).To(EvaluateAs(make(map[string]yaml.Node), FakeBinding{}))
 	})
 })

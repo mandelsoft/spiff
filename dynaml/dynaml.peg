@@ -37,10 +37,10 @@ Multiplication <- '*' req_ws Level0
 Division <-  '/' req_ws Level0
 Modulo <-  '%' req_ws Level0
 
-Level0 <- String / Integer / Boolean / EmptyHash / Undefined / Nil / Not /
+Level0 <- String / Integer / Boolean / Undefined / Nil / Not /
           Substitution / Merge / Auto / Lambda / Chained 
 
-Chained <- (( Mapping / Sum / List / Range / ( Grouped / Reference ) ChainedCall* ) ) ( ChainedQualifiedExpression ChainedCall+)* ChainedQualifiedExpression?
+Chained <- (( Mapping / Sum / List / Map / Range / ( Grouped / Reference ) ChainedCall* ) ) ( ChainedQualifiedExpression ChainedCall+)* ChainedQualifiedExpression?
 ChainedQualifiedExpression <- '.' FollowUpRef 
 ChainedCall <- '(' Arguments ')'
 Arguments <- Expression (NextExpression)*
@@ -56,11 +56,15 @@ String <- '"' ('\\"' / !'"' .)* '"'
 Boolean <- 'true' / 'false'
 Nil <- 'nil' / '~'
 Undefined <- '~~'
-EmptyHash <- '{' ws '}'
 
 List <- '[' Contents? ']'
 Contents <- Expression (NextExpression)*
 
+Map <- CreateMap ws Assignments? '}'
+CreateMap <- '{'
+Assignments <- Assignment (',' Assignment)*
+Assignment <- Expression '=' Expression
+ 
 Merge <- RefMerge / SimpleMerge
 RefMerge <- 'merge' !( req_ws Required ) ( req_ws (Replace / On ))? req_ws Reference
 SimpleMerge <- 'merge' ( req_ws (Replace/Required/On) )?

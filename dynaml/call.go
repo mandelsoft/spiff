@@ -42,6 +42,8 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		return e.defined(binding)
 	case "require":
 		return e.require(binding)
+	case "valid":
+		return e.valid(binding)
 	}
 
 	values, info, ok := ResolveExpressionListOrPushEvaluation(&e.Arguments, &resolved, nil, binding, false)
@@ -84,6 +86,15 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "contains":
 		result, sub, ok = func_contains(values, binding)
 
+	case "index":
+		result, sub, ok = func_index(values, binding)
+
+	case "lastindex":
+		result, sub, ok = func_lastindex(values, binding)
+
+	case "replace":
+		result, sub, ok = func_replace(values, binding)
+
 	case "match":
 		result, sub, ok = func_match(values, binding)
 
@@ -113,6 +124,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "num_ip":
 		result, sub, ok = func_numIP(values, binding)
+
+	case "makemap":
+		result, sub, ok = func_makemap(values, binding)
 
 	case "list_to_map":
 		result, sub, ok = func_list_to_map(e.Arguments[0], values, binding)
