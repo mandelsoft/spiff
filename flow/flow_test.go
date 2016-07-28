@@ -2746,6 +2746,172 @@ foo:
 		})
 	})
 
+	Describe("when calling element", func() {
+		It("extracts fields from maps", func() {
+			source := parseYAML(`
+---
+map:
+  alice: 24
+  bob: 25
+
+elem: (( element(map,"bob") ))
+`)
+			resolved := parseYAML(`
+---
+map:
+  alice: 24
+  bob: 25
+
+elem: 25
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("extracts dotted fields from maps", func() {
+			source := parseYAML(`
+---
+map:
+  foo.bar: 25
+
+elem: (( element(map,"foo.bar") ))
+`)
+			resolved := parseYAML(`
+---
+map:
+  foo.bar: 25
+
+elem: 25
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("failes for invalid mapkeys", func() {
+			source := parseYAML(`
+---
+map:
+  foo.bar: 25
+
+elem: (( element(map,"foo") || "failed" ))
+`)
+			resolved := parseYAML(`
+---
+map:
+  foo.bar: 25
+
+elem: failed
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("extracts entries from lists", func() {
+			source := parseYAML(`
+---
+list:
+  - alice: 24
+  - bob: 25
+
+elem: (( element(list,1) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+  - alice: 24
+  - bob: 25
+
+elem:
+  bob: 25
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("fails for invalid list index", func() {
+			source := parseYAML(`
+---
+list:
+  - alice: 24
+  - bob: 25
+
+elem: (( element(list,2) || "failed" ))
+`)
+			resolved := parseYAML(`
+---
+list:
+  - alice: 24
+  - bob: 25
+
+elem: failed
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling uniq", func() {
+		It("omits duplicates", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- b
+- a
+- c
+- a
+- b
+- 0
+- "0"
+uniq: (( uniq(list) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- b
+- a
+- c
+- a
+- b
+- 0
+- "0"
+uniq:
+- a
+- b
+- c
+- 0
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling compact", func() {
+		It("omits empty entries", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- ~
+- ""
+- {}
+- []
+- b
+
+compact: (( compact(list) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- ~
+- ""
+- {}
+- []
+- b
+compact:
+- a
+- b
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
 	Describe("when calling uniq", func() {
 		It("omits duplicates", func() {
 			source := parseYAML(`

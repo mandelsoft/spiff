@@ -53,6 +53,9 @@ Contents:
 		- [(( join( ", ", list) ))](#-join---list-)
 		- [(( split( ",", string) ))](#-split--string-)
 		- [(( trim(string) ))](#-trimstring-)
+		- [(( element(list, index) ))](#-elementlist-index-)
+		- [(( element(map, key) ))](#-elementmap-key-)
+		- [(( compact(list) ))](#-compactlist-)
 		- [(( uniq(list) ))](#-uniqlist-)
 		- [(( contains(list, "foobar") ))](#-containslist-foobar-)
 		- [(( index(list, "foobar") ))](#-indexlist-foobar-)
@@ -911,6 +914,66 @@ e.g.:
 
 ```yaml
 list: (( trim(split("," "alice, bob")) ))
+```
+
+yields:
+
+```yaml
+list:
+  - alice
+  - bob
+```
+
+### `(( element(list, index) ))`
+
+Return a dedicated list element given by its index.
+
+e.g.:
+
+```yaml
+list: (( trim(split("," "alice, bob")) ))
+elem: (( element(list,1) ))
+```
+
+yields:
+
+```yaml
+list:
+  - alice
+  - bob
+elem: bob
+```
+
+### `(( element(map, key) ))`
+
+Return a dedicated map field given by its key.
+
+```yaml
+map:
+  alice: 24
+  bob: 25
+elem: (( element(map,"bob") ))
+```
+
+yields:
+
+```yaml
+map:
+  alice: 24
+  bob: 25
+elem: 25
+```
+
+This function is also able to handle keys containing dots (.).
+
+### `(( compact(list) ))`
+
+Filter a list omitting empty entries.
+
+e.g.:
+
+```yaml
+list: (( compact(trim(split("," "alice, , bob"))) ))
 ```
 
 yields:
