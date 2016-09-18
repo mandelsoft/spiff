@@ -31,7 +31,12 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 		env = env.RedirectOverwrite(redirect)
 	}
 
+	debug.Debug("/// FLOW %v: %+v\n", env.Path(), root)
 	if !replace {
+		if _, ok := root.Value().(dynaml.Expression); !ok && merged {
+			debug.Debug("  skip handling of merged node")
+			return root
+		}
 		switch val := root.Value().(type) {
 		case map[string]yaml.Node:
 			return flowMap(root, env)
@@ -143,7 +148,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 		}
 	}
 
-	if !merged && shouldOverride {
+	if !merged && root.StandardOverride() && shouldOverride {
 		debug.Debug("/// lookup stub %v -> %v\n", env.Path(), env.StubPath())
 		overridden, found := env.FindInStubs(env.StubPath())
 		if found {

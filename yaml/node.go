@@ -18,6 +18,7 @@ type Node interface {
 	ReplaceFlag() bool
 	Preferred() bool
 	Merged() bool
+	StandardOverride() bool
 	KeyName() string
 	HasError() bool
 	Failed() bool
@@ -136,7 +137,11 @@ func (n Annotation) Preferred() bool {
 }
 
 func (n Annotation) Merged() bool {
-	return n.merged || n.ReplaceFlag() || len(n.RedirectPath()) > 0
+	return n.merged //|| n.ReplaceFlag() || len(n.RedirectPath()) > 0
+}
+
+func (n Annotation) StandardOverride() bool {
+	return !n.merged && !n.ReplaceFlag() && len(n.RedirectPath()) == 0
 }
 
 func (n Annotation) KeyName() string {
