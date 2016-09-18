@@ -1019,6 +1019,29 @@ foo: default
 
 			Expect(source).To(FlowAs(resolved, stub))
 		})
+		
+		It("does not override merged values", func() {
+			source := parseYAML(`
+---
+foo: (( (|x|->sum[x|{}|s,k,v|->s { k=v.value }])(merge data.foo) ))
+`)
+
+			stub := parseYAML(`
+---
+data:
+  foo:
+    alice:
+      value: 24
+`)
+
+			resolved := parseYAML(`
+---
+foo:
+  alice: 24
+`)
+
+			Expect(source).To(FlowAs(resolved, stub))
+		})
 	})
 
 	Describe("automatic resource pool sizes", func() {
