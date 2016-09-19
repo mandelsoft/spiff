@@ -66,6 +66,7 @@ Contents:
 		- [(( defined(foobar) ))](#-definedfoobar-)
 		- [(( valid(foobar) ))](#-validfoobar-)
 		- [(( require(foobar) ))](#-requirefoobar-)
+		- [(( stub(foo.bar) ))](#-stubfoobar-)
 		- [(( exec( "command", arg1, arg2) ))](#-exec-command-arg1-arg2-)
 		- [(( eval( foo "." bar ) ))](#-eval-foo--bar--)
 		- [(( env( "HOME" ) ))](#-env-HOME--)
@@ -1217,6 +1218,35 @@ foo: ~
 bob: ~
 alice: default
 ```
+
+### `(( stub(foo.bar) ))`
+
+The function `stub` yields the value of a dedicated field found in the first upstream stub defining it.
+
+e.g.:
+
+**template.yml**
+```yaml
+value: (( stub(foo.bar) ))
+```
+merged with stub
+
+**stub.yml**
+```yaml
+foo:
+  bar: foobar
+```
+
+evaluates to
+
+```yaml
+value: foobar
+```
+
+The argument passed to this function must either be a reference literal or an expression evaluating to a string denoting a reference. If no argument is given, the actual field path is used.
+
+Alternatively the `merge` operation could be used, for example `merge foo.bar`. The difference is that `stub` does not merge, therefore the field will still be merged (with the original path in the document).
+
 
 ### `(( exec( "command", arg1, arg2) ))`
 

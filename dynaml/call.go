@@ -39,6 +39,8 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		return e.require(binding)
 	case "valid":
 		return e.valid(binding)
+	case "stub":
+		return e.stub(binding)
 	}
 
 	values, info, ok := ResolveExpressionListOrPushEvaluation(&e.Arguments, &resolved, nil, binding, false)

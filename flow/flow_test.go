@@ -1019,7 +1019,7 @@ foo: default
 
 			Expect(source).To(FlowAs(resolved, stub))
 		})
-		
+
 		It("does not override merged values", func() {
 			source := parseYAML(`
 ---
@@ -2865,6 +2865,98 @@ list:
 elem: failed
 `)
 			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling stub", func() {
+		It("handles reference arg", func() {
+			source := parseYAML(`
+---
+age: (( stub(data.alice) ))
+`)
+			stub := parseYAML(`
+---
+data:
+  alice: "24"
+`)
+
+			resolved := parseYAML(`
+---
+age: "24"
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("handles string arg", func() {
+			source := parseYAML(`
+---
+age: (( stub("data.alice") ))
+`)
+			stub := parseYAML(`
+---
+data:
+  alice: 24
+`)
+
+			resolved := parseYAML(`
+---
+age: 24
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("fails on missing stub", func() {
+			source := parseYAML(`
+---
+age: (( stub("data.alice") || "failed" ))
+`)
+
+			resolved := parseYAML(`
+---
+age: failed
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("refers to local path if no arg is given", func() {
+			source := parseYAML(`
+---
+age: (( stub() ))
+`)
+
+			stub := parseYAML(`
+---
+age: 20
+`)
+			resolved := parseYAML(`
+---
+age: 20
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("does not prevent merging", func() {
+			source := parseYAML(`
+---
+
+val: (( prefer stub(data) ))
+`)
+
+			stub := parseYAML(`
+---
+data:
+  alice: 24
+  bob: 25
+val:
+  bob: 100
+`)
+			resolved := parseYAML(`
+---
+val:
+  alice: 24
+  bob: 100
+`)
+			Expect(source).To(FlowAs(resolved, stub))
 		})
 	})
 

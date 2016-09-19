@@ -264,7 +264,7 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 			}
 		}
 
-		debug.Debug("MAP (%s)%s\n", val.KeyName(), key)
+		debug.Debug("MAP %v (%s)%s\n", env.Path(), val.KeyName(), key)
 		if !val.Undefined() {
 			newMap[key] = val
 		}
