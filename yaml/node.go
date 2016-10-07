@@ -223,7 +223,14 @@ func (n AnnotatedNode) GetAnnotation() Annotation {
 }
 
 func (n AnnotatedNode) MarshalYAML() (string, interface{}, error) {
-	return "", n.Value(), nil
+	v := n.Value()
+
+	m, ok := v.(candiedyaml.Marshaler)
+	for ok {
+		_, v, _ = m.MarshalYAML()
+		m, ok = v.(candiedyaml.Marshaler)
+	}
+	return "", v, nil
 }
 
 func (n AnnotatedNode) EquivalentToNode(o Node) bool {
