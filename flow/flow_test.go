@@ -5299,6 +5299,34 @@ data:
 `)
 				Expect(source).To(FlowAs(resolved))
 			})
+
+			It("it accesses a deep map entry", func() {
+				source := parseYAML(`
+---
+name:
+  - foo
+  - bar
+
+value: (( data.[name] ))
+
+data:
+  foo:
+    bar: alice
+`)
+				resolved := parseYAML(`
+---
+name:
+  - foo
+  - bar
+
+value: alice
+
+data:
+  foo:
+    bar: alice
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
 
 		Context("for range index", func() {

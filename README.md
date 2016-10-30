@@ -249,7 +249,7 @@ can be referenced by using the path `list.alice.age`, instead of `list[0].age`.
 ## `(( foo.[bar].baz ))`
 
 Look for the nearest 'foo' key, and from there follow through to the
-field described by the expression `bar` and then to .baz.
+field(s) described by the expression `bar` and then to .baz.
 
 The index may be an integer constant (without spaces) as described in the
 last section. But it might also be an arbitrary dynaml expression (even
@@ -268,11 +268,29 @@ properties:
 	   bar: 42
 ```
 
-This will resolve `foo` to the value `bar`. The dynamic index may also be at
+This will resolve `foo` to the value `42`. The dynamic index may also be at
 the end of the expression (without `.bar`).
 
 Basically this is the simplier way to express something like
 [eval("values." name ".bar")](#-eval-foo--bar--)
+
+If the expression evaluates to a list, the list elements (strings or integers)
+are used as path elements to access deeper fields.
+
+e.g.:
+
+```yaml
+properties:
+  name:
+   - foo
+   - bar
+  foo: (( values.[name] ))
+  values:
+    foo:
+	   bar: 42
+```
+
+resolves `foo` again to the value `42`.
 
 ## `(( list.[1..3] ))`
 
