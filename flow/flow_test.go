@@ -5247,4 +5247,58 @@ alice: default
 			Expect(source).To(FlowAs(resolved))
 		})
 	})
+
+	Describe("when a dynamic index", func() {
+		Context("for integer index", func() {
+			It("it indexes an array", func() {
+				source := parseYAML(`
+---
+index: 0
+
+value: (( data.bob.[index].foo ))
+
+data:
+  bob:
+    - foo: bar
+`)
+				resolved := parseYAML(`
+---
+index: 0
+
+value: bar
+
+data:
+  bob:
+    - foo: bar
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("for string index", func() {
+			It("it accesses a map entry", func() {
+				source := parseYAML(`
+---
+name: alice
+
+value: (( data.[name].foo ))
+
+data:
+  alice:
+    foo: bar
+`)
+				resolved := parseYAML(`
+---
+name: alice
+
+value: bar
+
+data:
+  alice:
+    foo: bar
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
 })

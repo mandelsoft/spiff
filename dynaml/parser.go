@@ -95,15 +95,20 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			required = true
 		case ruleOn:
 			keyName = tokens.Pop().(nameHelper).name
-
-		case ruleReference, ruleFollowUpRef:
+		case ruleFollowUpRef:
+		case ruleReference:
 			tokens.Push(ReferenceExpr{strings.Split(contents, ".")})
 
 		case ruleChained:
 		case ruleChainedQualifiedExpression:
+		case ruleChainedRef:
+			ref := ReferenceExpr{strings.Split(contents, ".")}
+			expr := tokens.Pop()
+			tokens.Push(QualifiedExpr{expr, ref})
+		case ruleChainedDynRef:
 			ref := tokens.Pop()
 			expr := tokens.Pop()
-			tokens.Push(QualifiedExpr{expr, ref.(ReferenceExpr)})
+			tokens.Push(DynamicExpr{expr, ref.(Expression)})
 
 		case ruleChainedCall:
 			tokens.Push(CallExpr{

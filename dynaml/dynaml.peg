@@ -40,8 +40,10 @@ Modulo <-  '%' req_ws Level0
 Level0 <- String / Integer / Boolean / Undefined / Nil / Not /
           Substitution / Merge / Auto / Lambda / Chained 
 
-Chained <- (( Mapping / Sum / List / Map / Range / ( Grouped / Reference ) ChainedCall* ) ) ( ChainedQualifiedExpression ChainedCall+)* ChainedQualifiedExpression?
-ChainedQualifiedExpression <- '.' FollowUpRef 
+Chained <- ( Mapping / Sum / List / Map / Range / Grouped / Reference ) ChainedQualifiedExpression* 
+ChainedQualifiedExpression <- ChainedCall / ( '.' ( ChainedRef / ChainedDynRef ) )
+ChainedRef <- ( Key / Index ) FollowUpRef
+ChainedDynRef <- '[' Expression ']'
 ChainedCall <- '(' Arguments ')'
 Arguments <- Expression (NextExpression)*
 NextExpression <- ',' Expression
@@ -82,8 +84,8 @@ LambdaExpr <- ws '|' ws Name (NextName)* ws '|' ws '->' Expression
 NextName <- ws ',' ws Name
 Name <- [a-zA-Z0-9_]+
 
-Reference <- '.'? Key ( '.' ( Key / Index) )*
-FollowUpRef <- ( Key / Index) ( '.' ( Key / Index) )*
+Reference <- '.'? Key FollowUpRef
+FollowUpRef <- ( '.' ( Key / Index) )*
 
 Key <- [a-zA-Z0-9_] [a-zA-Z0-9_\-]* ( ':' [a-zA-Z0-9_] [a-zA-Z0-9_\-]* )?
 Index <- '[' [0-9]+ ']'

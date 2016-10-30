@@ -21,6 +21,7 @@ Contents:
 - [dynaml Templating Language](#dynaml-templating-language)
 	- [(( foo ))](#-foo-)
 	- [(( foo.bar.[1].baz ))](#-foobar1baz-)
+	- [(( foo.[bar].baz ))](#-foobarbaz-)
 	- [(( "foo" ))](#-foo--1)
 	- [(( [ 1, 2, 3 ] ))](#--1-2-3--)
 	- [(( { "alice" = 25 } ))](#--alice--25--)
@@ -243,6 +244,31 @@ list:
 ```
 
 can be referenced by using the path `list.alice.age`, instead of `list[0].age`.
+
+## `(( foo.[bar].baz ))`
+
+Look for the nearest 'foo' key, and from there follow through to to the
+field describes by the expression `bar` and then to .baz.
+
+The index may be an integer constant (without spaces) as described in the
+last section. But it might also be an arbitrary dynaml expression (even
+an integer, but with spaces). If the expression evaluates to a string,
+it lookups the dedicated field. If the expression evaluates to an integer,
+the arry element with this index is addressed.
+
+e.g.:
+
+```yaml
+properties:
+  name: alice
+  foo: (( values.[name].bar ))
+  values:
+    alice:
+	   bar: 42
+```
+
+This will resolve `foo` to the value `bar`. The dynamic index may also be at
+the end of the expression (without `.bar`).
 
 
 ## `(( "foo" ))`
