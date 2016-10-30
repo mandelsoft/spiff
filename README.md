@@ -22,6 +22,7 @@ Contents:
 	- [(( foo ))](#-foo-)
 	- [(( foo.bar.[1].baz ))](#-foobar1baz-)
 	- [(( foo.[bar].baz ))](#-foobarbaz-)
+	- [(( list.[1..3] ))](#-list13-)
 	- [(( "foo" ))](#-foo--1)
 	- [(( [ 1, 2, 3 ] ))](#--1-2-3--)
 	- [(( { "alice" = 25 } ))](#--alice--25--)
@@ -247,14 +248,14 @@ can be referenced by using the path `list.alice.age`, instead of `list[0].age`.
 
 ## `(( foo.[bar].baz ))`
 
-Look for the nearest 'foo' key, and from there follow through to to the
-field describes by the expression `bar` and then to .baz.
+Look for the nearest 'foo' key, and from there follow through to the
+field described by the expression `bar` and then to .baz.
 
 The index may be an integer constant (without spaces) as described in the
 last section. But it might also be an arbitrary dynaml expression (even
 an integer, but with spaces). If the expression evaluates to a string,
 it lookups the dedicated field. If the expression evaluates to an integer,
-the arry element with this index is addressed.
+the array element with this index is addressed.
 
 e.g.:
 
@@ -270,6 +271,29 @@ properties:
 This will resolve `foo` to the value `bar`. The dynamic index may also be at
 the end of the expression (without `.bar`).
 
+Basically this is the simplier way to express something like
+[eval("values." name ".bar")](#-eval-foo--bar--)
+
+## `(( list.[1..3] ))`
+
+The slice expression can be used to extract a dedicated sub list from a list
+expression. The range *start* `..` *end* extracts a list of the length
+*end-start+1* with the elements from
+index *start* to *end*. If the start index is negative the slice is taken
+from the end of the list from *length-start* to *length-end*. If the end
+index is lower than the start index, the result is an empty array.
+
+e.g.:
+
+```yaml
+list:
+  - a
+  - b
+  - c
+foo: (( list.[1..length(list) - 1] ))
+```
+
+evaluates `foo` to the list `[b,c]`.
 
 ## `(( "foo" ))`
 

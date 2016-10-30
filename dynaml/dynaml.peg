@@ -41,9 +41,10 @@ Level0 <- String / Integer / Boolean / Undefined / Nil / Not /
           Substitution / Merge / Auto / Lambda / Chained 
 
 Chained <- ( Mapping / Sum / List / Map / Range / Grouped / Reference ) ChainedQualifiedExpression* 
-ChainedQualifiedExpression <- ChainedCall / ( '.' ( ChainedRef / ChainedDynRef ) )
+ChainedQualifiedExpression <- ChainedCall / ( '.' ( ChainedRef / ChainedDynRef / Slice ) )
 ChainedRef <- ( Key / Index ) FollowUpRef
 ChainedDynRef <- '[' Expression ']'
+Slice <- Range
 ChainedCall <- '(' Arguments ')'
 Arguments <- Expression (NextExpression)*
 NextExpression <- ',' Expression

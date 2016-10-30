@@ -109,6 +109,10 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			ref := tokens.Pop()
 			expr := tokens.Pop()
 			tokens.Push(DynamicExpr{expr, ref.(Expression)})
+		case ruleSlice:
+			slice := tokens.Pop()
+			expr := tokens.Pop()
+			tokens.Push(SliceExpr{expr, slice.(RangeExpr)})
 
 		case ruleChainedCall:
 			tokens.Push(CallExpr{
