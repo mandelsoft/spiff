@@ -65,6 +65,11 @@ func (i *EvaluationInfo) Error(msgfmt interface{}, args ...interface{}) (interfa
 	return nil, *i, false
 }
 
+func (i *EvaluationInfo) SetError(msgfmt interface{}, args ...interface{}) {
+	i.LocalError = true
+	i.Issue = yaml.NewIssue(msgfmt.(string), args...)
+}
+
 func (i *EvaluationInfo) PropagateError(value interface{}, state Status, msgfmt string, args ...interface{}) (interface{}, EvaluationInfo, bool) {
 	i.Issue, i.LocalError, i.Failed = state.Issue(msgfmt, args...)
 	if i.LocalError {

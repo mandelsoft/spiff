@@ -74,6 +74,7 @@ Contents:
 		- [(( env( "HOME" ) ))](#-env-HOME--)
 		- [(( read("file.yml") ))](#-readfileyml-)
 		- [(( static_ips(0, 1, 3) ))](#-static_ips0-1-3-)
+		- [(( ipset(ranges, 3, 3,4,5,6) ))](#-ipsetranges-3-3456-)
 		- [(( list_to_map(list, "key") ))](#-list_to_maplist-key-)
 		- [(( makemap(fieldlist) ))](#-makemapfieldlist-)
 		- [(( makemap(key, value) ))](#-makemapkey-value-)
@@ -1541,6 +1542,41 @@ networks:
 ```
   static_ips: (( static_ips([1..5]) )) 
 ```
+
+### `(( ipset(ranges, 3, 3,4,5,6) ))`
+
+While the function [static_ips](#-static_ips0-1-3-) for historical reasons
+relies on the structure of a bosh manifest
+and works only at dedicated locations in the manifest, the function *ipset*
+offers a similar calculation purely based on its arguments. So, the available
+ip ranges and the required numbers of IPs are passed as arguments. 
+
+The first (ranges) argument can be a single range as a simple string or a
+list of strings. Every string might be
+- a single IP address
+- an explicit IP range described by two IP addresses separated by a dash (-)
+- a CIDR
+
+The second argument specifies the requested number of IP addresses in the
+result set. 
+
+The additional arguments specify the indices of the IPs to choose (starting
+from 0) in the given ranges. Here again lists of indices might be used.
+
+e.g.:
+
+```yaml
+ranges:
+  - 10.0.0.0 - 10.0.0.255
+  - 10.0.2.0/24
+ipset: (( ipset(ranges,3,[256..260]) ))
+```
+
+resolves *ipset* to `[ 10.0.2.0, 10.0.2.1, 10.0.2.2 ]`.
+
+If no IP indices are specified (only two arguments), the IPs are chosen 
+starting from the beginning of the first range up to the end of the last
+given range, without indirection.
 
 ### `(( list_to_map(list, "key") ))`
 

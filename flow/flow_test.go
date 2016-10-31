@@ -1269,6 +1269,71 @@ jobs:
 		})
 	})
 
+	Describe("ipset population", func() {
+		It("evaluates the node", func() {
+			source := parseYAML(`
+---
+ranges:
+  - 10.0.0.0-10.0.0.255
+  - 10.0.2.0/24
+ipset: (( ipset(ranges,3,10,12,14,16,18) ))
+`)
+			resolved := parseYAML(`
+---
+ranges:
+  - 10.0.0.0-10.0.0.255
+  - 10.0.2.0/24
+ipset:
+  - 10.0.0.10
+  - 10.0.0.12
+  - 10.0.0.14
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates the second range", func() {
+			source := parseYAML(`
+---
+ranges:
+  - 10.0.0.0-10.0.0.255
+  - 10.0.2.0/24
+ipset: (( ipset(ranges,3,[257..270]) ))
+`)
+			resolved := parseYAML(`
+---
+ranges:
+  - 10.0.0.0-10.0.0.255
+  - 10.0.2.0/24
+ipset:
+  - 10.0.2.1
+  - 10.0.2.2
+  - 10.0.2.3
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("support no indirection", func() {
+			source := parseYAML(`
+---
+ranges:
+  - 10.0.0.0-10.0.0.255
+  - 10.0.2.0/24
+ipset: (( ipset(ranges,3) ))
+`)
+			resolved := parseYAML(`
+---
+ranges:
+  - 10.0.0.0-10.0.0.255
+  - 10.0.2.0/24
+ipset:
+  - 10.0.0.0
+  - 10.0.0.1
+  - 10.0.0.2
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
 	Describe("map splicing", func() {
 		It("merges one map over another", func() {
 			source := parseYAML(`

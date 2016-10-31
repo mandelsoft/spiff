@@ -139,6 +139,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "list_to_map":
 		result, sub, ok = func_list_to_map(e.Arguments[0], values, binding)
 
+	case "ipset":
+		result, sub, ok = func_ipset(values, binding)
+
 	default:
 		return info.Error("unknown function '%s'", funcName)
 	}
