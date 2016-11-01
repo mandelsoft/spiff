@@ -2011,6 +2011,30 @@ foo: failed
 
 				Expect(source).To(FlowAs(resolved))
 			})
+
+			It("subtracts IPs", func() {
+				source := parseYAML(`
+---
+foo: (( 10.0.0.1 - 10.0.1.0 ))
+`)
+				resolved := parseYAML(`
+---
+foo: -255
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("subtracts IP and integer", func() {
+				source := parseYAML(`
+---
+foo: (( 10.0.0.1 - 2 ))
+`)
+				resolved := parseYAML(`
+---
+foo: "9.255.255.255"
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
 
 		Context("multiplication", func() {

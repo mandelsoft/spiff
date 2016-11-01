@@ -37,7 +37,7 @@ Multiplication <- '*' req_ws Level0
 Division <-  '/' req_ws Level0
 Modulo <-  '%' req_ws Level0
 
-Level0 <- String / Integer / Boolean / Undefined / Nil / Not /
+Level0 <- IP / String / Integer / Boolean / Undefined / Nil / Not /
           Substitution / Merge / Auto / Lambda / Chained 
 
 Chained <- ( Mapping / Sum / List / Map / Range / Grouped / Reference ) ChainedQualifiedExpression* 
@@ -90,6 +90,7 @@ FollowUpRef <- ( '.' ( Key / Index) )*
 
 Key <- [a-zA-Z0-9_] [a-zA-Z0-9_\-]* ( ':' [a-zA-Z0-9_] [a-zA-Z0-9_\-]* )?
 Index <- '[' [0-9]+ ']'
+IP <- [0-9]+ '.' [0-9]+ '.' [0-9]+ '.' [0-9]+
 
 ws <- [ \t\n\r]*
 

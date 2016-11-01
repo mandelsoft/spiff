@@ -63,6 +63,10 @@ func map_ip_ranges(ranges []string) ([]IPRange, EvaluationInfo, bool) {
 				info.SetError("invalid IP '%s'", segments[1])
 				return nil, info, false
 			}
+			if len(start) != len(end) {
+				info.SetError("IP type mismatch")
+				return nil, info, false
+			}
 			if bytes.Compare(start, end) > 0 {
 				info.SetError("invalid IP range: start (%s) larger than end (%s)", segments[0], segments[1])
 				return nil, info, false
@@ -78,14 +82,7 @@ func map_ip_ranges(ranges []string) ([]IPRange, EvaluationInfo, bool) {
 
 func (i *iprange) GetSize() int64 {
 	if i.size == 0 {
-		prev := make(net.IP, len(i.start))
-		copy(prev, i.start)
-		i.size = 1
-
-		for !prev.Equal(i.end) {
-			i.size = i.size + 1
-			inc(prev)
-		}
+		i.size = DiffIP(i.end, i.start) + 1
 	}
 	debug.Debug("sizeof(%s-%s)=%d", i.start, i.end, i.size)
 	return i.size

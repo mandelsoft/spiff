@@ -79,3 +79,13 @@ func MaxIP(cidr *net.IPNet) net.IP {
 	}
 	return out
 }
+
+func DiffIP(a, b net.IP) int64 {
+	var d int64
+
+	for i, _ := range a {
+		db := int64(a[i]) - int64(b[i])
+		d = d*256 + db
+	}
+	return d
+}

@@ -894,6 +894,19 @@ next: 192.168.1.0
 num: 192.168.0.0+256=192.168.1.0
 ```
 
+Subtraction also works on two IP addresses to calculate the number of
+IP addresses between two IP addresses.
+
+e.g.:
+
+```yaml
+diff: (( 10.0.1.0 - 10.0.0.1 + 1 ))
+```
+
+yields the value 256. IP address constants can be directly used in dynaml
+expressions. They are implicitly converted to strings and back to IP
+addresses if required by an operation.
+
 ## `(( a > 1 ? foo :bar ))`
 
 Dynaml supports the comparison operators `<`, `<=`, `==`, `!=`, `>=` and `>`. The comparison operators work on

@@ -145,7 +145,8 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 		case ruleString:
 			val := strings.Replace(contents[1:len(contents)-1], `\"`, `"`, -1)
 			tokens.Push(StringExpr{val})
-
+		case ruleIP:
+			tokens.Push(StringExpr{contents})
 		case ruleSubstitution:
 			tokens.Push(SubstitutionExpr{Template: tokens.Pop()})
 
