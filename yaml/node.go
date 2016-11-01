@@ -14,7 +14,9 @@ type Node interface {
 	Value() interface{}
 	SourceName() string
 	RedirectPath() []string
+	Flags() NodeFlags
 	Temporary() bool
+	Local() bool
 	ReplaceFlag() bool
 	Preferred() bool
 	Merged() bool
@@ -44,9 +46,35 @@ func NewIssue(msg string, args ...interface{}) Issue {
 	return Issue{fmt.Sprintf(msg, args...), []Issue{}}
 }
 
+const (
+	FLAG_TEMPORARY = 0x001
+	FLAG_LOCAL     = 0x002
+)
+
+type NodeFlags int
+
+func (f *NodeFlags) AddFlags(flags NodeFlags) *NodeFlags {
+	*f |= flags
+	return f
+}
+
+func (f NodeFlags) Temporary() bool {
+	return (f & FLAG_TEMPORARY) != 0
+}
+func (f *NodeFlags) SetTemporary() *NodeFlags {
+	*f |= FLAG_TEMPORARY
+	return f
+}
+func (f NodeFlags) Local() bool {
+	return (f & FLAG_LOCAL) != 0
+}
+func (f *NodeFlags) SetLocal() *NodeFlags {
+	*f |= FLAG_LOCAL
+	return f
+}
+
 type Annotation struct {
 	redirectPath []string
-	temporary    bool
 	replace      bool
 	preferred    bool
 	merged       bool
@@ -55,6 +83,7 @@ type Annotation struct {
 	failed       bool
 	undefined    bool
 	issue        Issue
+	NodeFlags
 }
 
 func NewNode(value interface{}, sourcePath string) Node {
@@ -100,8 +129,16 @@ func UndefinedNode(node Node) Node {
 	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().SetUndefined()}
 }
 
+func AddFlags(node Node, flags NodeFlags) Node {
+	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().AddFlags(flags)}
+}
+
 func TemporaryNode(node Node) Node {
 	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().SetTemporary()}
+}
+
+func LocalNode(node Node) Node {
+	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().SetLocal()}
 }
 
 func MassageType(value interface{}) interface{} {
@@ -113,19 +150,19 @@ func MassageType(value interface{}) interface{} {
 }
 
 func EmptyAnnotation() Annotation {
-	return Annotation{nil, false, false, false, false, "", false, false, false, Issue{}}
+	return Annotation{nil, false, false, false, "", false, false, false, Issue{}, 0}
 }
 
 func NewReferencedAnnotation(node Node) Annotation {
-	return Annotation{nil, false, false, false, false, node.KeyName(), node.HasError(), node.Failed(), node.Undefined(), node.Issue()}
+	return Annotation{nil, false, false, false, node.KeyName(), node.HasError(), node.Failed(), node.Undefined(), node.Issue(), 0}
+}
+
+func (n Annotation) Flags() NodeFlags {
+	return n.NodeFlags
 }
 
 func (n Annotation) RedirectPath() []string {
 	return n.redirectPath
-}
-
-func (n Annotation) Temporary() bool {
-	return n.temporary
 }
 
 func (n Annotation) ReplaceFlag() bool {
@@ -164,8 +201,18 @@ func (n Annotation) Issue() Issue {
 	return n.issue
 }
 
+func (n Annotation) AddFlags(flags NodeFlags) Annotation {
+	n.NodeFlags |= flags
+	return n
+}
+
 func (n Annotation) SetTemporary() Annotation {
-	n.temporary = true
+	n.NodeFlags.SetTemporary()
+	return n
+}
+
+func (n Annotation) SetLocal() Annotation {
+	n.NodeFlags.SetLocal()
 	return n
 }
 

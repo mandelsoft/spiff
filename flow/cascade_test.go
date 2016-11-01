@@ -395,6 +395,35 @@ values: 3
 		})
 	})
 
+	Describe("using local nodes", func() {
+		Context("simple usage", func() {
+			It("omits local map nodes", func() {
+				source := parseYAML(`
+---
+temp:
+  <<: (( &local ))
+  foo: alice
+alice: (( temp.foo ))
+bob: false
+`)
+
+				stub := parseYAML(`
+---
+temp:
+  <<: (( &local ))
+  foo: bob
+bob: (( temp.foo ))
+`)
+				resolved := parseYAML(`
+---
+alice: alice
+bob: bob
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+		})
+	})
+
 	Describe("using temporary nodes", func() {
 		Context("simple usage", func() {
 			It("omits temporary map nodes", func() {
@@ -428,6 +457,31 @@ temp:
 alice: bar
 `)
 				Expect(source).To(CascadeAs(resolved))
+			})
+
+			It("propagates temporary map nodes", func() {
+				source := parseYAML(`
+---
+temp:
+  #<<: (( &temporary ))
+  foo: alice
+alice: (( temp.foo ))
+bob: false
+`)
+
+				stub := parseYAML(`
+---
+temp:
+  <<: (( &temporary ))
+  foo: bob
+bob: (( temp.foo ))
+`)
+				resolved := parseYAML(`
+---
+alice: bob
+bob: bob
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
 			})
 		})
 

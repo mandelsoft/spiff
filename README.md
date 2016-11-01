@@ -1798,6 +1798,10 @@ data:
 
 The temporary marker can be combined with the [template marker](#templates) to omit templates from the final output.
 
+The marker `&local` acts similar to `&temporary` but local nodes are always
+removed from a stub directly after resolving dynaml expressions. Such nodes
+are therefore not available for merging.
+
 ## Mappings
 
 Mappings are used to produce a new list from the entries of a _list_ or _map_ containing the entries processed by a dynaml expression. The expression is given by a [lambda function](#-lambda-x-x--port-). There are two basic forms of the mapping function: It can be inlined as in `(( map[list|x|->x ":" port] ))`, or it can be determined by a regular dynaml expression evaluating to a lambda function as in `(( map[list|mapping.expression))` (here the mapping is taken from the property `mapping.expression`, which should hold an approriate lambda function).

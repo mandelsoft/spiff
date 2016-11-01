@@ -11,17 +11,24 @@ func Cascade(template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Nod
 			return nil, err
 		}
 
-		templates[i] = flowed
+		templates[i] = Cleanup(flowed, testLocal)
 	}
 
 	result, err := Flow(template, templates...)
 	if err == nil {
-		result = Cleanup(result)
+		result = Cleanup(result, testTemporary)
 	}
 	return result, err
 }
 
-func Cleanup(node yaml.Node) yaml.Node {
+func testTemporary(node yaml.Node) bool {
+	return node.Temporary() || node.Local()
+}
+func testLocal(node yaml.Node) bool {
+	return node.Local()
+}
+
+func Cleanup(node yaml.Node, test func(yaml.Node) bool) yaml.Node {
 	if node == nil {
 		return nil
 	}
@@ -30,8 +37,8 @@ func Cleanup(node yaml.Node) yaml.Node {
 	case []yaml.Node:
 		r := []yaml.Node{}
 		for _, e := range v {
-			if !e.Temporary() {
-				r = append(r, Cleanup(e))
+			if !test(e) {
+				r = append(r, Cleanup(e, test))
 			}
 		}
 		value = r
@@ -39,8 +46,8 @@ func Cleanup(node yaml.Node) yaml.Node {
 	case map[string]yaml.Node:
 		r := map[string]yaml.Node{}
 		for k, e := range v {
-			if !e.Temporary() {
-				r[k] = Cleanup(e)
+			if !test(e) {
+				r[k] = Cleanup(e, test)
 			}
 		}
 		value = r

@@ -7,7 +7,7 @@ Prefer <- ws 'prefer' req_ws Expression
 
 MarkedExpression <- ws Marker ( req_ws SubsequentMarker )* ws ( Grouped )? ws
 SubsequentMarker <- Marker
-Marker <- '&' ( 'template' / 'temporary' )
+Marker <- '&' ( 'template' / 'temporary' / 'local' )
 
 Expression <- ws ( LambdaExpr / Level7 ) ws
 

@@ -11,6 +11,7 @@ import (
 const (
 	TEMPORARY = "&temporary"
 	TEMPLATE  = "&template"
+	LOCAL     = "&local"
 )
 
 type MarkerExpr struct {
@@ -25,17 +26,27 @@ func (e MarkerExpr) String() string {
 	return fmt.Sprintf("%s", strings.Join(e.list, " "))
 }
 
-func (e MarkerExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
-	info := DefaultInfo()
+func (e MarkerExpr) GetFlags() yaml.NodeFlags {
+	var flags yaml.NodeFlags
 	for _, m := range e.list {
 		switch m {
-		case TEMPLATE:
-			info.Issue = yaml.NewIssue("&template only usable as marker for templates")
-			return nil, info, false
 		case TEMPORARY:
-			info.Temporary = true
+			flags.SetTemporary()
+		case LOCAL:
+			flags.SetLocal()
 		}
 	}
+	return flags
+}
+
+func (e MarkerExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
+	info := DefaultInfo()
+
+	if e.Has(TEMPLATE) {
+		info.Issue = yaml.NewIssue("&template only usable as marker for templates")
+		return nil, info, false
+	}
+	info.AddFlags(e.GetFlags())
 	if e.expr != nil {
 		result, infoe, ok := e.expr.Evaluate(binding, locally)
 		infoe = infoe.Join(info)

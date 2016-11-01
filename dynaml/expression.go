@@ -35,7 +35,6 @@ type Binding interface {
 
 type EvaluationInfo struct {
 	RedirectPath []string
-	Temporary    bool
 	Replace      bool
 	Merged       bool
 	Preferred    bool
@@ -45,6 +44,7 @@ type EvaluationInfo struct {
 	Failed       bool
 	Undefined    bool
 	Issue        yaml.Issue
+	yaml.NodeFlags
 }
 
 func (e EvaluationInfo) SourceName() string {
@@ -52,7 +52,7 @@ func (e EvaluationInfo) SourceName() string {
 }
 
 func DefaultInfo() EvaluationInfo {
-	return EvaluationInfo{nil, false, false, false, false, "", "", false, false, false, yaml.Issue{}}
+	return EvaluationInfo{nil, false, false, false, "", "", false, false, false, yaml.Issue{}, 0}
 }
 
 type Expression interface {
@@ -100,7 +100,7 @@ func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {
 	if o.Undefined {
 		i.Undefined = true
 	}
-	i.Temporary = i.Temporary || o.Temporary
+	i.NodeFlags |= o.NodeFlags
 	return i
 }
 
