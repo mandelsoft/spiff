@@ -24,9 +24,10 @@ func (matcher *EvaluateAsMatcher) Match(source interface{}) (success bool, err e
 		return false, fmt.Errorf("Not an expression: %v\n", source)
 	}
 
-	matcher.actual, _, ok = expr.Evaluate(matcher.Binding, false)
+	var info EvaluationInfo
+	matcher.actual, info, ok = expr.Evaluate(matcher.Binding, false)
 	if !ok {
-		return false, fmt.Errorf("Node failed to evaluate.")
+		return false, fmt.Errorf("Node failed to evaluate: %s.", info.Issue.Issue)
 	}
 
 	if node(matcher.actual, nil).EquivalentToNode(node(matcher.Expected, nil)) {

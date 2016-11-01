@@ -91,7 +91,7 @@ func (e LambdaValue) String() string {
 }
 
 func (e LambdaValue) MarshalYAML() (tag string, value interface{}, err error) {
-	return "", e.String(), nil
+	return "", "(( " + e.lambda.String() + " ))", nil
 }
 
 func (e LambdaValue) Evaluate(args []interface{}, binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {

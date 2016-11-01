@@ -22,6 +22,8 @@ Contents:
 - [dynaml Templating Language](#dynaml-templating-language)
 	- [(( foo ))](#-foo-)
 	- [(( foo.bar.[1].baz ))](#-foobar1baz-)
+	- [(( foo.[bar].baz ))](#-foobarbaz-)
+	- [(( list.[1..3] ))](#-list13-)
 	- [(( "foo" ))](#-foo--1)
 	- [(( [ 1, 2, 3 ] ))](#--1-2-3--)
 	- [(( { "alice" = 25 } ))](#--alice--25--)
@@ -54,6 +56,9 @@ Contents:
 		- [(( join( ", ", list) ))](#-join---list-)
 		- [(( split( ",", string) ))](#-split--string-)
 		- [(( trim(string) ))](#-trimstring-)
+		- [(( element(list, index) ))](#-elementlist-index-)
+		- [(( element(map, key) ))](#-elementmap-key-)
+		- [(( compact(list) ))](#-compactlist-)
 		- [(( uniq(list) ))](#-uniqlist-)
 		- [(( contains(list, "foobar") ))](#-containslist-foobar-)
 		- [(( index(list, "foobar") ))](#-indexlist-foobar-)
@@ -64,11 +69,13 @@ Contents:
 		- [(( defined(foobar) ))](#-definedfoobar-)
 		- [(( valid(foobar) ))](#-validfoobar-)
 		- [(( require(foobar) ))](#-requirefoobar-)
+		- [(( stub(foo.bar) ))](#-stubfoobar-)
 		- [(( exec( "command", arg1, arg2) ))](#-exec-command-arg1-arg2-)
 		- [(( eval( foo "." bar ) ))](#-eval-foo--bar--)
 		- [(( env( "HOME" ) ))](#-env-HOME--)
 		- [(( read("file.yml") ))](#-readfileyml-)
 		- [(( static_ips(0, 1, 3) ))](#-static_ips0-1-3-)
+		- [(( ipset(ranges, 3, 3,4,5,6) ))](#-ipsetranges-3-3456-)
 		- [(( list_to_map(list, "key") ))](#-list_to_maplist-key-)
 		- [(( makemap(fieldlist) ))](#-makemapfieldlist-)
 		- [(( makemap(key, value) ))](#-makemapkey-value-)
@@ -241,6 +248,72 @@ list:
 
 can be referenced by using the path `list.alice.age`, instead of `list[0].age`.
 
+## `(( foo.[bar].baz ))`
+
+Look for the nearest 'foo' key, and from there follow through to the
+field(s) described by the expression `bar` and then to .baz.
+
+The index may be an integer constant (without spaces) as described in the
+last section. But it might also be an arbitrary dynaml expression (even
+an integer, but with spaces). If the expression evaluates to a string,
+it lookups the dedicated field. If the expression evaluates to an integer,
+the array element with this index is addressed.
+
+e.g.:
+
+```yaml
+properties:
+  name: alice
+  foo: (( values.[name].bar ))
+  values:
+    alice:
+	   bar: 42
+```
+
+This will resolve `foo` to the value `42`. The dynamic index may also be at
+the end of the expression (without `.bar`).
+
+Basically this is the simplier way to express something like
+[eval("values." name ".bar")](#-eval-foo--bar--)
+
+If the expression evaluates to a list, the list elements (strings or integers)
+are used as path elements to access deeper fields.
+
+e.g.:
+
+```yaml
+properties:
+  name:
+   - foo
+   - bar
+  foo: (( values.[name] ))
+  values:
+    foo:
+	   bar: 42
+```
+
+resolves `foo` again to the value `42`.
+
+## `(( list.[1..3] ))`
+
+The slice expression can be used to extract a dedicated sub list from a list
+expression. The range *start* `..` *end* extracts a list of the length
+*end-start+1* with the elements from
+index *start* to *end*. If the start index is negative the slice is taken
+from the end of the list from *length-start* to *length-end*. If the end
+index is lower than the start index, the result is an empty array.
+
+e.g.:
+
+```yaml
+list:
+  - a
+  - b
+  - c
+foo: (( list.[1..length(list) - 1] ))
+```
+
+evaluates `foo` to the list `[b,c]`.
 
 ## `(( "foo" ))`
 
@@ -822,6 +895,19 @@ next: 192.168.1.0
 num: 192.168.0.0+256=192.168.1.0
 ```
 
+Subtraction also works on two IP addresses to calculate the number of
+IP addresses between two IP addresses.
+
+e.g.:
+
+```yaml
+diff: (( 10.0.1.0 - 10.0.0.1 + 1 ))
+```
+
+yields the value 256. IP address constants can be directly used in dynaml
+expressions. They are implicitly converted to strings and back to IP
+addresses if required by an operation.
+
 ## `(( a > 1 ? foo :bar ))`
 
 Dynaml supports the comparison operators `<`, `<=`, `==`, `!=`, `>=` and `>`. The comparison operators work on
@@ -912,6 +998,66 @@ e.g.:
 
 ```yaml
 list: (( trim(split("," "alice, bob")) ))
+```
+
+yields:
+
+```yaml
+list:
+  - alice
+  - bob
+```
+
+### `(( element(list, index) ))`
+
+Return a dedicated list element given by its index.
+
+e.g.:
+
+```yaml
+list: (( trim(split("," "alice, bob")) ))
+elem: (( element(list,1) ))
+```
+
+yields:
+
+```yaml
+list:
+  - alice
+  - bob
+elem: bob
+```
+
+### `(( element(map, key) ))`
+
+Return a dedicated map field given by its key.
+
+```yaml
+map:
+  alice: 24
+  bob: 25
+elem: (( element(map,"bob") ))
+```
+
+yields:
+
+```yaml
+map:
+  alice: 24
+  bob: 25
+elem: 25
+```
+
+This function is also able to handle keys containing dots (.).
+
+### `(( compact(list) ))`
+
+Filter a list omitting empty entries.
+
+e.g.:
+
+```yaml
+list: (( compact(trim(split("," "alice, , bob"))) ))
 ```
 
 yields:
@@ -1156,6 +1302,35 @@ bob: ~
 alice: default
 ```
 
+### `(( stub(foo.bar) ))`
+
+The function `stub` yields the value of a dedicated field found in the first upstream stub defining it.
+
+e.g.:
+
+**template.yml**
+```yaml
+value: (( stub(foo.bar) ))
+```
+merged with stub
+
+**stub.yml**
+```yaml
+foo:
+  bar: foobar
+```
+
+evaluates to
+
+```yaml
+value: foobar
+```
+
+The argument passed to this function must either be a reference literal or an expression evaluating to a string denoting a reference. If no argument is given, the actual field path is used.
+
+Alternatively the `merge` operation could be used, for example `merge foo.bar`. The difference is that `stub` does not merge, therefore the field will still be merged (with the original path in the document).
+
+
 ### `(( exec( "command", arg1, arg2) ))`
 
 Execute a command. Arguments can be any dynaml expressions including reference expressions evaluated to lists or maps. Lists or maps are passed as single arguments containing a yaml document with the given fragment.
@@ -1382,6 +1557,41 @@ networks:
   static_ips: (( static_ips([1..5]) )) 
 ```
 
+### `(( ipset(ranges, 3, 3,4,5,6) ))`
+
+While the function [static_ips](#-static_ips0-1-3-) for historical reasons
+relies on the structure of a bosh manifest
+and works only at dedicated locations in the manifest, the function *ipset*
+offers a similar calculation purely based on its arguments. So, the available
+ip ranges and the required numbers of IPs are passed as arguments. 
+
+The first (ranges) argument can be a single range as a simple string or a
+list of strings. Every string might be
+- a single IP address
+- an explicit IP range described by two IP addresses separated by a dash (-)
+- a CIDR
+
+The second argument specifies the requested number of IP addresses in the
+result set. 
+
+The additional arguments specify the indices of the IPs to choose (starting
+from 0) in the given ranges. Here again lists of indices might be used.
+
+e.g.:
+
+```yaml
+ranges:
+  - 10.0.0.0 - 10.0.0.255
+  - 10.0.2.0/24
+ipset: (( ipset(ranges,3,[256..260]) ))
+```
+
+resolves *ipset* to `[ 10.0.2.0, 10.0.2.1, 10.0.2.2 ]`.
+
+If no IP indices are specified (only two arguments), the IPs are chosen 
+starting from the beginning of the first range up to the end of the last
+given range, without indirection.
+
 ### `(( list_to_map(list, "key") ))`
 
 A list of map entries with explicit name/key fields will be mapped to a map with the dedicated keys. By default the key field `name` is used, which can changed by the optional second argument. An explicitly denoted key field in the list will also be taken into account.
@@ -1601,6 +1811,10 @@ data:
 ```
 
 The temporary marker can be combined with the [template marker](#templates) to omit templates from the final output.
+
+The marker `&local` acts similar to `&temporary` but local nodes are always
+removed from a stub directly after resolving dynaml expressions. Such nodes
+are therefore not available for merging.
 
 ## Mappings
 

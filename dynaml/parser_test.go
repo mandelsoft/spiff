@@ -480,6 +480,38 @@ var _ = Describe("parsing", func() {
 		})
 	})
 
+	Describe("chained dynamic references", func() {
+		It("parses qualified dynamic expression", func() {
+			parsesAs(
+				`foo.[alice].bar`,
+				QualifiedExpr{
+					DynamicExpr{
+						ReferenceExpr{[]string{"foo"}},
+						ReferenceExpr{[]string{"alice"}},
+					},
+					ReferenceExpr{[]string{"bar"}},
+				},
+			)
+		})
+
+		It("parses indexed expression", func() {
+			parsesAs(
+				`foo.[ 0 ]`,
+				DynamicExpr{
+					ReferenceExpr{[]string{"foo"}},
+					IntegerExpr{0},
+				},
+			)
+		})
+
+		It("parses regular reference expression", func() {
+			parsesAs(
+				`foo.[0]`,
+				ReferenceExpr{[]string{"foo", "[0]"}},
+			)
+		})
+	})
+
 	Describe("chained calls and references", func() {
 		It("parses reference based chains", func() {
 			parsesAs(

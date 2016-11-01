@@ -41,6 +41,9 @@ func getIndices(indices *[]int, list []yaml.Node, info EvaluationInfo) (interfac
 		if elem != nil && elem.Value() != nil {
 			index64, ok := elem.Value().(int64)
 			if ok {
+				if index64 < 0 {
+					return info.Error("negative ip indices are not allowed: %d", index64)
+				}
 				*indices = append(*indices, int(index64))
 			} else {
 				list, ok := elem.Value().([]yaml.Node)

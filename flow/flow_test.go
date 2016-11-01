@@ -1019,6 +1019,29 @@ foo: default
 
 			Expect(source).To(FlowAs(resolved, stub))
 		})
+
+		It("does not override merged values", func() {
+			source := parseYAML(`
+---
+foo: (( (|x|->sum[x|{}|s,k,v|->s { k=v.value }])(merge data.foo) ))
+`)
+
+			stub := parseYAML(`
+---
+data:
+  foo:
+    alice:
+      value: 24
+`)
+
+			resolved := parseYAML(`
+---
+foo:
+  alice: 24
+`)
+
+			Expect(source).To(FlowAs(resolved, stub))
+		})
 	})
 
 	Describe("automatic resource pool sizes", func() {
@@ -1242,6 +1265,71 @@ jobs:
     - 10.10.16.14
 `)
 
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("ipset population", func() {
+		It("evaluates the node", func() {
+			source := parseYAML(`
+---
+ranges:
+  - 10.0.0.0-10.0.0.255
+  - 10.0.2.0/24
+ipset: (( ipset(ranges,3,10,12,14,16,18) ))
+`)
+			resolved := parseYAML(`
+---
+ranges:
+  - 10.0.0.0-10.0.0.255
+  - 10.0.2.0/24
+ipset:
+  - 10.0.0.10
+  - 10.0.0.12
+  - 10.0.0.14
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates the second range", func() {
+			source := parseYAML(`
+---
+ranges:
+  - 10.0.0.0-10.0.0.255
+  - 10.0.2.0/24
+ipset: (( ipset(ranges,3,[257..270]) ))
+`)
+			resolved := parseYAML(`
+---
+ranges:
+  - 10.0.0.0-10.0.0.255
+  - 10.0.2.0/24
+ipset:
+  - 10.0.2.1
+  - 10.0.2.2
+  - 10.0.2.3
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("support no indirection", func() {
+			source := parseYAML(`
+---
+ranges:
+  - 10.0.0.0-10.0.0.255
+  - 10.0.2.0/24
+ipset: (( ipset(ranges,3) ))
+`)
+			resolved := parseYAML(`
+---
+ranges:
+  - 10.0.0.0-10.0.0.255
+  - 10.0.2.0/24
+ipset:
+  - 10.0.0.0
+  - 10.0.0.1
+  - 10.0.0.2
+`)
 			Expect(source).To(FlowAs(resolved))
 		})
 	})
@@ -1921,6 +2009,30 @@ b: 2
 foo: failed
 `)
 
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("subtracts IPs", func() {
+				source := parseYAML(`
+---
+foo: (( 10.0.0.1 - 10.0.1.0 ))
+`)
+				resolved := parseYAML(`
+---
+foo: -255
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("subtracts IP and integer", func() {
+				source := parseYAML(`
+---
+foo: (( 10.0.0.1 - 2 ))
+`)
+				resolved := parseYAML(`
+---
+foo: "9.255.255.255"
+`)
 				Expect(source).To(FlowAs(resolved))
 			})
 		})
@@ -2741,6 +2853,264 @@ foo: (( trim( split(",","alice, bob ")) ))
 foo:
   - alice
   - bob
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling element", func() {
+		It("extracts fields from maps", func() {
+			source := parseYAML(`
+---
+map:
+  alice: 24
+  bob: 25
+
+elem: (( element(map,"bob") ))
+`)
+			resolved := parseYAML(`
+---
+map:
+  alice: 24
+  bob: 25
+
+elem: 25
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("extracts dotted fields from maps", func() {
+			source := parseYAML(`
+---
+map:
+  foo.bar: 25
+
+elem: (( element(map,"foo.bar") ))
+`)
+			resolved := parseYAML(`
+---
+map:
+  foo.bar: 25
+
+elem: 25
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("failes for invalid mapkeys", func() {
+			source := parseYAML(`
+---
+map:
+  foo.bar: 25
+
+elem: (( element(map,"foo") || "failed" ))
+`)
+			resolved := parseYAML(`
+---
+map:
+  foo.bar: 25
+
+elem: failed
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("extracts entries from lists", func() {
+			source := parseYAML(`
+---
+list:
+  - alice: 24
+  - bob: 25
+
+elem: (( element(list,1) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+  - alice: 24
+  - bob: 25
+
+elem:
+  bob: 25
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("fails for invalid list index", func() {
+			source := parseYAML(`
+---
+list:
+  - alice: 24
+  - bob: 25
+
+elem: (( element(list,2) || "failed" ))
+`)
+			resolved := parseYAML(`
+---
+list:
+  - alice: 24
+  - bob: 25
+
+elem: failed
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling stub", func() {
+		It("handles reference arg", func() {
+			source := parseYAML(`
+---
+age: (( stub(data.alice) ))
+`)
+			stub := parseYAML(`
+---
+data:
+  alice: "24"
+`)
+
+			resolved := parseYAML(`
+---
+age: "24"
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("handles string arg", func() {
+			source := parseYAML(`
+---
+age: (( stub("data.alice") ))
+`)
+			stub := parseYAML(`
+---
+data:
+  alice: 24
+`)
+
+			resolved := parseYAML(`
+---
+age: 24
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("fails on missing stub", func() {
+			source := parseYAML(`
+---
+age: (( stub("data.alice") || "failed" ))
+`)
+
+			resolved := parseYAML(`
+---
+age: failed
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("refers to local path if no arg is given", func() {
+			source := parseYAML(`
+---
+age: (( stub() ))
+`)
+
+			stub := parseYAML(`
+---
+age: 20
+`)
+			resolved := parseYAML(`
+---
+age: 20
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("does not prevent merging", func() {
+			source := parseYAML(`
+---
+
+val: (( prefer stub(data) ))
+`)
+
+			stub := parseYAML(`
+---
+data:
+  alice: 24
+  bob: 25
+val:
+  bob: 100
+`)
+			resolved := parseYAML(`
+---
+val:
+  alice: 24
+  bob: 100
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+	})
+
+	Describe("when calling uniq", func() {
+		It("omits duplicates", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- b
+- a
+- c
+- a
+- b
+- 0
+- "0"
+uniq: (( uniq(list) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- b
+- a
+- c
+- a
+- b
+- 0
+- "0"
+uniq:
+- a
+- b
+- c
+- 0
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling compact", func() {
+		It("omits empty entries", func() {
+			source := parseYAML(`
+---
+list:
+- a
+- ~
+- ""
+- {}
+- []
+- b
+
+compact: (( compact(list) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- a
+- ~
+- ""
+- {}
+- []
+- b
+compact:
+- a
+- b
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
@@ -4964,6 +5334,211 @@ alice: default
 `)
 
 			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when a dynamic index", func() {
+		Context("for integer index", func() {
+			It("it indexes an array", func() {
+				source := parseYAML(`
+---
+index: 0
+
+value: (( data.bob.[index].foo ))
+
+data:
+  bob:
+    - foo: bar
+`)
+				resolved := parseYAML(`
+---
+index: 0
+
+value: bar
+
+data:
+  bob:
+    - foo: bar
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("for string index", func() {
+			It("it accesses a map entry", func() {
+				source := parseYAML(`
+---
+name: alice
+
+value: (( data.[name].foo ))
+
+data:
+  alice:
+    foo: bar
+`)
+				resolved := parseYAML(`
+---
+name: alice
+
+value: bar
+
+data:
+  alice:
+    foo: bar
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it accesses a deep map entry", func() {
+				source := parseYAML(`
+---
+name:
+  - foo
+  - bar
+
+value: (( data.[name] ))
+
+data:
+  foo:
+    bar: alice
+`)
+				resolved := parseYAML(`
+---
+name:
+  - foo
+  - bar
+
+value: alice
+
+data:
+  foo:
+    bar: alice
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("for range index", func() {
+			It("it extracts a slice for non-negative range", func() {
+				source := parseYAML(`
+---
+value: (( data.[1..2] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value:
+  - b
+  - c
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it extracts a complete slice for non-negative range", func() {
+				source := parseYAML(`
+---
+value: (( data.[0..2] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value:
+  - a
+  - b
+  - c
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it extracts a slice for negative range", func() {
+				source := parseYAML(`
+---
+value: (( data.[-2..-1] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value:
+  - b
+  - c
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it extracts a complete slice for negative range", func() {
+				source := parseYAML(`
+---
+value: (( data.[-3..-1] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value:
+  - a
+  - b
+  - c
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it extracts an empty slice", func() {
+				source := parseYAML(`
+---
+value: (( data.[1..0] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value: [ ]
+
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
 	})
 })

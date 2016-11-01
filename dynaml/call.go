@@ -18,23 +18,18 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	var value interface{}
 	var info EvaluationInfo
 
-	ref, ok := e.Function.(ReferenceExpr)
-	if ok && len(ref.Path) == 1 && ref.Path[0] != "" && ref.Path[0] != "_" {
+	ref, okf := e.Function.(ReferenceExpr)
+	if okf && len(ref.Path) == 1 && ref.Path[0] != "" && ref.Path[0] != "_" {
 		funcName = ref.Path[0]
 	} else {
-		value, info, ok = ResolveExpressionOrPushEvaluation(&e.Function, &resolved, &info, binding, false)
-		if ok {
-			_, ok = value.(LambdaValue)
-			if !ok {
+		value, info, okf = ResolveExpressionOrPushEvaluation(&e.Function, &resolved, &info, binding, false)
+		if okf && resolved {
+			_, okf = value.(LambdaValue)
+			if !okf {
 				debug.Debug("function: no string or lambda value: %T\n", value)
 				return info.Error("function call '%s' requires function name or lambda value", e.Function)
 			}
 		}
-	}
-
-	if !ok {
-		debug.Debug("failed to resolve function: %s\n", info.Issue)
-		return nil, info, false
 	}
 
 	switch funcName {
@@ -44,9 +39,16 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		return e.require(binding)
 	case "valid":
 		return e.valid(binding)
+	case "stub":
+		return e.stub(binding)
 	}
 
 	values, info, ok := ResolveExpressionListOrPushEvaluation(&e.Arguments, &resolved, nil, binding, false)
+
+	if !okf {
+		debug.Debug("failed to resolve function: %s\n", info.Issue)
+		return nil, info, false
+	}
 
 	if !ok {
 		debug.Debug("call args failed\n")
@@ -82,6 +84,12 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "uniq":
 		result, sub, ok = func_uniq(values, binding)
+
+	case "element":
+		result, sub, ok = func_element(values, binding)
+
+	case "compact":
+		result, sub, ok = func_compact(values, binding)
 
 	case "contains":
 		result, sub, ok = func_contains(values, binding)
@@ -130,6 +138,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "list_to_map":
 		result, sub, ok = func_list_to_map(e.Arguments[0], values, binding)
+
+	case "ipset":
+		result, sub, ok = func_ipset(values, binding)
 
 	default:
 		return info.Error("unknown function '%s'", funcName)

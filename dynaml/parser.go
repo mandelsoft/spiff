@@ -95,15 +95,24 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			required = true
 		case ruleOn:
 			keyName = tokens.Pop().(nameHelper).name
-
-		case ruleReference, ruleFollowUpRef:
+		case ruleFollowUpRef:
+		case ruleReference:
 			tokens.Push(ReferenceExpr{strings.Split(contents, ".")})
 
 		case ruleChained:
 		case ruleChainedQualifiedExpression:
+		case ruleChainedRef:
+			ref := ReferenceExpr{strings.Split(contents, ".")}
+			expr := tokens.Pop()
+			tokens.Push(QualifiedExpr{expr, ref})
+		case ruleChainedDynRef:
 			ref := tokens.Pop()
 			expr := tokens.Pop()
-			tokens.Push(QualifiedExpr{expr, ref.(ReferenceExpr)})
+			tokens.Push(DynamicExpr{expr, ref.(Expression)})
+		case ruleSlice:
+			slice := tokens.Pop()
+			expr := tokens.Pop()
+			tokens.Push(SliceExpr{expr, slice.(RangeExpr)})
 
 		case ruleChainedCall:
 			tokens.Push(CallExpr{
@@ -136,7 +145,8 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 		case ruleString:
 			val := strings.Replace(contents[1:len(contents)-1], `\"`, `"`, -1)
 			tokens.Push(StringExpr{val})
-
+		case ruleIP:
+			tokens.Push(StringExpr{contents})
 		case ruleSubstitution:
 			tokens.Push(SubstitutionExpr{Template: tokens.Pop()})
 
