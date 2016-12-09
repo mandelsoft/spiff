@@ -31,6 +31,7 @@ type Binding interface {
 	StubPath() []string
 
 	Flow(source yaml.Node, shouldOverride bool) (yaml.Node, Status)
+	Cascade(template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error)
 }
 
 type EvaluationInfo struct {

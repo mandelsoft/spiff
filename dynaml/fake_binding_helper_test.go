@@ -80,3 +80,7 @@ func (c FakeBinding) FindInStubs(path []string) (yaml.Node, bool) {
 func (c FakeBinding) Flow(source yaml.Node, shouldOverride bool) (yaml.Node, Status) {
 	return nil, nil
 }
+
+func (c FakeBinding) Cascade(template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error) {
+	return nil, nil
+}

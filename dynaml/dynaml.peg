@@ -70,7 +70,7 @@ Assignment <- Expression '=' Expression
  
 Merge <- RefMerge / SimpleMerge
 RefMerge <- 'merge' !( req_ws Required ) ( req_ws (Replace / On ))? req_ws Reference
-SimpleMerge <- 'merge' ( req_ws (Replace/Required/On) )?
+SimpleMerge <- 'merge' !'(' ( req_ws (Replace/Required/On) )?
 Replace <- 'replace'
 Required <- 'required'
 On <- 'on' req_ws Name
