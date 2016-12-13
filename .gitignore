@@ -5,4 +5,6 @@ spiff++/spiff_darwin_amd64.zip
 spiff++/spiff_linux_amd64.zip
 *.coverprofile
 /spiff
+spiff_darwin_amd64.zip
+spiff_linux_amd64.zip
 

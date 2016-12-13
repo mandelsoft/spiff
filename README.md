@@ -79,6 +79,7 @@ Contents:
 		- [(( list_to_map(list, "key") ))](#-list_to_maplist-key-)
 		- [(( makemap(fieldlist) ))](#-makemapfieldlist-)
 		- [(( makemap(key, value) ))](#-makemapkey-value-)
+		- [(( merge(map1, map2) ))](#-mergemap1-map2-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
 	- [(( &temporary ))](#-temporary-)
 	- [Mappings](#mappings)
@@ -1688,6 +1689,56 @@ map:
 
 In contrast to the previous `makemap` flavor, this one could also be handled by
 [map literals](#--alice--25--).
+
+### `(( merge(map1, map2) ))`
+
+Beside the keyword ` merge` there is also a function called `merge` (It must always be followed by an opensing bracket). It can be used to merge severals maps taken from the actual document. If the maps are specified by reference expressions, they cannot contain
+any _dynaml_ expressions, because they are always evaluated in the context of the actual document before evaluating the arguments.
+
+e.g.:
+
+```yaml
+map1:
+  alice: 24
+  bob: 25
+map2:
+  alice: 26
+  peter: 8
+result: (( merge(map1,map2) ))
+```
+
+resolves `result` to
+
+```yaml
+result:
+  alice: 26
+  bob: 25
+```
+
+A map might also be given by a map expression. Here it is possible to specify
+dynaml expressions using the usual syntax:
+
+e.g.:
+
+```yaml
+map1:
+  alice: 24
+  bob: 25
+
+map2:
+  alice: 26
+  peter: 8
+
+result: (( merge(map1, map2, { "bob"="(( carl ))", "carl"=100 }) ))
+```
+
+resolves `result` to
+
+```yaml
+result:
+  alice: 26
+  bob: 100
+```
 
 ## `(( lambda |x|->x ":" port ))`
 

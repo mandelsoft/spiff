@@ -142,6 +142,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "ipset":
 		result, sub, ok = func_ipset(values, binding)
 
+	case "merge":
+		result, sub, ok = func_merge(values, binding)
+
 	default:
 		return info.Error("unknown function '%s'", funcName)
 	}

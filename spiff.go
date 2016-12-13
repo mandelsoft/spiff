@@ -22,7 +22,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "spiff"
 	app.Usage = "BOSH deployment manifest toolkit"
-	app.Version = "1.0.8-ms.6"
+	app.Version = "1.0.8-ms.7"
 
 	app.Commands = []cli.Command{
 		{

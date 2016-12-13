@@ -145,6 +145,10 @@ func (e DefaultEnvironment) Flow(source yaml.Node, shouldOverride bool) (yaml.No
 	return result, nil
 }
 
+func (e DefaultEnvironment) Cascade(template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error) {
+	return Cascade(template, partial, templates...)
+}
+
 func NewEnvironment(stubs []yaml.Node, source string) dynaml.Binding {
 	return DefaultEnvironment{stubs: stubs, sourceName: source, currentSourceName: source}
 }

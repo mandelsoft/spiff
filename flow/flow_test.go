@@ -5541,4 +5541,61 @@ data:
 			})
 		})
 	})
+
+	Describe("when merging inline maps", func() {
+		It("it overrides field", func() {
+			source := parseYAML(`
+---
+map1:
+  alice: 24
+  bob: 25
+map2:
+  alice: 26
+  peter: 8
+result: (( merge(map1,map2) ))
+`)
+			resolved := parseYAML(`
+---
+map1:
+  alice: 24
+  bob: 25
+map2:
+  alice: 26
+  peter: 8
+result:
+  alice: 26
+  bob: 25
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("it handles dynaml expressions", func() {
+			source := parseYAML(`
+---
+map1:
+  alice: 24
+  bob: 25
+
+map2:
+  alice: 26
+  peter: 8
+
+result: (( merge(map1, map2, { "bob"="(( carl ))", "carl"=100 }) ))
+
+`)
+			resolved := parseYAML(`
+---
+map1:
+  alice: 24
+  bob: 25
+map2:
+  alice: 26
+  peter: 8
+result:
+  alice: 26
+  bob: 100
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
 })
