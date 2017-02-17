@@ -10,13 +10,29 @@
 
 ---
 
-**NOTE**: *Active development on [spiff](https://github.com/cloudfoundry-incubator/spiff) is currently paused and does not accept feature pull requests anymore. `spiff++` is a fork of spiff that provides a compatible extension to spiff based on the latest version offering a rich set of new features not yet available in spiff. All fixes provided by the original spiff project will be incorporated into spiff++, also. If development is opened again the new features will be proposed for the original project*
+**NOTE**: *Active development on spiff is currently paused, including Pull Requests.  Very severe issues will be addressed, and we will still be actively responding to requests for help via Issues. `spiff++` is a fork of spiff that provides a compatible extension to spiff based on the latest version offering a rich set of new features not yet available in spiff. All fixes provided by the original spiff project will be incorporated into spiff++, also. This is the last fork version of the original spiff tool. Because there will be no way back to the spiff source base, this version will be the basis for the first version for a new independent spiff++ repository.*
 
 ---
 
-spiff is a command line tool and declarative YAML templating system, specially designed for generating BOSH deployment manifests.
+*spiff* is a command line tool and declarative in-domain hybrid YAML templating system. While regular templating systems process a template file by substituting the template expressions by values taken from 
+external data sources, in-domain means that the templating engine knows about the syntax and structure of the processed template. It therefore can take the values for the template expressions directly
+from the document processed, including those parts denoted by the template expressions itself.
+
+For example:
+```yaml
+resource:
+  name: bosh deployment
+  version: 25
+  url: (( "http://resource.location/bosh?version=" version ))
+  description: (( "This document describes a " name " located at " url ))
+```
+
+Hybrid mean that the template processing is not restricted to the template itself. Additionally
+*spiff* is able to merge the template with information from additional yaml files, so-called stubs, that again may contain template expressions.
+
 
 Contents:
+
 - [Installation](#installation)
 - [Usage](#usage)
 - [dynaml Templating Language](#dynaml-templating-language)
@@ -130,18 +146,25 @@ It is possible to read one file from standard input by using the file name `-`. 
 
 Show structural differences between two deployment manifests.
 
-Unlike 'bosh diff', this command has semantic knowledge of a deployment
-manifest, and is not just text-based. It also doesn't modify either file.
+Unlike basic diffing tools and even `bosh diff`, this command has semantic 
+knowledge of a deployment manifest, and is not just text-based. For example,
+if two manifests are the same except they have some jobs listed in different
+orders, `spiff diff` will detect this, since job order matters in a manifest.
+On the other hand, if two manifests differ only in the order of their
+resource pools, for instance, then it will yield and empty diff since 
+resource pool order doesn't actually matter for a deployment.
 
-It's tailed for checking differences between one deployment and the next.
+Also unlike `bosh diff`, this command doesn't modify either file.
+
+It's tailored for checking differences between one deployment and the next.
 
 Typical flow:
 
 ```sh
-$ spiff merge template.yml [templates...] > deployment.yml
+$ spiff merge template.yml [templates...] > upgrade.yml
 $ bosh download manifest [deployment] current.yml
-$ spiff diff deployment.yml current.yml
-$ bosh deployment deployment.yml
+$ spiff diff upgrade.yml current.yml
+$ bosh deployment upgrade.yml
 $ bosh deploy
 ```
 
@@ -862,7 +885,8 @@ The result is the string `3 times 2 yields 6`.
 
 ## `(( "10.10.10.10" - 11 ))`
 
-Besides arithmetic on integers it is also possible to use addition and subtraction on ip addresses.
+Besides arithmetic on integers it is also possible to use addition and
+subtraction on ip addresses, or multiplication and division on CIDRs.
 
 e.g.:
 
@@ -876,6 +900,39 @@ yields
 ```yaml
 ip: 10.10.10.10
 range: 10.10.10.10-10.11.11.1
+```
+
+Subtraction also works on two IP addresses to calculate the number of
+IP addresses between two IP addresses.
+
+e.g.:
+
+```yaml
+diff: (( 10.0.1.0 - 10.0.0.1 + 1 ))
+```
+
+yields the value 256. IP address constants can be directly used in dynaml
+expressions. They are implicitly converted to strings and back to IP
+addresses if required by an operation.
+
+Multiplication and division can be used to handle IP range shifts on CIDRs.
+With division a network can be partioned. The network size is increased
+to allow at least a dedicated number of subnets below the original CIDR.
+Multiplication then can be used to get the n-th next subnet of the same
+size. 
+
+e.g.:
+
+```yaml
+subnet: (( "10.1.2.1/24" / 12 ))  # first subnet CIDR for 16 subnets
+next: (( "10.1.2.1/24" / 12 * 2)) # 2nd next (3rd) subnet CIDRS
+```
+
+yields
+
+```yaml
+subnet: 10.1.2.0/28
+next: 10.1.2.32/28
 ```
 
 Additionally there are functions working on IPv4 CIDRs:
@@ -895,19 +952,6 @@ range: 192.168.0.0-192.168.0.255
 next: 192.168.1.0
 num: 192.168.0.0+256=192.168.1.0
 ```
-
-Subtraction also works on two IP addresses to calculate the number of
-IP addresses between two IP addresses.
-
-e.g.:
-
-```yaml
-diff: (( 10.0.1.0 - 10.0.0.1 + 1 ))
-```
-
-yields the value 256. IP address constants can be directly used in dynaml
-expressions. They are implicitly converted to strings and back to IP
-addresses if required by an operation.
 
 ## `(( a > 1 ? foo :bar ))`
 

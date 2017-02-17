@@ -275,6 +275,22 @@ foo: (( auto ))
 		})
 	})
 
+	Context("when there are ignorable dynaml nodes start with '!'", func() {
+		It("ignores nodes", func() {
+			source := parseYAML(`
+---
+foo: ((!template_only.foo))
+`)
+
+			resolved := parseYAML(`
+---
+foo: ((!template_only.foo))
+`)
+
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
 	Context("when a reference is made to a yet-to-be-resolved node, in a || expression", func() {
 		It("eventually resolves to the referenced node", func() {
 			source := parseYAML(`
@@ -5596,6 +5612,24 @@ result:
   bob: 100
 `)
 			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when shifting network ranges", func() {
+		Context("with arithmetic operator", func() {
+			It("splits and shifts", func() {
+				source := parseYAML(`
+---
+subnet: (( "10.1.2.1/24" / 12 ))
+next: (( "10.1.2.1/24" / 12 * 2 ))
+`)
+				resolved := parseYAML(`
+---
+subnet: 10.1.2.0/28
+next: 10.1.2.32/28
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
 	})
 })

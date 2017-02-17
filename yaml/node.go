@@ -336,7 +336,7 @@ func (n AnnotatedNode) EquivalentToNode(o Node) bool {
 	return b
 }
 
-var embeddedDynaml = regexp.MustCompile(`^\(\((.*)\)\)$`)
+var embeddedDynaml = regexp.MustCompile(`^\(\((([^!].*)?)\)\)$`)
 
 func EmbeddedDynaml(root Node) *string {
 	rootString := root.Value().(string)

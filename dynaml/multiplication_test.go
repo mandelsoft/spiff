@@ -36,4 +36,15 @@ var _ = Describe("multiplication", func() {
 			Expect(expr).To(FailToEvaluate(FakeBinding{}))
 		})
 	})
+
+	Context("when the left-hand side is a CIDR", func() {
+		It("shifts the IP range", func() {
+			expr := MultiplicationExpr{
+				StringExpr{"10.1.2.1/24"},
+				IntegerExpr{3},
+			}
+
+			Expect(expr).To(EvaluateAs("10.1.5.0/24", FakeBinding{}))
+		})
+	})
 })
