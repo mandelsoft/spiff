@@ -1,8 +1,8 @@
 package dynaml
 
 import (
-	"github.com/cloudfoundry-incubator/spiff/debug"
-	"github.com/cloudfoundry-incubator/spiff/yaml"
+	"github.com/mandelsoft/spiff/debug"
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 func func_list_to_map(listexpr Expression, arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {

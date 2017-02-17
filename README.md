@@ -10,8 +10,7 @@
 
 ---
 
-**NOTE**: *Active development on spiff is currently paused, including Pull Requests.  Very severe issues will be addressed, and we will still be actively responding to requests for help via Issues. `spiff++` is a fork of spiff that provides a compatible extension to spiff based on the latest version offering a rich set of new features not yet available in spiff. All fixes provided by the original spiff project will be incorporated into spiff++, also. This is the last fork version of the original spiff tool. Because there will be no way back to the spiff source base, this version will be the basis for the first version for a new independent spiff++ repository.*
-
+**NOTE**: *Active development on spiff is currently paused, including Pull Requests. `spiff++` is a fork of spiff that provides a compatible extension to spiff based on the latest version offering a rich set of new features not yet available in spiff. All fixes provided by the original spiff project will be incorporated into spiff++, also. Because there will be no way back to the spiff source base a new independent spiff++ repository has been created to continue development of spiff++.*
 ---
 
 *spiff* is a command line tool and declarative in-domain hybrid YAML templating system. While regular templating systems process a template file by substituting the template expressions by values taken from 

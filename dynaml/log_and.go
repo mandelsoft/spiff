@@ -3,7 +3,7 @@ package dynaml
 import (
 	"fmt"
 
-	"github.com/cloudfoundry-incubator/spiff/debug"
+	"github.com/mandelsoft/spiff/debug"
 )
 
 const (

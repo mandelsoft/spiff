@@ -5,8 +5,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/cloudfoundry-incubator/spiff/debug"
-	"github.com/cloudfoundry-incubator/spiff/yaml"
+	"github.com/mandelsoft/spiff/debug"
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 var fileCache = map[string][]byte{}

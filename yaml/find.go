@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cloudfoundry-incubator/spiff/debug"
+	"github.com/mandelsoft/spiff/debug"
 )
 
 var listIndex = regexp.MustCompile(`^\[(\d+)\]$`)

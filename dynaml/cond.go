@@ -3,7 +3,7 @@ package dynaml
 import (
 	"fmt"
 
-	"github.com/cloudfoundry-incubator/spiff/yaml"
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 type CondExpr struct {

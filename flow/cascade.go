@@ -1,7 +1,7 @@
 package flow
 
 import (
-	"github.com/cloudfoundry-incubator/spiff/yaml"
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 func Cascade(template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error) {

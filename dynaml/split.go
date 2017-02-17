@@ -3,7 +3,7 @@ package dynaml
 import (
 	"strings"
 
-	"github.com/cloudfoundry-incubator/spiff/yaml"
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 func func_split(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {

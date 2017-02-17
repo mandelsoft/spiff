@@ -1,7 +1,7 @@
 package dynaml
 
 import (
-	"github.com/cloudfoundry-incubator/spiff/debug"
+	"github.com/mandelsoft/spiff/debug"
 	"strings"
 )
 

@@ -10,8 +10,8 @@ import (
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
 
-	"github.com/cloudfoundry-incubator/spiff/debug"
-	"github.com/cloudfoundry-incubator/spiff/yaml"
+	"github.com/mandelsoft/spiff/debug"
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 func func_exec(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {

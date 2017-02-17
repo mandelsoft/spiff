@@ -3,7 +3,7 @@ package flow
 import (
 	"fmt"
 
-	"github.com/cloudfoundry-incubator/spiff/yaml"
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 func CascadeAs(expected yaml.Node, stubs ...yaml.Node) *CascadeAsMatcher {

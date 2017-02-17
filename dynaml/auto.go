@@ -1,7 +1,7 @@
 package dynaml
 
 import (
-	"github.com/cloudfoundry-incubator/spiff/yaml"
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 var (

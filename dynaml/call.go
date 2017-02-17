@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cloudfoundry-incubator/spiff/debug"
+	"github.com/mandelsoft/spiff/debug"
 )
 
 type CallExpr struct {

@@ -1,6 +1,6 @@
 #!/bin/bash -e
 P="$(pwd)"
-O="cloudfoundry-incubator/$(basename "$P")"
+O="mandelsoft/spiff"
 if [ ! -d "../../$O" ]; then
   echo "preparing original path"
   cd ../..

@@ -3,8 +3,8 @@ package dynaml
 import (
 	"strings"
 
-	"github.com/cloudfoundry-incubator/spiff/debug"
-	"github.com/cloudfoundry-incubator/spiff/yaml"
+	"github.com/mandelsoft/spiff/debug"
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 type ReferenceExpr struct {
