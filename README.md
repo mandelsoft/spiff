@@ -861,7 +861,8 @@ The result is the string `3 times 2 yields 6`.
 
 ## `(( "10.10.10.10" - 11 ))`
 
-Besides arithmetic on integers it is also possible to use addition and subtraction on ip addresses.
+Besides arithmetic on integers it is also possible to use addition and
+subtraction on ip addresses, or multiplication and division on CIDRs.
 
 e.g.:
 
@@ -875,6 +876,39 @@ yields
 ```yaml
 ip: 10.10.10.10
 range: 10.10.10.10-10.11.11.1
+```
+
+Subtraction also works on two IP addresses to calculate the number of
+IP addresses between two IP addresses.
+
+e.g.:
+
+```yaml
+diff: (( 10.0.1.0 - 10.0.0.1 + 1 ))
+```
+
+yields the value 256. IP address constants can be directly used in dynaml
+expressions. They are implicitly converted to strings and back to IP
+addresses if required by an operation.
+
+Multiplication and division can be used to handle IP range shifts on CIDRs.
+With division a network can be partioned. The network size is increased
+to allow at least a dedicated number of subnets below the original CIDR.
+Multiplication then can be used to get the n-th next subnet of the same
+size. 
+
+e.g.:
+
+```yaml
+subnet: (( "10.1.2.1/24" / 12 ))  # first subnet CIDR for 16 subnets
+next: (( "10.1.2.1/24" / 12 * 2)) # 2nd next (3rd) subnet CIDRS
+```
+
+yields
+
+```yaml
+subnet: 10.1.2.0/28
+next: 10.1.2.32/28
 ```
 
 Additionally there are functions working on IPv4 CIDRs:
@@ -894,19 +928,6 @@ range: 192.168.0.0-192.168.0.255
 next: 192.168.1.0
 num: 192.168.0.0+256=192.168.1.0
 ```
-
-Subtraction also works on two IP addresses to calculate the number of
-IP addresses between two IP addresses.
-
-e.g.:
-
-```yaml
-diff: (( 10.0.1.0 - 10.0.0.1 + 1 ))
-```
-
-yields the value 256. IP address constants can be directly used in dynaml
-expressions. They are implicitly converted to strings and back to IP
-addresses if required by an operation.
 
 ## `(( a > 1 ? foo :bar ))`
 

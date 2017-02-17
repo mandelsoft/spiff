@@ -47,4 +47,31 @@ var _ = Describe("division", func() {
 			Expect(expr).To(FailToEvaluate(FakeBinding{}))
 		})
 	})
+
+	Context("when the left-hand side is a CIDR", func() {
+		It("divides an IP range", func() {
+			expr := DivisionExpr{
+				StringExpr{"10.1.2.1/24"},
+				IntegerExpr{4},
+			}
+
+			Expect(expr).To(EvaluateAs("10.1.2.0/26", FakeBinding{}))
+		})
+		It("rounds up divisor", func() {
+			expr := DivisionExpr{
+				StringExpr{"10.1.2.1/24"},
+				IntegerExpr{12},
+			}
+
+			Expect(expr).To(EvaluateAs("10.1.2.0/28", FakeBinding{}))
+		})
+		It("fails for too large divisor", func() {
+			expr := DivisionExpr{
+				StringExpr{"10.1.2.1/24"},
+				IntegerExpr{257},
+			}
+
+			Expect(expr).To(FailToEvaluate(FakeBinding{}))
+		})
+	})
 })

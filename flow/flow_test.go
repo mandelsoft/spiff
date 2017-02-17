@@ -5598,4 +5598,22 @@ result:
 			Expect(source).To(FlowAs(resolved))
 		})
 	})
+
+	Describe("when shifting network ranges", func() {
+		Context("with arithmetic operator", func() {
+			It("splits and shifts", func() {
+				source := parseYAML(`
+---
+subnet: (( "10.1.2.1/24" / 12 ))
+next: (( "10.1.2.1/24" / 12 * 2 ))
+`)
+				resolved := parseYAML(`
+---
+subnet: 10.1.2.0/28
+next: 10.1.2.32/28
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
 })
