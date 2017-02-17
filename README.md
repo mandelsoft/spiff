@@ -9,13 +9,29 @@
 
 ---
 
-**NOTE**: *Active development on spiff is currently paused, including Pull Requests.  Very severe issues will be addressed, and we will still be actively responding to requests for help via Issues.*
+**NOTE**: *Active development on spiff is currently paused, including Pull Requests.  Very severe issues will be addressed, and we will still be actively responding to requests for help via Issues. This is the last fork version of the original spiff tool. Because there will be no way back to the spiff source base, this version will be the basis for the first version for a new independent spiff++ repository.*
 
 ---
 
-spiff is a command line tool and declarative YAML templating system, specially designed for generating BOSH deployment manifests.
+*spiff* is a command line tool and declarative in-domain hybrid YAML templating system. While regular templating systems process a template file by substituting the template expressions by values taken from 
+external data sources, in-domain means that the templating engine knows about the syntax and structure of the processed template. It therefore can take the values for the template expressions directly
+from the document processed, including those parts denoted by the template expressions itself.
+
+For example:
+```yaml
+resource:
+  name: bosh deployment
+  version: 25
+  url: (( "http://resource.location/bosh?version=" version ))
+  description: (( "This document describes a " name " located at " url ))
+```
+
+Hybrid mean that the template processing is not restricted to the template itself. Additionally
+*spiff* is able to merge the template with information from additional yaml files, so-called stubs, that again may contain template expressions.
+
 
 Contents:
+
 - [Installation](#installation)
 - [Usage](#usage)
 - [dynaml Templating Language](#dynaml-templating-language)
