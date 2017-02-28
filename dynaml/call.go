@@ -145,6 +145,14 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "merge":
 		result, sub, ok = func_merge(values, binding)
 
+	case "type":
+		if info.Undefined {
+			info.Undefined = false
+			return "undef", info, ok
+		} else {
+			result, sub, ok = func_type(values, binding)
+		}
+
 	default:
 		return info.Error("unknown function '%s'", funcName)
 	}

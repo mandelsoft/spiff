@@ -85,6 +85,7 @@ Contents:
 		- [(( valid(foobar) ))](#-validfoobar-)
 		- [(( require(foobar) ))](#-requirefoobar-)
 		- [(( stub(foo.bar) ))](#-stubfoobar-)
+		- [(( type(expr) ))](#-typeexpr-)
 		- [(( exec( "command", arg1, arg2) ))](#-exec-command-arg1-arg2-)
 		- [(( eval( foo "." bar ) ))](#-eval-foo--bar--)
 		- [(( env( "HOME" ) ))](#-env-HOME--)
@@ -1374,6 +1375,21 @@ The argument passed to this function must either be a reference literal or an ex
 
 Alternatively the `merge` operation could be used, for example `merge foo.bar`. The difference is that `stub` does not merge, therefore the field will still be merged (with the original path in the document).
 
+### `(( type(expr) ))`
+
+Return the type of a dynaml expression. The expression must evaluate without error. The following type values are returned:
+
+| type     | type name |
+|----------|-----------|
+| integer  | int       |
+| boolean  | bool      |
+| string   | string    |
+| map      | map       |
+| list     | list      |
+| template value | template |
+| function | lambda    |
+| nil/~    | nil       |
+| ~~       | undef     |
 
 ### `(( exec( "command", arg1, arg2) ))`
 

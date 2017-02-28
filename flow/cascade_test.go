@@ -679,4 +679,48 @@ peter: 26
 			Expect(source).To(CascadeAs(resolved, stub1, stub2))
 		})
 	})
+
+	Describe("when asking for expression type", func() {
+		It("handles all types", func() {
+			source := parseYAML(`
+---
+temp:
+  <<: (( &template &temporary ))
+
+lambda: (( &temporary(|x|->x) ))
+
+map:
+  <<: (( &temporary ))
+  alice: bob
+list:
+  - <<: (( &temporary ))
+  - alice
+
+types:
+   template: (( type(.temp) ))
+   lambda: (( type(.lambda) ))
+   bool: (( type(true) ))
+   int: (( type(1) ))
+   string: (( type("s") ))
+   map: (( type(.map) ))
+   list: (( type(.list) ))
+   nil: (( type(~) ))
+   undef: (( type(~~) ))
+`)
+			resolved := parseYAML(`
+---
+types:
+  bool: bool
+  int: int
+  lambda: lambda
+  list: list
+  map: map
+  nil: nil
+  string: string
+  template: template
+  undef: undef
+`)
+			Expect(source).To(CascadeAs(resolved))
+		})
+	})
 })
