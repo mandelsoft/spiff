@@ -18,9 +18,11 @@ func (e DynamicExpr) Evaluate(binding Binding, locally bool) (interface{}, Evalu
 	if !ok {
 		return nil, info, false
 	}
+
 	if !isLocallyResolvedValue(root) {
 		return e, info, true
 	}
+
 	if !locally && !isResolvedValue(root) {
 		return e, info, true
 	}
@@ -30,8 +32,11 @@ func (e DynamicExpr) Evaluate(binding Binding, locally bool) (interface{}, Evalu
 	if !ok {
 		return nil, info, false
 	}
+	if !isResolvedValue(dyn) {
+		return e, info, true
+	}
 
-	debug.Debug("dynamic reference: %v\n", dyn)
+	debug.Debug("dynamic reference: %+v\n", dyn)
 
 	var qual []string
 	switch v := dyn.(type) {

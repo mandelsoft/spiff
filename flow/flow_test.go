@@ -5378,6 +5378,32 @@ data:
 `)
 				Expect(source).To(FlowAs(resolved))
 			})
+
+			It("it indexes an array for deep evaluation", func() {
+				source := parseYAML(`
+---
+fill: 0
+index: (( fill ))
+
+value: (( data.bob.[index].foo || "none" ))
+
+data:
+  bob:
+    - foo: bar
+`)
+				resolved := parseYAML(`
+---
+fill: 0
+index: 0
+
+value: bar
+
+data:
+  bob:
+    - foo: bar
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
 
 		Context("for string index", func() {
