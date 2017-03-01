@@ -11,24 +11,33 @@ func func_type(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 		info.Error("exactly one argument required for function 'type'")
 	}
 
-	switch arguments[0].(type) {
-	case string:
-		return "string", info, true
-	case int64:
-		return "int", info, true
-	case bool:
-		return "bool", info, true
-	case []yaml.Node:
-		return "list", info, true
-	case map[string]yaml.Node:
-		return "map", info, true
-	case TemplateValue:
-		return "template", info, true
-	case LambdaValue:
-		return "lambda", info, true
-	case nil:
-		return "nil", info, true
-	default:
+	tn := expression_type(arguments[0])
+	if tn == "" {
 		return info.Error("unknown type for %v", arguments[0])
+	} else {
+		return tn, info, true
+	}
+}
+
+func expression_type(elem interface{}) string {
+	switch elem.(type) {
+	case string:
+		return "string"
+	case int64:
+		return "int"
+	case bool:
+		return "bool"
+	case []yaml.Node:
+		return "list"
+	case map[string]yaml.Node:
+		return "map"
+	case TemplateValue:
+		return "template"
+	case LambdaValue:
+		return "lambda"
+	case nil:
+		return "nil"
+	default:
+		return ""
 	}
 }
