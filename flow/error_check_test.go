@@ -135,7 +135,7 @@ a:
 node: (( "." a ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( "." a ))	in test	node	()	*simple value can only be concatenated with simple values`,
+			`	(( "." a ))	in test	node	()	*type 'list' cannot be concatenated with type 'string'`,
 		))
 	})
 

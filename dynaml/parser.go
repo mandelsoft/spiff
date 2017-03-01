@@ -67,6 +67,8 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 		case ruleSubsequentMarker:
 			tokens.Pop()
 			tokens.Push(tokens.Pop().(MarkerExpr).add(contents))
+		case ruleMarkerExpression:
+			tokens.Push(MarkerExpressionExpr{contents, tokens.Pop().(Expression)})
 		case ruleMarkedExpression:
 			rhs := tokens.Pop()
 			if _, ok := rhs.(MarkerExpr); !ok {

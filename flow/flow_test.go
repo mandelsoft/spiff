@@ -5658,4 +5658,22 @@ next: 10.1.2.32/28
 			})
 		})
 	})
+	
+	Describe("regression test for fixed errors", func() {
+		It("nexted expressions for template markers", func() {
+				source := parseYAML(`
+---
+template:
+    <<: (( &template ( { } ( true ? {} :{} ) ) ))
+data: (( *template ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+template:
+    <<: (( &template ( { } ( true ? {} :{} ) ) ))
+data: {}
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+	})
 })
