@@ -100,3 +100,16 @@ func (e MarkerExpr) MarshalYAML() (tag string, value interface{}, err error) {
 func newMarkerExpr(m string) MarkerExpr {
 	return MarkerExpr{list: []string{m}}
 }
+
+type MarkerExpressionExpr struct {
+	contents string
+	expr     Expression
+}
+
+func (e MarkerExpressionExpr) String() string {
+	return e.contents
+}
+
+func (e MarkerExpressionExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
+	return e.expr.Evaluate(binding, locally)
+}

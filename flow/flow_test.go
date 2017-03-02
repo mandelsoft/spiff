@@ -5378,6 +5378,32 @@ data:
 `)
 				Expect(source).To(FlowAs(resolved))
 			})
+
+			It("it indexes an array for deep evaluation", func() {
+				source := parseYAML(`
+---
+fill: 0
+index: (( fill ))
+
+value: (( data.bob.[index].foo || "none" ))
+
+data:
+  bob:
+    - foo: bar
+`)
+				resolved := parseYAML(`
+---
+fill: 0
+index: 0
+
+value: bar
+
+data:
+  bob:
+    - foo: bar
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
 
 		Context("for string index", func() {
@@ -5613,6 +5639,40 @@ result:
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
+
+		It("it handles templates", func() {
+			source := parseYAML(`
+---
+data:
+  alice: bob
+  sub:
+    foo: bar
+
+template:
+  <<: (( &template ))
+  alice: (( merge sub ))
+  ref: (( alice ))
+
+result: (( merge(template, data) ))
+`)
+			resolved, _ := Flow(parseYAML(`
+---
+data:
+  alice: bob
+  sub:
+    foo: bar
+template:
+  <<: (( &template ))
+  alice: (( merge sub ))
+  ref: (( alice ))
+result:
+  alice:
+    foo: bar
+  ref:
+    foo: bar
+`))
+			Expect(source).To(FlowAs(resolved))
+		})
 	})
 
 	Describe("when shifting network ranges", func() {
@@ -5630,6 +5690,24 @@ next: 10.1.2.32/28
 `)
 				Expect(source).To(FlowAs(resolved))
 			})
+		})
+	})
+
+	Describe("regression test for fixed errors", func() {
+		It("nexted expressions for template markers", func() {
+			source := parseYAML(`
+---
+template:
+    <<: (( &template ( { } ( true ? {} :{} ) ) ))
+data: (( *template ))
+`)
+			resolved, _ := Flow(parseYAML(`
+---
+template:
+    <<: (( &template ( { } ( true ? {} :{} ) ) ))
+data: {}
+`))
+			Expect(source).To(FlowAs(resolved))
 		})
 	})
 })

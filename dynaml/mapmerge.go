@@ -14,9 +14,13 @@ func func_merge(arguments []interface{}, binding Binding) (interface{}, Evaluati
 	args := make([]yaml.Node, len(arguments))
 
 	for i, arg := range arguments {
+		temp, ok := arg.(TemplateValue)
+		if ok {
+			arg = node_copy(temp.Prepared).Value()
+		}
 		m, ok := arg.(map[string]yaml.Node)
 		if !ok {
-			return info.Error("argument %d for merge function is no map", i+1)
+			return info.Error("argument %d for merge function is no map or map template", i+1)
 		}
 		args[i] = yaml.NewNode(m, "dynaml")
 	}
