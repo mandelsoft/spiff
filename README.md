@@ -108,6 +108,8 @@ Contents:
 		- [(( sum[map|initial|sum,key,value|->dynaml-expr] ))](#-summapinitialsumkeyvalue-dynaml-expr-)
 	- [Templates](#templates)
 		- [<<: (( &template ))](#--template-)
+		- [- <<: (( &template ))](#----template-)
+		- [foo: (( &template (expression) ))](#foo--template-expression-)
 		- [(( *foo.bar ))](#-foobar-)
 	- [Special Literals](#special-literals)
 	- [Access to evaluation context](#access-to-evaluation-context)
@@ -1751,15 +1753,16 @@ In contrast to the previous `makemap` flavor, this one could also be handled by
 
 ### `(( merge(map1, map2) ))`
 
-Beside the keyword ` merge` there is also a function called `merge` (It must always be followed by an opensing bracket). It can be used to merge severals maps taken from the actual document. If the maps are specified by reference expressions, they cannot contain
-any _dynaml_ expressions, because they are always evaluated in the context of the actual document before evaluating the arguments.
+Beside the keyword ` merge` there is also a function called `merge` (It must always be followed by an opening bracket). It can be used to merge severals maps taken from the actual document.
+
+If the maps are specified by reference expressions, they cannot contain any _dynaml_ expressions, because they are always evaluated in the context of the actual document before evaluating the arguments.
 
 e.g.:
 
 ```yaml
 map1:
   alice: 24
-  bob: 25
+  bob: (( alice ))
 map2:
   alice: 26
   peter: 8
@@ -1771,7 +1774,30 @@ resolves `result` to
 ```yaml
 result:
   alice: 26
-  bob: 25
+  bob: 24  # <---- expression evaluated before mergeing
+```
+
+Alternatively map [templates](#templates) can be passed (without evaluation operator!). In this case the _dynaml_ expressions from the template are evaluated while merging the given documents as for regular calls of _spiff merge_. 
+
+e.g.:
+
+```yaml
+map1:
+  <<: (( &template ))
+  alice: 24
+  bob: (( alice ))
+map2:
+  alice: 26
+  peter: 8
+result: (( merge(map1,map2) ))
+```
+
+resolves `result` to
+
+```yaml
+result:
+  alice: 26
+  bob: 26   # <---- expression evaluate during merging
 ```
 
 A map might also be given by a map expression. Here it is possible to specify
@@ -2117,7 +2143,7 @@ sum: 49
 
 ## Templates
 
-A map can be tagged by a dynaml expression to be used as template. Dynaml expressions in a template are not evaluated at its definition location in the document, but can be inserted at other locations using dynaml.
+A maps, lists or even single values can be tagged by a dynaml expression to be used as template. Dynaml expressions in a template are not evaluated at its definition location in the document, but can be inserted at other locations using dynaml.
 At every usage location it is evaluated separately.
 
 ### `<<: (( &template ))`
@@ -2136,7 +2162,12 @@ foo:
 
 The template will be the value of the node `foo.bar`. As such it can be overwritten as a whole by settings in a stub during the merge process. Dynaml expressions in the template are not evaluated. A map can have only a single `<<` field. Therefore it is possible to combine the template marker with an expression just by adding the expression in parenthesis.
 
+### `- <<: (( &template ))`
+
 Adding `- <<: (( &template ))` to a list it is also possible to define list templates.
+
+### `foo: (( &template (expression) ))`
+
 It is also possible to convert a single expression value into a simple template by adding the template
 marker to the expression, for example `foo: (( &template (expression) ))`
 
@@ -2181,6 +2212,8 @@ use:
 
 verb: hates
 ```
+
+Templates can also be passed to the [merge](#-mergemap1-map2-) function to preserve the _dynaml_ expressions inside the map for use by the merge function.
 
 ## Special Literals
 
