@@ -159,4 +159,26 @@ node: (( a "." ) ))
 			`	(( a "." ) ))	in test	node	()	*unparseable expression`,
 		))
 	})
+
+	It("reports unparseable list insert operator", func() {
+		source := parseYAML(`
+---
+node:
+  - <<: (( a "." ) ))
+`)
+		Expect(source).To(FlowToErr(
+			`	(( a "." ) ))	in test	node.[0].<<	()	*unparseable expression`,
+		))
+	})
+
+	It("reports unparseable map insert operator", func() {
+		source := parseYAML(`
+---
+node:
+  <<: (( a "." ) ))
+`)
+		Expect(source).To(FlowToErr(
+			`	(( a "." ) ))	in test	node.<<	()	*unparseable expression`,
+		))
+	})
 })

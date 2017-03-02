@@ -263,10 +263,15 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 					}
 				}
 				replace = base.ReplaceFlag()
-				if replace {
-					break
+				if ok || base.Value() == nil || yaml.EmbeddedDynaml(base) == nil {
+					// still ignore non dynaml value (might be strange but compatible)
+					if replace {
+						break
+					}
+					continue
+				} else {
+					val = base
 				}
-				continue
 			}
 		} else {
 			if processed {
@@ -455,7 +460,10 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 						spliced = append(spliced, inlineNew...)
 					}
 				}
-				continue
+				if ok || result.Value() == nil || yaml.EmbeddedDynaml(result) == nil {
+					// still ignore non dynaml value (might be strange but compatible)
+					continue
+				}
 			}
 		}
 
