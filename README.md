@@ -1,37 +1,21 @@
 ```
-                                              _  __  __             
-                                    ___ _ __ (_)/ _|/ _|  _     _   
-                                   / __| '_ \| | |_| |_ _| |_ _| |_ 
-                                   \__ \ |_) | |  _|  _|_   _|_   _|
-                                   |___/ .__/|_|_| |_|   |_|   |_|  
-                                       |_|
+                                        ___ _ __ (_)/ _|/ _|
+                                       / __| '_ \| | |_| |_
+                                       \__ \ |_) | |  _|  _|
+                                       |___/ .__/|_|_| |_|
+                                           |_|
 
 ```
 
 ---
 
-**NOTE**: *Active development on spiff is currently paused, including Pull Requests. `spiff++` is a fork of spiff that provides a compatible extension to spiff based on the latest version offering a rich set of new features not yet available in spiff. All fixes provided by the original spiff project will be incorporated into spiff++, also. Because there will be no way back to the spiff source base a new independent spiff++ repository has been created to continue development of spiff++.*
+**NOTE**: *Active development on spiff is currently paused, including Pull Requests.  Very severe issues will be addressed, and we will still be actively responding to requests for help via Issues.*
+
 ---
 
-*spiff* is a command line tool and declarative in-domain hybrid YAML templating system. While regular templating systems process a template file by substituting the template expressions by values taken from 
-external data sources, in-domain means that the templating engine knows about the syntax and structure of the processed template. It therefore can take the values for the template expressions directly
-from the document processed, including those parts denoted by the template expressions itself.
-
-For example:
-```yaml
-resource:
-  name: bosh deployment
-  version: 25
-  url: (( "http://resource.location/bosh?version=" version ))
-  description: (( "This document describes a " name " located at " url ))
-```
-
-Hybrid mean that the template processing is not restricted to the template itself. Additionally
-*spiff* is able to merge the template with information from additional yaml files, so-called stubs, that again may contain template expressions.
-
+spiff is a command line tool and declarative YAML templating system, specially designed for generating BOSH deployment manifests.
 
 Contents:
-
 - [Installation](#installation)
 - [Usage](#usage)
 - [dynaml Templating Language](#dynaml-templating-language)
@@ -79,13 +63,15 @@ Contents:
 		- [(( index(list, "foobar") ))](#-indexlist-foobar-)
 		- [(( lastindex(list, "foobar") ))](#-lastindexlist-foobar-)
 		- [(( replace(string, "foo", "bar") ))](#-replacestring-foo-bar-)
+		- [(( substr(string, 1, 3) ))](#-substrstring-1-3-)
 		- [(( match("(f.*)(b.*)", "xxxfoobar") ))](#-matchfb-xxxfoobar-)
 		- [(( length(list) ))](#-lengthlist-)
+		- [(( base64(string) ))](#-base64string-)
+		- [(( md5(string) ))](#-md5string-)
 		- [(( defined(foobar) ))](#-definedfoobar-)
 		- [(( valid(foobar) ))](#-validfoobar-)
 		- [(( require(foobar) ))](#-requirefoobar-)
 		- [(( stub(foo.bar) ))](#-stubfoobar-)
-		- [(( type(expr) ))](#-typeexpr-)
 		- [(( exec( "command", arg1, arg2) ))](#-exec-command-arg1-arg2-)
 		- [(( eval( foo "." bar ) ))](#-eval-foo--bar--)
 		- [(( env( "HOME" ) ))](#-env-HOME--)
@@ -108,8 +94,6 @@ Contents:
 		- [(( sum[map|initial|sum,key,value|->dynaml-expr] ))](#-summapinitialsumkeyvalue-dynaml-expr-)
 	- [Templates](#templates)
 		- [<<: (( &template ))](#--template-)
-		- [- <<: (( &template ))](#----template-)
-		- [foo: (( &template (expression) ))](#foo--template-expression-)
 		- [(( *foo.bar ))](#-foobar-)
 	- [Special Literals](#special-literals)
 	- [Access to evaluation context](#access-to-evaluation-context)
@@ -122,7 +106,7 @@ Contents:
 
 # Installation
 
-Official release executable binaries can be downloaded via [Github releases](https://github.com/mandelsoft/spiff/releases) for Darwin and Linux machines (and virtual machines).
+Official release executable binaries can be downloaded via [Github releases](https://github.com/cloudfoundry-incubator/spiff/releases) for Darwin and Linux machines (and virtual machines).
 
 Some of spiff's dependencies have changed since the last official release, and spiff will not be updated to keep up with these dependencies.  Working dependencies are vendored in the `Godeps` directory (more information on the `godep` tool is available [here](https://github.com/tools/godep)).  As such, trying to `go get` spiff will likely fail; the only supported way to use spiff is to use an official binary release.
 
@@ -148,25 +132,18 @@ It is possible to read one file from standard input by using the file name `-`. 
 
 Show structural differences between two deployment manifests.
 
-Unlike basic diffing tools and even `bosh diff`, this command has semantic 
-knowledge of a deployment manifest, and is not just text-based. For example,
-if two manifests are the same except they have some jobs listed in different
-orders, `spiff diff` will detect this, since job order matters in a manifest.
-On the other hand, if two manifests differ only in the order of their
-resource pools, for instance, then it will yield and empty diff since 
-resource pool order doesn't actually matter for a deployment.
+Unlike 'bosh diff', this command has semantic knowledge of a deployment
+manifest, and is not just text-based. It also doesn't modify either file.
 
-Also unlike `bosh diff`, this command doesn't modify either file.
-
-It's tailored for checking differences between one deployment and the next.
+It's tailed for checking differences between one deployment and the next.
 
 Typical flow:
 
 ```sh
-$ spiff merge template.yml [templates...] > upgrade.yml
+$ spiff merge template.yml [templates...] > deployment.yml
 $ bosh download manifest [deployment] current.yml
-$ spiff diff upgrade.yml current.yml
-$ bosh deployment upgrade.yml
+$ spiff diff deployment.yml current.yml
+$ bosh deployment deployment.yml
 $ bosh deploy
 ```
 
@@ -887,8 +864,7 @@ The result is the string `3 times 2 yields 6`.
 
 ## `(( "10.10.10.10" - 11 ))`
 
-Besides arithmetic on integers it is also possible to use addition and
-subtraction on ip addresses, or multiplication and division on CIDRs.
+Besides arithmetic on integers it is also possible to use addition and subtraction on ip addresses.
 
 e.g.:
 
@@ -902,39 +878,6 @@ yields
 ```yaml
 ip: 10.10.10.10
 range: 10.10.10.10-10.11.11.1
-```
-
-Subtraction also works on two IP addresses to calculate the number of
-IP addresses between two IP addresses.
-
-e.g.:
-
-```yaml
-diff: (( 10.0.1.0 - 10.0.0.1 + 1 ))
-```
-
-yields the value 256. IP address constants can be directly used in dynaml
-expressions. They are implicitly converted to strings and back to IP
-addresses if required by an operation.
-
-Multiplication and division can be used to handle IP range shifts on CIDRs.
-With division a network can be partioned. The network size is increased
-to allow at least a dedicated number of subnets below the original CIDR.
-Multiplication then can be used to get the n-th next subnet of the same
-size. 
-
-e.g.:
-
-```yaml
-subnet: (( "10.1.2.1/24" / 12 ))  # first subnet CIDR for 16 subnets
-next: (( "10.1.2.1/24" / 12 * 2)) # 2nd next (3rd) subnet CIDRS
-```
-
-yields
-
-```yaml
-subnet: 10.1.2.0/28
-next: 10.1.2.32/28
 ```
 
 Additionally there are functions working on IPv4 CIDRs:
@@ -954,6 +897,19 @@ range: 192.168.0.0-192.168.0.255
 next: 192.168.1.0
 num: 192.168.0.0+256=192.168.1.0
 ```
+
+Subtraction also works on two IP addresses to calculate the number of
+IP addresses between two IP addresses.
+
+e.g.:
+
+```yaml
+diff: (( 10.0.1.0 - 10.0.0.1 + 1 ))
+```
+
+yields the value 256. IP address constants can be directly used in dynaml
+expressions. They are implicitly converted to strings and back to IP
+addresses if required by an operation.
 
 ## `(( a > 1 ? foo :bar ))`
 
@@ -1230,6 +1186,29 @@ string: (( replace("foobar", "o", "u") ))
 
 yields `fuubar`.
 
+### `(( substr(string, 1, 2) ))`
+
+Extract a stub string from a string, starting from a given start index up to an optional end index (exclusive). If no end index is given the sub struvt up to the end of the string is extracted.
+Both indices might be negative. In this case they are taken from the end of the string.
+
+e.g.:
+
+```yaml
+string: "foobar"
+end1: (( substr(string,-2) ))
+end2: (( substr(string,3) ))
+range: (( substr(string,1,-1) ))
+```
+
+evaluates to
+
+```yaml
+string: foobar
+end1: ar
+end2: bar
+range: ooba
+```
+
 ### `(( match("(f.*)(b.*)", "xxxfoobar") ))`
 
 Returns the match of a regular expression for a given string value. The match is a list of the matched values for the sub expressions contained in the regular expression. Index 0 refers to the match of the complete regular expression. If the string value does not match an empty list is returned.
@@ -1269,6 +1248,40 @@ list:
   - alice
   - bob
 length: 2
+```
+
+### `(( base64(string) ))` 
+
+The function `base64` generates a base64 encoding of a given string. `base64_decode` decodes a base64 encoded string.
+
+e.g.:
+
+```yaml
+base64: (( base64("test") ))
+test: (( base64_decode(base64)))
+```
+
+evaluates to
+
+```yaml
+base54: dGVzdA==
+test: test
+```
+
+### `(( md5(string) ))` 
+
+The function `md5` generates an md5 hash for the given string.
+
+e.g.:
+
+```yaml
+hash: (( md5("test") ))
+```
+
+evaluates to
+
+```yaml
+hash: 098f6bcd4621d373cade4e832627b4f6
 ```
 
 ### `(( defined(foobar) ))`
@@ -1377,21 +1390,6 @@ The argument passed to this function must either be a reference literal or an ex
 
 Alternatively the `merge` operation could be used, for example `merge foo.bar`. The difference is that `stub` does not merge, therefore the field will still be merged (with the original path in the document).
 
-### `(( type(expr) ))`
-
-Return the type of a dynaml expression. The expression must evaluate without error. The following type values are returned:
-
-| type     | type name |
-|----------|-----------|
-| integer  | int       |
-| boolean  | bool      |
-| string   | string    |
-| map      | map       |
-| list     | list      |
-| template value | template |
-| function | lambda    |
-| nil/~    | nil       |
-| ~~       | undef     |
 
 ### `(( exec( "command", arg1, arg2) ))`
 
@@ -1753,16 +1751,15 @@ In contrast to the previous `makemap` flavor, this one could also be handled by
 
 ### `(( merge(map1, map2) ))`
 
-Beside the keyword ` merge` there is also a function called `merge` (It must always be followed by an opening bracket). It can be used to merge severals maps taken from the actual document.
-
-If the maps are specified by reference expressions, they cannot contain any _dynaml_ expressions, because they are always evaluated in the context of the actual document before evaluating the arguments.
+Beside the keyword ` merge` there is also a function called `merge` (It must always be followed by an opensing bracket). It can be used to merge severals maps taken from the actual document. If the maps are specified by reference expressions, they cannot contain
+any _dynaml_ expressions, because they are always evaluated in the context of the actual document before evaluating the arguments.
 
 e.g.:
 
 ```yaml
 map1:
   alice: 24
-  bob: (( alice ))
+  bob: 25
 map2:
   alice: 26
   peter: 8
@@ -1774,30 +1771,7 @@ resolves `result` to
 ```yaml
 result:
   alice: 26
-  bob: 24  # <---- expression evaluated before mergeing
-```
-
-Alternatively map [templates](#templates) can be passed (without evaluation operator!). In this case the _dynaml_ expressions from the template are evaluated while merging the given documents as for regular calls of _spiff merge_. 
-
-e.g.:
-
-```yaml
-map1:
-  <<: (( &template ))
-  alice: 24
-  bob: (( alice ))
-map2:
-  alice: 26
-  peter: 8
-result: (( merge(map1,map2) ))
-```
-
-resolves `result` to
-
-```yaml
-result:
-  alice: 26
-  bob: 26   # <---- expression evaluate during merging
+  bob: 25
 ```
 
 A map might also be given by a map expression. Here it is possible to specify
@@ -2143,7 +2117,7 @@ sum: 49
 
 ## Templates
 
-A maps, lists or even single values can be tagged by a dynaml expression to be used as template. Dynaml expressions in a template are not evaluated at its definition location in the document, but can be inserted at other locations using dynaml.
+A map can be tagged by a dynaml expression to be used as template. Dynaml expressions in a template are not evaluated at its definition location in the document, but can be inserted at other locations using dynaml.
 At every usage location it is evaluated separately.
 
 ### `<<: (( &template ))`
@@ -2162,12 +2136,7 @@ foo:
 
 The template will be the value of the node `foo.bar`. As such it can be overwritten as a whole by settings in a stub during the merge process. Dynaml expressions in the template are not evaluated. A map can have only a single `<<` field. Therefore it is possible to combine the template marker with an expression just by adding the expression in parenthesis.
 
-### `- <<: (( &template ))`
-
 Adding `- <<: (( &template ))` to a list it is also possible to define list templates.
-
-### `foo: (( &template (expression) ))`
-
 It is also possible to convert a single expression value into a simple template by adding the template
 marker to the expression, for example `foo: (( &template (expression) ))`
 
@@ -2212,8 +2181,6 @@ use:
 
 verb: hates
 ```
-
-Templates can also be passed to the [merge](#-mergemap1-map2-) function to preserve the _dynaml_ expressions inside the map for use by the merge function.
 
 ## Special Literals
 
@@ -2639,7 +2606,7 @@ networks:
     - alice: 25
 	
   people:
-    - alice: 13
+    - alice: 24
   ```
 
   To request an auto-merge of the structure resulting from the expression evaluation, the expression has to be preceeded with the modifier `prefer` (`(( prefer women men ))`). This would yield the desired result:
@@ -2651,7 +2618,7 @@ networks:
     - alice: 25
 	
   people:
-    - alice: 13
+    - alice: 24
     - bob: 24
   ```
 

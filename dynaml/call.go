@@ -145,6 +145,17 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "merge":
 		result, sub, ok = func_merge(values, binding)
 
+	case "base64":
+		result, sub, ok = func_base64(values, binding)
+	case "base64_decode":
+		result, sub, ok = func_base64_decode(values, binding)
+
+	case "md5":
+		result, sub, ok = func_md5(values, binding)
+
+	case "substr":
+		result, sub, ok = func_substr(values, binding)
+
 	case "type":
 		if info.Undefined {
 			info.Undefined = false

@@ -5710,4 +5710,120 @@ data: {}
 			Expect(source).To(FlowAs(resolved))
 		})
 	})
+
+	Describe("when calling base64", func() {
+		Context("doing encoding", func() {
+			It("it encodes a string", func() {
+				source := parseYAML(`
+---
+value: (( base64("test") ))
+`)
+				resolved := parseYAML(`
+---
+value: dGVzdA==
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+		Context("doing decoding", func() {
+			It("it decodes a string", func() {
+				source := parseYAML(`
+---
+value: (( base64_decode("dGVzdA==") ))
+`)
+				resolved := parseYAML(`
+---
+value: test
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
+	Describe("when calling md5", func() {
+		It("it encodesgenerates md5 hash of a string", func() {
+			source := parseYAML(`
+---
+value: (( md5("test") ))
+`)
+			resolved := parseYAML(`
+---
+value: 098f6bcd4621d373cade4e832627b4f6
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling substr", func() {
+		Context("with 2 args", func() {
+			It("it handles positive start index", func() {
+				source := parseYAML(`
+---
+value: (( substr("test",1) ))
+`)
+				resolved := parseYAML(`
+---
+value: est
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("it handles negative start index", func() {
+				source := parseYAML(`
+---
+value: (( substr("test",-1) ))
+`)
+				resolved := parseYAML(`
+---
+value: t
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+		Context("with 3 args", func() {
+			It("it handles positive start index", func() {
+				source := parseYAML(`
+---
+value: (( substr("test",1,3) ))
+`)
+				resolved := parseYAML(`
+---
+value: es
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("it handles negative start index", func() {
+				source := parseYAML(`
+---
+value: (( substr("test",-2,3) ))
+`)
+				resolved := parseYAML(`
+---
+value: s
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("it handles positive start index with negative end index", func() {
+				source := parseYAML(`
+---
+value: (( substr("test",1,-1) ))
+`)
+				resolved := parseYAML(`
+---
+value: es
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("it handles negative start index with negative end index", func() {
+				source := parseYAML(`
+---
+value: (( substr("test",-2,-1) ))
+`)
+				resolved := parseYAML(`
+---
+value: s
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
 })
