@@ -42,13 +42,16 @@ Level0 <- IP / String / Integer / Boolean / Undefined / Nil / Not /
           Substitution / Merge / Auto / Lambda / Chained 
 
 Chained <- ( Mapping / Sum / List / Map / Range / Grouped / Reference ) ChainedQualifiedExpression* 
-ChainedQualifiedExpression <- ChainedCall / ( '.' ( ChainedRef / ChainedDynRef / Slice ) )
+ChainedQualifiedExpression <- ChainedCall / ( '.' ( ChainedRef / ChainedDynRef / Projection) )
 ChainedRef <- ( Key / Index ) FollowUpRef
 ChainedDynRef <- '[' Expression ']'
 Slice <- Range
 ChainedCall <- '(' Arguments ')'
 Arguments <- Expression (NextExpression)*
 NextExpression <- ',' Expression
+
+Projection <- ( '[*]' / Slice ) ProjectionValue ChainedQualifiedExpression*
+ProjectionValue <- {}
 
 Substitution <- '*' Level0
 Not <- '!' ws Level0

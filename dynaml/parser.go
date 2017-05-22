@@ -122,6 +122,18 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 				Arguments: tokens.GetExpressionList(),
 			})
 
+		case ruleAction0:
+		case ruleProjectionValue:
+			value := &ProjectionValue{}
+			tokens.Push(ProjectionValueExpr{value})
+			tokens.Push(ProjectionValueExpr{value})
+
+		case ruleProjection:
+			qual := tokens.Pop()
+			value := tokens.Pop()
+			expr := tokens.Pop()
+			tokens.Push(ProjectionExpr{expr, value.(ProjectionValueExpr).Value, qual})
+
 		case ruleInteger:
 			val, err := strconv.ParseInt(contents, 10, 64)
 			if err != nil {

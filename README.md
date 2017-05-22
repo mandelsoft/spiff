@@ -92,6 +92,9 @@ Contents:
 		- [(( sum[list|initial|sum,elem|->dynaml-expr] ))](#-sumlistinitialsumelem-dynaml-expr-)
 		- [(( sum[list|initial|sum,idx,elem|->dynaml-expr] ))](#-sumlistinitialsumidxelem-dynaml-expr-)
 		- [(( sum[map|initial|sum,key,value|->dynaml-expr] ))](#-summapinitialsumkeyvalue-dynaml-expr-)
+	- [Projections](#projections)
+	    - [(( expr.[*].value ))](#-exprvalue-)
+		- [(( list.[1..2].value ))](#-list12value-)
 	- [Templates](#templates)
 		- [<<: (( &template ))](#--template-)
 		- [(( *foo.bar ))](#-foobar-)
@@ -2115,6 +2118,83 @@ ages:
 sum: 49
 ```
 
+## Projections
+
+Projections work over the elements of a list or map yielding a result list. Hereby every element is mapped by an optional subsequent reference expression. This may contain again projections, dynamic references or lambda calls. Basically this is a simplified form of the more general [mapping](#mappings) yielding a list working with a lambda function using only a reference expression based on the elements.
+
+### `(( expr.[*].value ))`
+
+All elements of a map or list given by the expression `expr` are dereferenced with the subsequent reference expression (here `.expr`). If this expression works on a map the elements are ordered accoring to their key values. If the subsequent reference expression is omitted, the complete value list isreturned. For a list expression this means the identity operation.
+
+e.g.:
+
+```yaml
+list:
+  - name: alice
+    age: 25
+  - name: bob
+    age: 26
+  - name: peter
+    age: 24
+
+names: (( list.[*].name ))
+```
+
+yields for `names`:
+
+```yaml
+names:
+  - alice
+  - bob
+  - peter
+```
+
+or for maps:
+
+```yaml
+networks:
+  ext:
+    cidr: 10.8.0.0/16
+  zone1:
+    cidr: 10.9.0.0/16
+
+cidrs: (( .networks.[*].cidr ))
+```
+
+yields for `cidrs`:
+
+```yaml
+cidrs:
+  - 10.8.0.0/16
+  - 10.9.0.0/16
+```
+
+### `(( list.[1..2].value ))`
+
+This projection flavor only works for lists. The projection is done for a dedicated slice of the initial list.
+
+e.g.:
+
+```yaml
+list:
+  - name: alice
+    age: 25
+  - name: bob
+    age: 26
+  - name: peter
+    age: 24
+
+names: (( list.[1..2].name ))
+```
+
+yields for `names`:
+
+```yaml
+names:
+  - bob
+  - peter
+```
+
 ## Templates
 
 A map can be tagged by a dynaml expression to be used as template. Dynaml expressions in a template are not evaluated at its definition location in the document, but can be inserted at other locations using dynaml.
@@ -2124,7 +2204,7 @@ At every usage location it is evaluated separately.
 
 The dynaml expression `&template` can be used to tag a map node as template:
 
-i.g.:
+e.g.:
 
 ```yaml
 foo:

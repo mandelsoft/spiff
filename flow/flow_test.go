@@ -5584,6 +5584,253 @@ data:
 		})
 	})
 
+	Describe("when projecting", func() {
+		Context("a list", func() {
+			It("it handles an identity projection", func() {
+				source := parseYAML(`
+---
+list:
+  - name: a
+    value: aValue
+  - name: b
+    value: bValue
+  - name: c
+    value: cValue
+
+projection: (( .list.[*] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - name: a
+    value: aValue
+  - name: b
+    value: bValue
+  - name: c
+    value: cValue
+projection:
+  - name: a
+    value: aValue
+  - name: b
+    value: bValue
+  - name: c
+    value: cValue
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it handles a field projection", func() {
+				source := parseYAML(`
+---
+list:
+  - name: a
+    value: aValue
+  - name: b
+    value: bValue
+  - name: c
+    value: cValue
+
+projection: (( .list.[*].value ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - name: a
+    value: aValue
+  - name: b
+    value: bValue
+  - name: c
+    value: cValue
+projection:
+  - aValue
+  - bValue
+  - cValue
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it handles a field projection for a slice", func() {
+				source := parseYAML(`
+---
+list:
+  - name: a
+    value: aValue
+  - name: b
+    value: bValue
+  - name: c
+    value: cValue
+
+projection: (( .list.[1..2].value ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - name: a
+    value: aValue
+  - name: b
+    value: bValue
+  - name: c
+    value: cValue
+projection:
+  - bValue
+  - cValue
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("a map", func() {
+			It("it handles a value projection", func() {
+				source := parseYAML(`
+---
+map:
+  zz:
+    name: a
+    value: aValue
+  xx:
+    name: b
+    value: bValue
+  yy:
+    name: c
+    value: cValue
+
+projection: (( .map.[*] ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  zz:
+    name: a
+    value: aValue
+  xx:
+    name: b
+    value: bValue
+  yy:
+    name: c
+    value: cValue
+projection:
+  - name: b
+    value: bValue
+  - name: c
+    value: cValue
+  - name: a
+    value: aValue
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it handles a field value projection", func() {
+				source := parseYAML(`
+---
+map:
+  zz:
+    name: a
+    value: aValue
+  xx:
+    name: b
+    value: bValue
+  yy:
+    name: c
+    value: cValue
+
+projection: (( .map.[*].value ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  zz:
+    name: a
+    value: aValue
+  xx:
+    name: b
+    value: bValue
+  yy:
+    name: c
+    value: cValue
+projection:
+  - bValue
+  - cValue
+  - aValue
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("in combination", func() {
+			It("it handles chained projections", func() {
+				source := parseYAML(`
+---
+map:
+  zz:
+    name: a
+    value: aValue
+  xx:
+    name: b
+    value: bValue
+  yy:
+    name: c
+    value: cValue
+
+projection: (( (.map.[*]).[1..2] ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  zz:
+    name: a
+    value: aValue
+  xx:
+    name: b
+    value: bValue
+  yy:
+    name: c
+    value: cValue
+projection:
+  - name: c
+    value: cValue
+  - name: a
+    value: aValue
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it handles nested projections", func() {
+				source := parseYAML(`
+---
+list:
+- zz:
+    name: a
+    value: aValue
+- xx:
+    name: b
+    value: bValue
+- yy:
+    name: c
+    value: cValue
+
+projection: (( .list.[1..2].[*].value ))
+`)
+				resolved := parseYAML(`
+---
+list:
+- zz:
+    name: a
+    value: aValue
+- xx:
+    name: b
+    value: bValue
+- yy:
+    name: c
+    value: cValue
+projection:
+  - - bValue
+  - - cValue
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
 	Describe("when merging inline maps", func() {
 		It("it overrides field", func() {
 			source := parseYAML(`
