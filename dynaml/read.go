@@ -62,6 +62,13 @@ func func_read(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 		debug.Debug("resolving yaml file succeeded")
 		info.Source = file
 		return result.Value(), info, true
+	case "import":
+		node, err := yaml.Parse(file, data)
+		if err != nil {
+			return info.Error("error parsing stub [%s]: %s", path.Clean(file), err)
+		}
+		info.Source = file
+		return node.Value(), info, true
 
 	case "text":
 		info.Source = file
