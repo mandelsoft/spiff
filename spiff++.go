@@ -89,13 +89,7 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 		log.Fatalln(fmt.Sprintf("error reading template [%s]:", path.Clean(templateFilePath)), err)
 	}
 
-	templateYAML, err := yaml.Parse(templateFilePath, templateFile)
-	if err != nil {
-		log.Fatalln(fmt.Sprintf("error parsing template [%s]:", path.Clean(templateFilePath)), err)
-	}
-
 	stubs := []yaml.Node{}
-
 	for _, stubFilePath := range stubFilePaths {
 		var stubFile []byte
 		var err error
@@ -116,27 +110,61 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 		if err != nil {
 			log.Fatalln(fmt.Sprintf("error parsing stub [%s]:", path.Clean(stubFilePath)), err)
 		}
-
 		stubs = append(stubs, stubYAML)
 	}
 
-	flowed, err := flow.Cascade(templateYAML, partial, stubs...)
+	prepared, err := flow.PrepareStubs(partial, stubs...)
 	if !partial && err != nil {
-		legend := "\nerror classification:\n" +
-			" *: error in local dynaml expression\n" +
-			" @: dependent of or involved in a cycle\n" +
-			" -: depending on a node with an error"
-		log.Fatalln("error generating manifest:", err, legend)
-	}
-	if err != nil {
-		flowed = dynaml.ResetUnresolvedNodes(flowed)
-	}
-	yaml, err := candiedyaml.Marshal(flowed)
-	if err != nil {
-		log.Fatalln("error marshalling manifest:", err)
+			legend := "\nerror classification:\n" +
+				" *: error in local dynaml expression\n" +
+				" @: dependent of or involved in a cycle\n" +
+				" -: depending on a node with an error"
+			log.Fatalln("error generating manifest:", err, legend)
 	}
 
-	fmt.Println(string(yaml))
+	docs := strings.Split(string(templateFile), "\n---\n")
+	out := ""
+	for i, doc := range docs {
+		if strings.Trim(doc," \n") == "" {
+			if i>0 && out!="" {
+				out += "---\n"
+			}
+			continue
+		}
+		suffix := ""
+		if len(docs) > 1 {
+			suffix = fmt.Sprintf(":%d", i+1)
+		}
+		templateYAML, err := yaml.Parse(templateFilePath+suffix, []byte(doc))
+		if err != nil {
+			log.Fatalln(fmt.Sprintf("error parsing template [%s]:", path.Clean(templateFilePath)), err)
+		}
+
+		flowed, err := flow.Apply(templateYAML, prepared)
+		if !partial && err != nil {
+			legend := "\nerror classification:\n" +
+				" *: error in local dynaml expression\n" +
+				" @: dependent of or involved in a cycle\n" +
+				" -: depending on a node with an error"
+			log.Fatalln("error generating manifest:", err, legend)
+		}
+		if err != nil {
+			flowed = dynaml.ResetUnresolvedNodes(flowed)
+		}
+		yaml, err := candiedyaml.Marshal(flowed)
+		if err != nil {
+			log.Fatalln("error marshalling manifest:", err)
+		}
+		s:=string(yaml)
+		if i > 0 && out!="" {
+			out += "---\n"
+		}
+		out += s
+		if !strings.HasSuffix(s,"\n") {
+			out+="\n"
+		}
+	}
+	fmt.Println(out)
 }
 
 func diff(aFilePath, bFilePath string, separator string) {

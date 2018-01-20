@@ -13,6 +13,19 @@
 
 ---
 
+*spiff* is a command line tool and declarative in-domain hybrid YAML templating system. While regular templating systems process a template file by substituting the template expressions by values taken from
+external data sources, in-domain means that the templating engine knows about the syntax and structure of the processed template. It therefore can take the values for the template expressions directly
+from the document processed, including those parts denoted by the template expressions itself.
+
+For example:
+```yaml
+resource:
+  name: bosh deployment
+  version: 25
+  url: (( "http://resource.location/bosh?version=" version ))
+  description: (( "This document describes a " name " located at " url ))
+```
+
 spiff is a command line tool and declarative YAML templating system, specially designed for generating BOSH deployment manifests.
 
 Contents:
@@ -131,12 +144,23 @@ The ` merge` command offers the option `--partial`. If this option is given spif
 
 It is possible to read one file from standard input by using the file name `-`. It may be used only once. This allows using spiff as part of a pipeline to just process a single stream or to process a stream based on several templates/stubs.
 
+The template file (first argument) may be a multi document file containing multiple YAML documents
+separated by a line containing only `---`. Each YAML document will be
+processed independently with the given stub files.
+
 ### `spiff diff manifest.yml other-manifest.yml`
 
 Show structural differences between two deployment manifests.
 
-Unlike 'bosh diff', this command has semantic knowledge of a deployment
-manifest, and is not just text-based. It also doesn't modify either file.
+Unlike basic diffing tools and even `bosh diff`, this command has semantic
+knowledge of a deployment manifest, and is not just text-based. For example,
+if two manifests are the same except they have some jobs listed in different
+orders, `spiff diff` will detect this, since job order matters in a manifest.
+On the other hand, if two manifests differ only in the order of their
+resource pools, for instance, then it will yield and empty diff since
+resource pool order doesn't actually matter for a deployment.
+
+Also unlike `bosh diff`, this command doesn't modify either file.
 
 It's tailed for checking differences between one deployment and the next.
 
@@ -239,7 +263,7 @@ from:
 If the path starts with a dot (`.`) the path is always evaluated from the root
 of the document.
 
-List entries consisting of a map with `name` field can directly be addressed 
+List entries consisting of a map with `name` field can directly be addressed
 by their name value.
 
 e.g.:
@@ -327,7 +351,7 @@ String literal. The only escape character handled currently is '"'.
 
 ## `(( [ 1, 2, 3 ] ))`
 
-List literal. The list elements might again be expressions. There is a special list literal `[1 .. -1]`, that can be used to resolve an increasing or descreasing number range to a list. 
+List literal. The list elements might again be expressions. There is a special list literal `[1 .. -1]`, that can be used to resolve an increasing or descreasing number range to a list.
 
 e.g.:
 
@@ -351,7 +375,7 @@ the key and the value, might again be expressions, whereby the key expression mu
 evaluate to a string. This way it is possible to create maps with non-static keys.
 The assignment operator `=` has been chosen instead of the regular colon `:`
 character used in yaml, because this would result in conflicts with the yaml
-syntax. 
+syntax.
 
 A map literal might consist of any number of field assignments separated by a
 comma `,`.
@@ -425,7 +449,7 @@ Concatenation of maps as expression. Any sequences of maps can be concatenated, 
 e.g.:
 
 ```yaml
-foo: 
+foo:
   alice: 24
   bob: 25
 
@@ -439,7 +463,7 @@ concat: (( foo bar ))
 yields
 
 ```yaml
-foo: 
+foo:
   alice: 24
   bob: 25
 
@@ -507,13 +531,13 @@ Merging of maps or lists with the content of the same element found in some stub
 
 ** Attention **
 This form of `merge` has a compatibility propblem. In versions before 1.0.8, this expression
-was never parsed, only the existence of the key `<<:` was relevant. Therefore there are often 
+was never parsed, only the existence of the key `<<:` was relevant. Therefore there are often
 usages of `<<: (( merge ))` where `<<: (( merge || nil ))` is meant. The first variant would
 require content in at least one stub (as always for the merge operator). Now this expression
 is evaluated correctly, but this would break existing manifest template sets, which use the
 first variant, but mean the second. Therfore this case is explicitly handled to describe an
 optional merge. If really a required merge is meant an additional explicit qualifier has to
-be used (`(( merge required ))`).  
+be used (`(( merge required ))`).
 
 #### Merging maps
 
@@ -734,7 +758,7 @@ Redirecting merges can be used as direct field value, also. They can be combined
 foo:
   a: 10
   b: 20
-  
+
 bar:
   a: 1
   b: 2
@@ -764,7 +788,7 @@ Another way doing a merge with another element in some stub could also be done t
 foo:
   a: 10
   b: 20
-  
+
 bar:
   a: 1
   b: 2
@@ -772,15 +796,15 @@ bar:
 
 **template.yml**
 ```yaml
-bar: 
+bar:
   <<: (( merge ))
   b: 3
   c: 4
-  
+
 foo: (( bar ))
 ```
 
-But in this scenario the merge still performs the deep merge with the original element name. Therefore 
+But in this scenario the merge still performs the deep merge with the original element name. Therefore
 `spiff merge template.yml values.yml` yields:
 
 ```yaml
@@ -883,6 +907,39 @@ ip: 10.10.10.10
 range: 10.10.10.10-10.11.11.1
 ```
 
+Subtraction also works on two IP addresses to calculate the number of
+IP addresses between two IP addresses.
+
+e.g.:
+
+```yaml
+diff: (( 10.0.1.0 - 10.0.0.1 + 1 ))
+```
+
+yields the value 256. IP address constants can be directly used in dynaml
+expressions. They are implicitly converted to strings and back to IP
+addresses if required by an operation.
+
+Multiplication and division can be used to handle IP range shifts on CIDRs.
+With division a network can be partioned. The network size is increased
+to allow at least a dedicated number of subnets below the original CIDR.
+Multiplication then can be used to get the n-th next subnet of the same
+size.
+
+e.g.:
+
+```yaml
+subnet: (( "10.1.2.1/24" / 12 ))  # first subnet CIDR for 16 subnets
+next: (( "10.1.2.1/24" / 12 * 2)) # 2nd next (3rd) subnet CIDRS
+```
+
+yields
+
+```yaml
+subnet: 10.1.2.0/28
+next: 10.1.2.32/28
+```
+
 Additionally there are functions working on IPv4 CIDRs:
 
 ```yaml
@@ -900,19 +957,6 @@ range: 192.168.0.0-192.168.0.255
 next: 192.168.1.0
 num: 192.168.0.0+256=192.168.1.0
 ```
-
-Subtraction also works on two IP addresses to calculate the number of
-IP addresses between two IP addresses.
-
-e.g.:
-
-```yaml
-diff: (( 10.0.1.0 - 10.0.0.1 + 1 ))
-```
-
-yields the value 256. IP address constants can be directly used in dynaml
-expressions. They are implicitly converted to strings and back to IP
-addresses if required by an operation.
 
 ## `(( a > 1 ? foo :bar ))`
 
@@ -940,7 +984,7 @@ The operators `-or` and `-and` can be used to combine comparison operators to co
 
 **Remark:**
 
-The more traditional operator symbol `||` (and `&&`) cannot be used here, because the operator `||` already exists in dynaml with a different semantic, that does not hold for logical operations. The expression `false || true` evaluates to `false`, because it yields the first operand, if it is defined, regardless of its value. To be as compatible as possible this cannot be changed and the bare symbols `or` and `and` cannot be be used, because this would invalidate the concatenation of references with such names. 
+The more traditional operator symbol `||` (and `&&`) cannot be used here, because the operator `||` already exists in dynaml with a different semantic, that does not hold for logical operations. The expression `false || true` evaluates to `false`, because it yields the first operand, if it is defined, regardless of its value. To be as compatible as possible this cannot be changed and the bare symbols `or` and `and` cannot be be used, because this would invalidate the concatenation of references with such names.
 
 ## `(( 5 -or 6 ))`
 
@@ -955,11 +999,11 @@ result: (( functionname(arg, arg, ...) ))
 ```
 
 Additional functions may be defined as part of the yaml document using [lambda expressions](#-lambda-x-x--port-). The function name then is either a grouped expression or the path to the node hosting the lambda expression.
- 
+
 ### `(( format( "%s %d", alice, 25) ))`
 
 Format a string based on arguments given by dynaml expressions. There is a second flavor of this function: `error` formats an error message and sets the evaluation to failed.
-  
+
 
 ### `(( join( ", ", list) ))`
 
@@ -1253,7 +1297,7 @@ list:
 length: 2
 ```
 
-### `(( base64(string) ))` 
+### `(( base64(string) ))`
 
 The function `base64` generates a base64 encoding of a given string. `base64_decode` decodes a base64 encoded string.
 
@@ -1271,7 +1315,7 @@ base54: dGVzdA==
 test: test
 ```
 
-### `(( md5(string) ))` 
+### `(( md5(string) ))`
 
 The function `md5` generates an md5 hash for the given string.
 
@@ -1461,7 +1505,7 @@ Read the value of an environment variable whose name is given as dynaml expressi
 
 In a second flavor the function `env` accepts multiple arguments and/or list arguments, which are joined to a single list. Every entry in this list is used as name of an environment variable and the result of the function is a map of the given given variables as yaml element. Hereby non-existent environment variables are omitted.
 
-### `(( read("file.yml") ))` 
+### `(( read("file.yml") ))`
 
 Read a file and return its content. There is support for two content types: `yaml` files and `text` files.
 If the file suffix is `.yml`, by default the yaml type is used. An optional second parameter can be used
@@ -1471,7 +1515,7 @@ to explicitly specifiy the desired return type: `yaml` or `text`.
 
 A yaml document will be parsed and the tree is returned. The  elements of the tree can be accessed by regular dynaml expressions.
 
-Additionally the yaml file may again contain dynaml expressions. All included dynaml expressions will be evaluated in the context of the reading expression. This means that the same file included at different places in a yaml document may result in different sub trees, depending on the used dynaml expressions. 
+Additionally the yaml file may again contain dynaml expressions. All included dynaml expressions will be evaluated in the context of the reading expression. This means that the same file included at different places in a yaml document may result in different sub trees, depending on the used dynaml expressions.
 
 If the read type is set to `import`, the file content is read as yaml document and the root node is used to substitute the expression. Potential dynaml expressions contained in the document will not be evaluated with the actual binding of the expression but as it would have been part of the original file.
 
@@ -1619,7 +1663,7 @@ networks:
 `static_ips`also accepts list arguments, as long as all transitivly contained elements are either again lists or integer values. This allows to abbreviate the list of IPs as follows:
 
 ```
-  static_ips: (( static_ips([1..5]) )) 
+  static_ips: (( static_ips([1..5]) ))
 ```
 
 ### `(( ipset(ranges, 3, 3,4,5,6) ))`
@@ -1628,7 +1672,7 @@ While the function [static_ips](#-static_ips0-1-3-) for historical reasons
 relies on the structure of a bosh manifest
 and works only at dedicated locations in the manifest, the function *ipset*
 offers a similar calculation purely based on its arguments. So, the available
-ip ranges and the required numbers of IPs are passed as arguments. 
+ip ranges and the required numbers of IPs are passed as arguments.
 
 The first (ranges) argument can be a single range as a simple string or a
 list of strings. Every string might be
@@ -1637,7 +1681,7 @@ list of strings. Every string might be
 - a CIDR
 
 The second argument specifies the requested number of IP addresses in the
-result set. 
+result set.
 
 The additional arguments specify the indices of the IPs to choose (starting
 from 0) in the given ranges. Here again lists of indices might be used.
@@ -1653,7 +1697,7 @@ ipset: (( ipset(ranges,3,[256..260]) ))
 
 resolves *ipset* to `[ 10.0.2.0, 10.0.2.1, 10.0.2.2 ]`.
 
-If no IP indices are specified (only two arguments), the IPs are chosen 
+If no IP indices are specified (only two arguments), the IPs are chosen
 starting from the beginning of the first range up to the end of the last
 given range, without indirection.
 
@@ -1693,7 +1737,7 @@ In combination with templates and lambda expressions this can be used to generat
 
 ### `(( makemap(fieldlist) ))`
 
-In this flavor `makemap` creates a map with entries described by the given field list. 
+In this flavor `makemap` creates a map with entries described by the given field list.
 The list is expected to contain maps with the entries `key` and `value`, describing
 dedicated map entries.
 
@@ -1703,7 +1747,7 @@ e.g.:
 list:
   - key: alice
     value: 24
-  - key: bob 
+  - key: bob
     value: 25
   - key: 5
     value: 25
@@ -1711,14 +1755,14 @@ list:
 map: (( makemap(list) ))
 ```
 
-yields 
+yields
 
 
 ```yaml
 list:
   - key: alice
     value: 24
-  - key: bob 
+  - key: bob
     value: 25
   - key: 5
     value: 25
@@ -1734,7 +1778,7 @@ If the key value is a boolean or an integer it will be mapped to a string.
 ### `(( makemap(key, value) ))`
 
 In this flavor `makemap` creates a map with entries described by the given argument
-pairs. The arguments may be a sequence of key/values pairs (given by separate arguments). 
+pairs. The arguments may be a sequence of key/values pairs (given by separate arguments).
 
 e.g.:
 
@@ -1742,7 +1786,7 @@ e.g.:
 map: (( makemap("peter", 23, "paul", 22) ))
 ```
 
-yields 
+yields
 
 
 ```yaml
@@ -1756,7 +1800,7 @@ In contrast to the previous `makemap` flavor, this one could also be handled by
 
 ### `(( merge(map1, map2) ))`
 
-Beside the keyword ` merge` there is also a function called `merge` (It must always be followed by an opensing bracket). It can be used to merge severals maps taken from the actual document. If the maps are specified by reference expressions, they cannot contain
+Beside the keyword ` merge` there is also a function called `merge` (It must always be followed by an opening bracket). It can be used to merge severals maps taken from the actual document analogous to the stub merge process. If the maps are specified by reference expressions, they cannot contain
 any _dynaml_ expressions, because they are always evaluated in the context of the actual document before evaluating the arguments.
 
 e.g.:
@@ -1764,7 +1808,7 @@ e.g.:
 ```yaml
 map1:
   alice: 24
-  bob: 25
+  bob: (( alice ))
 map2:
   alice: 26
   peter: 8
@@ -1776,7 +1820,30 @@ resolves `result` to
 ```yaml
 result:
   alice: 26
-  bob: 25
+  bob: 24  # <---- expression evaluated before mergeing
+```
+
+Alternatively map [templates](#templates) can be passed (without evaluation operator!). In this case the _dynaml_ expressions from the template are evaluated while merging the given documents as for regular calls of _spiff merge_.
+
+e.g.:
+
+```yaml
+map1:
+  <<: (( &template ))
+  alice: 24
+  bob: (( alice ))
+map2:
+  alice: 26
+  peter: 8
+result: (( merge(map1,map2) ))
+```
+
+resolves `result` to
+
+```yaml
+result:
+  alice: 26
+  bob: 26
 ```
 
 A map might also be given by a map expression. Here it is possible to specify
@@ -1996,10 +2063,10 @@ list:
     age: 25
   - name: bob
     age: 24
-	
+
 ages: (( map[list|i,p|->i + 1 ". " p.name " is " p.age ] ))
 ```
- 
+
 yields
 
 ```yaml
@@ -2008,7 +2075,7 @@ list:
     age: 25
   - name: bob
     age: 24
-	
+
 ages:
 - 1. alice is 25
 - 2. bob is 24
@@ -2080,10 +2147,10 @@ list:
   - 1
   - 2
   - 3
-	
+
 prod: (( sum[list|0|s,i,x|->s + i * x ] ))
 ```
- 
+
 yields
 
 ```yaml
@@ -2091,7 +2158,7 @@ list:
   - 1
   - 2
   - 3
-	
+
 prod: 8
 ```
 
@@ -2254,7 +2321,7 @@ foo:
     <<: (( &template ))
     alice: alice
     bob: (( verb " " alice ))
-	
+
 use:
   subst:
     alice: alice
@@ -2357,9 +2424,9 @@ The complete grammar can be found in [dynaml.peg](dynaml/dynaml.peg).
 
 # Structural Auto-Merge
 
-By default `spiff` performs a deep structural merge of its first argument, the template file, with the given stub files. The merge is processed from right to left, providing an intermediate merged stub for every step. This means, that for every step all expressions must be locally resolvable. 
+By default `spiff` performs a deep structural merge of its first argument, the template file, with the given stub files. The merge is processed from right to left, providing an intermediate merged stub for every step. This means, that for every step all expressions must be locally resolvable.
 
-Structural merge means, that besides explicit dynaml `merge` expressions, values will be overridden by values of equivalent nodes found in right-most stub files. In general, flat value lists are not merged. Only lists of maps can be merged by entries in a stub with a matching index. 
+Structural merge means, that besides explicit dynaml `merge` expressions, values will be overridden by values of equivalent nodes found in right-most stub files. In general, flat value lists are not merged. Only lists of maps can be merged by entries in a stub with a matching index.
 
 There is a special support for the auto-merge of lists containing maps, if the
 maps contain a `name` field. Hereby the list is handled like a map with
@@ -2396,7 +2463,7 @@ list:
 and file **stub.yml**:
 
 ```yaml
-foo: 
+foo:
   - name: bob
     bar: stub
 
@@ -2457,7 +2524,7 @@ networks: (( merge ))
 
 **cf.yml**
 ```yaml
-utils: (( merge )) 
+utils: (( merge ))
 network: (( merge ))
 meta: (( merge ))
 
@@ -2500,7 +2567,7 @@ utils:
 ```yaml
 meta:
   deployment_no: 1
-  
+
 ```
 
 will yield a network setting for a dedicated deployment
@@ -2531,7 +2598,7 @@ Using a different `instance.yml`
 ```yaml
 meta:
   deployment_no: 0
-  
+
 ```
 
 will yield a network setting for a second deployment providing the appropriate settings for a unique other IP block.
@@ -2592,7 +2659,7 @@ networks:
 - _The auto merge never adds nodes to existing structures_
 
   For example, merging
- 
+
   **template.yml**
   ```yaml
   foo:
@@ -2627,7 +2694,7 @@ networks:
 - _Simple node values are replaced by values or complete structures coming from stubs, structures are deep_ merged.
 
   For example, merging
- 
+
   **template.yml**
   ```yaml
   foo: (( ["alice"] ))
@@ -2636,40 +2703,40 @@ networks:
 
   **stub.yml**
   ```yaml
-  foo: 
+  foo:
     - peter
     - paul
-  ``` 
+  ```
 
   yields
 
   ```yaml
   foo:
     - peter
-    - paul 
+    - paul
   ```
 
   But the template
 
   ```yaml
-   foo: [ (( "alice" )) ] 
+   foo: [ (( "alice" )) ]
   ```
 
   is merged without any change.
 
 - _Expressions are subject to be overridden as a whole_
-  
+
   A consequence of the behaviour described above is that nodes described by an expession are basically overridden by a complete merged structure, instead of doing a deep merge with the structues resulting from the expression evaluation.
 
   For example, merging
- 
+
   **template.yml**
   ```yaml
   men:
     - bob: 24
   women:
     - alice: 25
-	
+
   people: (( women men ))
   ```
   with
@@ -2686,7 +2753,7 @@ networks:
     - bob: 24
   women:
     - alice: 25
-	
+
   people:
     - alice: 24
   ```
@@ -2698,7 +2765,7 @@ networks:
     - bob: 24
   women:
     - alice: 25
-	
+
   people:
     - alice: 24
     - bob: 24
@@ -2773,7 +2840,7 @@ networks:
     template:
       <<: (( &template ))
       bob: (( x " " y ))
-	
+
 	banda:
       bob: loves alice
   ```
@@ -2802,14 +2869,14 @@ networks:
     prd: 24
     sum: 10
   ```
- 
+
 - _Taking advantage of the *undefined* value_
 
   At first glance it might look strange to introduce a value for *undefined*. But it can be really
   useful as will become apparent with the following examples.
 
-  - Whenever a stub syntactically defines a field it overwrites the default in the template during 
-    merging. Therefore it would not be possible to define some expression for that field that eventually 
+  - Whenever a stub syntactically defines a field it overwrites the default in the template during
+    merging. Therefore it would not be possible to define some expression for that field that eventually
 	keeps the default value. Here the *undefined* value can help:
 
     e.g.: merging
@@ -2839,7 +2906,7 @@ networks:
   * There is a problem accessing upstream values. This is only possible if the local stub contains
     the definition of the field to use. But then there will always be a value for this field, even
 	if the upstream does not overwrite it.
-	
+
     Here the *undefined* value can help by providing optional access to upstream values.
 	Optional means, that the field is only defined, if there is an upstream value. Otherwise it is
 	undefined for the expressions in the local stub and potential downstream templates. This is
@@ -2862,13 +2929,13 @@ networks:
     config:
       alice: (( ~~ ))
 	  bob: (( ~~ ))
-	
+
     alice: (( config.alice || ~~ ))
     bob: (( config.bob || ~~ ))
     peter: (( config.peter || ~~ ))
     ```
 
-    and 
+    and
 
     **config.yml**
     ```yaml
@@ -2883,7 +2950,7 @@ networks:
     bob: 25      # kept default value, because not set in config.yml
     peter: 26    # kept, because mapping source not available in mapping.yml
     ```
-  
+
   This can be used to add an intermediate stub, that offers a dedicated
   configuration interface and contains logic to map this interface to a manifest
   structure already defining default values.
@@ -2891,7 +2958,7 @@ networks:
 - _Templates versus map literals_
 
   As described earlier templates can be used inside functions and mappings to
-  easily describe complex data structures based on expressions refering to 
+  easily describe complex data structures based on expressions refering to
   parameters. Before the introduction of map literals this was the only way
   to achieve such behaviour. The advantage is the possibility to describe
   the complex structure as regular part of a yaml document, which allows using
@@ -2953,7 +3020,7 @@ networks:
 
   ```yaml
   range: (( (|cidr,first,size|->(*templates.addr).range)("10.0.0.0/16",10,255) ))
-  
+
   templates:
     addr:
       <<: (( &template ))
@@ -2985,13 +3052,13 @@ If a dynaml expression cannot be resolved to a value, it is reported by the
 ```
 	(( <failed expression> ))	in <file>	<path to node>	(<referred path>)	<tag><issue>
 ```
-	
+
 e.g.:
 
-```	
+```
 	(( min_ip("10") ))	in source.yml	node.a.[0]	()	*CIDR argument required
 ```
-	
+
 Cyclic dependencies are detected by iterative evaluation until the document is unchanged after a step.
 Nodes involved in a cycle are therefore typically reported just as unresolved node without a specific issue.
 
@@ -3007,4 +3074,4 @@ tag. The following tags are used (in reporting order):
 Problems occuring during inline template processing are reported as nested problems. The classification is
 propagated to the outer node.
 
- 
+
