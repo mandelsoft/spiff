@@ -110,6 +110,8 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			tokens.Push(rhs)
 		case rulePrefer:
 			tokens.Push(PreferExpr{tokens.Pop()})
+		case ruleGrouped:
+			tokens.Push(GroupedExpr{tokens.Pop()})
 		case ruleAuto:
 			tokens.Push(AutoExpr{path})
 		case ruleMerge:
@@ -374,7 +376,6 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			tokens.Push(expressionListHelper{})
 
 		case ruleKey, ruleIndex:
-		case ruleGrouped:
 		case ruleLevel0, ruleLevel1, ruleLevel2, ruleLevel3, ruleLevel4, ruleLevel5, ruleLevel6, ruleLevel7:
 		case ruleExpression:
 		case ruleExpressionList:
