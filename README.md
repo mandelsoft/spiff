@@ -515,7 +515,7 @@ foo:
 ```
 
 Will try to bring in `foo.bar.baz` from the first stub, or the second, etc.,
-returning the value from the first stub that provides it.
+returning the value from the last stub that provides it.
 
 If the corresponding value is not defined, it will return nil. This then has the
 same semantics as reference expressions; a nil merge is an unresolved template.
