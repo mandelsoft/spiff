@@ -293,7 +293,7 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`(foo)(1)`,
 				CallExpr{
-					GroupedExpr{ReferenceExpr{[]string{"foo"}}},
+					ReferenceExpr{[]string{"foo"}},
 					[]Expression{
 						IntegerExpr{1},
 					},
@@ -358,10 +358,10 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`("foo" - bar) - merge`,
 				SubtractionExpr{
-					GroupedExpr{SubtractionExpr{
+					SubtractionExpr{
 						StringExpr{"foo"},
 						ReferenceExpr{[]string{"bar"}},
-					}},
+					},
 					MergeExpr{},
 				},
 			)
