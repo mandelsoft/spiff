@@ -39,8 +39,6 @@ var _ = Describe("Running spiff", func() {
 				basicTemplate.Write([]byte(`
 ---
 foo: bar
----
-alice: bob
 `))
 				merge, err = Start(exec.Command(spiff, "merge", basicTemplate.Name()), GinkgoWriter, GinkgoWriter)
 				Expect(err).NotTo(HaveOccurred())
@@ -52,10 +50,7 @@ alice: bob
 
 			It("resolves the template and prints it out", func() {
 				Expect(merge.Wait()).To(Exit(0))
-				Expect(merge.Out).To(Say(`foo: bar
----
-alice: bob
-`))
+				Expect(merge.Out).To(Say(`foo: bar`))
 			})
 		})
 	})

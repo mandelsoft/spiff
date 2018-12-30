@@ -1,4 +1,6 @@
 tags
+.idea
+/local
 /spiff
 /spiff++
 *.coverprofile

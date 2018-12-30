@@ -89,7 +89,13 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 		log.Fatalln(fmt.Sprintf("error reading template [%s]:", path.Clean(templateFilePath)), err)
 	}
 
+	templateYAMLs, err := yaml.ParseMulti(templateFilePath, templateFile)
+	if err != nil {
+		log.Fatalln(fmt.Sprintf("error parsing template [%s]:", path.Clean(templateFilePath)), err)
+	}
+
 	stubs := []yaml.Node{}
+
 	for _, stubFilePath := range stubFilePaths {
 		var stubFile []byte
 		var err error
@@ -110,61 +116,39 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 		if err != nil {
 			log.Fatalln(fmt.Sprintf("error parsing stub [%s]:", path.Clean(stubFilePath)), err)
 		}
+
 		stubs = append(stubs, stubYAML)
 	}
 
+	legend := "\nerror classification:\n" +
+		" *: error in local dynaml expression\n" +
+		" @: dependent of or involved in a cycle\n" +
+		" -: depending on a node with an error"
+
 	prepared, err := flow.PrepareStubs(partial, stubs...)
 	if !partial && err != nil {
-			legend := "\nerror classification:\n" +
-				" *: error in local dynaml expression\n" +
-				" @: dependent of or involved in a cycle\n" +
-				" -: depending on a node with an error"
-			log.Fatalln("error generating manifest:", err, legend)
+		log.Fatalln("error generating manifest:", err, legend)
 	}
 
-	docs := strings.Split(string(templateFile), "\n---\n")
-	out := ""
-	for i, doc := range docs {
-		if strings.Trim(doc," \n") == "" {
-			if i>0 && out!="" {
-				out += "---\n"
-			}
-			continue
+	for no, templateYAML := range templateYAMLs {
+		doc := ""
+		if len(templateYAMLs) > 1 {
+			doc = fmt.Sprintf(" (document %d)", no+1)
 		}
-		suffix := ""
-		if len(docs) > 1 {
-			suffix = fmt.Sprintf(":%d", i+1)
-		}
-		templateYAML, err := yaml.Parse(templateFilePath+suffix, []byte(doc))
-		if err != nil {
-			log.Fatalln(fmt.Sprintf("error parsing template [%s]:", path.Clean(templateFilePath)), err)
-		}
-
 		flowed, err := flow.Apply(templateYAML, prepared)
 		if !partial && err != nil {
-			legend := "\nerror classification:\n" +
-				" *: error in local dynaml expression\n" +
-				" @: dependent of or involved in a cycle\n" +
-				" -: depending on a node with an error"
-			log.Fatalln("error generating manifest:", err, legend)
+			log.Fatalln(fmt.Sprintf("error generating manifest%s:", doc), err, legend)
 		}
 		if err != nil {
 			flowed = dynaml.ResetUnresolvedNodes(flowed)
 		}
 		yaml, err := candiedyaml.Marshal(flowed)
 		if err != nil {
-			log.Fatalln("error marshalling manifest:", err)
+			log.Fatalln(fmt.Sprintf("error marshalling manifest%s:", doc), err)
 		}
-		s:=string(yaml)
-		if i > 0 && out!="" {
-			out += "---\n"
-		}
-		out += s
-		if !strings.HasSuffix(s,"\n") {
-			out+="\n"
-		}
+		fmt.Println("---")
+		fmt.Println(string(yaml))
 	}
-	fmt.Println(out)
 }
 
 func diff(aFilePath, bFilePath string, separator string) {
@@ -173,7 +157,7 @@ func diff(aFilePath, bFilePath string, separator string) {
 		log.Fatalln(fmt.Sprintf("error reading a [%s]:", path.Clean(aFilePath)), err)
 	}
 
-	aYAML, err := yaml.Parse(aFilePath, aFile)
+	aYAMLs, err := yaml.ParseMulti(aFilePath, aFile)
 	if err != nil {
 		log.Fatalln(fmt.Sprintf("error parsing a [%s]:", path.Clean(aFilePath)), err)
 	}
@@ -183,39 +167,63 @@ func diff(aFilePath, bFilePath string, separator string) {
 		log.Fatalln(fmt.Sprintf("error reading b [%s]:", path.Clean(bFilePath)), err)
 	}
 
-	bYAML, err := yaml.Parse(bFilePath, bFile)
+	bYAMLs, err := yaml.ParseMulti(bFilePath, bFile)
 	if err != nil {
 		log.Fatalln(fmt.Sprintf("error parsing b [%s]:", path.Clean(bFilePath)), err)
 	}
 
-	diffs := compare.Compare(aYAML, bYAML)
-
-	if len(diffs) == 0 {
-		fmt.Println("no differences!")
+	if len(aYAMLs) != len(bYAMLs) {
+		fmt.Printf("Different number of documents (%d != %d)\n", len(aYAMLs), len(bYAMLs))
 		return
 	}
 
-	for _, diff := range diffs {
-		fmt.Println("Difference in", strings.Join(diff.Path, "."))
-
-		if diff.A != nil {
-			ayaml, err := candiedyaml.Marshal(diff.A)
-			if err != nil {
-				panic(err)
-			}
-
-			fmt.Printf("  %s has:\n    \x1b[31m%s\x1b[0m\n", aFilePath, strings.Replace(string(ayaml), "\n", "\n    ", -1))
+	ddiffs := make([][]compare.Diff, len(aYAMLs))
+	found := false
+	for no, aYAML := range aYAMLs {
+		bYAML := bYAMLs[no]
+		ddiffs[no] = compare.Compare(aYAML, bYAML)
+		if len(ddiffs[no]) != 0 {
+			found = true
 		}
-
-		if diff.B != nil {
-			byaml, err := candiedyaml.Marshal(diff.B)
-			if err != nil {
-				panic(err)
+	}
+	if !found {
+		fmt.Println("no differences!")
+		return
+	}
+	for no := range aYAMLs {
+		if len(ddiffs[no]) == 0 {
+			if len(aYAMLs) > 1 {
+				fmt.Println("No difference in document %d", no+1)
 			}
+		} else {
+			diffs := ddiffs[no]
+			doc := ""
+			if len(aYAMLs) > 1 {
+				doc = fmt.Sprintf("document %d", no+1)
+			}
+			for _, diff := range diffs {
+				fmt.Println("Difference in", doc, strings.Join(diff.Path, "."))
 
-			fmt.Printf("  %s has:\n    \x1b[32m%s\x1b[0m\n", bFilePath, strings.Replace(string(byaml), "\n", "\n    ", -1))
+				if diff.A != nil {
+					ayaml, err := candiedyaml.Marshal(diff.A)
+					if err != nil {
+						panic(err)
+					}
+
+					fmt.Printf("  %s has:\n    \x1b[31m%s\x1b[0m\n", aFilePath, strings.Replace(string(ayaml), "\n", "\n    ", -1))
+				}
+
+				if diff.B != nil {
+					byaml, err := candiedyaml.Marshal(diff.B)
+					if err != nil {
+						panic(err)
+					}
+
+					fmt.Printf("  %s has:\n    \x1b[32m%s\x1b[0m\n", bFilePath, strings.Replace(string(byaml), "\n", "\n    ", -1))
+				}
+
+				fmt.Printf(separator)
+			}
 		}
-
-		fmt.Printf(separator)
 	}
 }

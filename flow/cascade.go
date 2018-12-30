@@ -8,12 +8,12 @@ func PrepareStubs(partial bool, stubs ...yaml.Node) ([]yaml.Node, error) {
 	for i := len(stubs) - 1; i >= 0; i-- {
 		flowed, err := Flow(stubs[i], stubs[i+1:]...)
 		if !partial && err != nil {
-			return nil,err
+			return nil, err
 		}
 
 		stubs[i] = Cleanup(flowed, testLocal)
 	}
-	return stubs,nil
+	return stubs, nil
 }
 
 func Apply(template yaml.Node, prepared []yaml.Node) (yaml.Node, error) {
@@ -25,12 +25,12 @@ func Apply(template yaml.Node, prepared []yaml.Node) (yaml.Node, error) {
 }
 
 func Cascade(template yaml.Node, partial bool, stubs ...yaml.Node) (yaml.Node, error) {
-	prepared,err:=PrepareStubs(partial, stubs...)
-	if err!=nil {
-		return nil,err
+	prepared, err := PrepareStubs(partial, stubs...)
+	if err != nil {
+		return nil, err
 	}
 
-	return Apply(template,prepared)
+	return Apply(template, prepared)
 }
 
 func testTemporary(node yaml.Node) bool {

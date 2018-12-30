@@ -64,6 +64,21 @@ var _ = Describe("YAML Parser", func() {
 			Expect(err.Error()).To(ContainSubstring("unknown type"))
 		})
 	})
+
+	Context("parsing multi documents", func() {
+		It("returns all documents", func() {
+			sourceName := "test"
+			source := []byte(`
+doc1:
+---
+doc2:
+`)
+
+			docs, err := ParseMulti(sourceName, source)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(docs)).To(Equal(2))
+		})
+	})
 })
 
 func parsesAs(source string, expr interface{}) {
