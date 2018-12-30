@@ -140,17 +140,30 @@ Example:
 spiff merge cf-release/templates/cf-deployment.yml my-cloud-stub.yml
 ```
 
-The ` merge` command offers the option `--partial`. If this option is given spiff handles incomplete expression evaluation. All errors are ignored and the unresolvable parts of the yaml document are returned as strings.
+The ` merge` command offers the option `--partial`. If this option is
+given spiff handles incomplete expression evaluation. All errors are ignored
+and the unresolvable parts of the yaml document are returned as strings.
 
-It is possible to read one file from standard input by using the file name `-`. It may be used only once. This allows using spiff as part of a pipeline to just process a single stream or to process a stream based on several templates/stubs.
+It is possible to read one file from standard input by using the file
+name `-`. It may be used only once. This allows using spiff as part of a
+pipeline to just process a single stream or to process a stream based on
+several templates/stubs.
 
-The template file (first argument) may be a multi document file containing multiple YAML documents
-separated by a line containing only `---`. Each YAML document will be
-processed independently with the given stub files.
+The template file (first argument) may be a multiple document stream
+containing multiple YAML documents separated by a line containing only `---`.
+Each YAML document will be processed independently with the given stub files.
+The result is the stream of processed documents in the same order.
+For example, this can be used to generate *kubernetes* manifests to be used
+by `kubectl`.
 
 ### `spiff diff manifest.yml other-manifest.yml`
 
 Show structural differences between two deployment manifests.
+Here streams with multiple documents are supported, also.
+To indicate no difference the number of documents in both streams must be
+identical and each document in the first stream must have no difference
+compared to the document with the same index in the second stream.
+Found differences are shown for each document separately.
 
 Unlike basic diffing tools and even `bosh diff`, this command has semantic
 knowledge of a deployment manifest, and is not just text-based. For example,

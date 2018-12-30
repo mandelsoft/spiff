@@ -3,10 +3,6 @@
 	"GoVersion": "go1.4.1",
 	"Deps": [
 		{
-			"ImportPath": "github.com/cloudfoundry-incubator/candiedyaml",
-			"Rev": "4e924c79e32959414e8c7aaed6607176d8ee79c3"
-		},
-		{
 			"ImportPath": "github.com/codegangsta/cli",
 			"Comment": "1.2.0-95-g9b2bd2b",
 			"Rev": "9b2bd2b3489748d4d0a204fa4eb2ee9e89e0ebc6"
