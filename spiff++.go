@@ -198,7 +198,7 @@ func diff(aFilePath, bFilePath string, separator string) {
 	for no := range aYAMLs {
 		if len(ddiffs[no]) == 0 {
 			if len(aYAMLs) > 1 {
-				fmt.Println("No difference in document %d", no+1)
+				fmt.Printf("No difference in document %d\n", no+1)
 			}
 		} else {
 			diffs := ddiffs[no]
