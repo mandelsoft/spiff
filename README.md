@@ -95,6 +95,10 @@ Contents:
 		- [(( makemap(fieldlist) ))](#-makemapfieldlist-)
 		- [(( makemap(key, value) ))](#-makemapkey-value-)
 		- [(( merge(map1, map2) ))](#-mergemap1-map2-)
+		- [X509 Functions](#x509-functions)
+		    - [(( x509genkey(spec) ))](#-x509genkeyspec-)
+		    - [(( x509publickey(key) ))](#-x509publickeykey-)
+		    - [(( x509cert(spec) ))](#-x509certspec-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
 	- [(( &temporary ))](#-temporary-)
 	- [Mappings](#mappings)
@@ -1859,7 +1863,7 @@ result:
   bob: 26
 ```
 
-A map might also be given by a map expression. Here it is possible to specify
+A map might also be given by a [map expression](#--alice--25--). Here it is possible to specify
 dynaml expressions using the usual syntax:
 
 e.g.:
@@ -1882,6 +1886,189 @@ resolves `result` to
 result:
   alice: 26
   bob: 100
+```
+
+### X509 Functions
+
+spiff supports some useful functions to work with _X509_ certificates and keys.
+Please refer also to the [Useful to Know](#useful-to-know) section to find some
+tips for providing state.
+
+#### `(( x509genkey(spec) ))`
+
+This function can be used generate private RSA or ECDSA keys. The result will
+be a PEM encoded key as multi line string value. If a key size (integer or string)
+is given as argument, an RSA key will be generated with the given key size
+(for example 2048). Given one of the string values
+
+- "P224"
+- "P256"
+- "P384"
+- "P521"
+
+the function will generate an appropriate ECDSA key.
+
+e.g.:
+
+```yaml
+keys:
+  key: (( x509genkey(2048) ))
+```
+
+resolves to something like
+
+```yaml
+key: |+
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEpAIBAAKCAQEAwxdZDfzxqz4hlRwTL060pm1J12mkJlXF0VnqpQjpnRTq0rns
+    CxMxvSfb4crmWg6BRaI1cEN/zmNcT2sO+RZ4jIOZ2Vi8ujqcbzxqyoBQuMNwdb32
+    ...
+    oqMC9QKBgQDEVP7FDuJEnCpzqddiXTC+8NsC+1+2/fk+ypj2qXMxcNiNG1Az95YE
+    gRXbnghNU7RUajILoimAHPItqeeskd69oB77gig4bWwrzkijFXv0dOjDhQlmKY6c
+    pNWsImF7CNhjTP7L27LKk49a+IGutyYLnXmrlarcNYeCQBin1meydA==
+    -----END RSA PRIVATE KEY-----
+```
+
+#### `(( x509publickey(key) ))`
+
+For a given key in PEM format (for example generated with the [x509genkey](#-x509genkeyspec-)
+function) this function extracts the public key and returns it again in PEM format as a
+multi-line string.
+
+e.g.:
+
+```yaml
+keys:
+  key: (( x509genkey(2048) ))
+  public: (( x509publickey(key)
+```
+
+resolves to something like
+
+```yaml
+key: |+
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEpAIBAAKCAQEAwxdZDfzxqz4hlRwTL060pm1J12mkJlXF0VnqpQjpnRTq0rns
+    CxMxvSfb4crmWg6BRaI1cEN/zmNcT2sO+RZ4jIOZ2Vi8ujqcbzxqyoBQuMNwdb32
+    ...
+    oqMC9QKBgQDEVP7FDuJEnCpzqddiXTC+8NsC+1+2/fk+ypj2qXMxcNiNG1Az95YE
+    gRXbnghNU7RUajILoimAHPItqeeskd69oB77gig4bWwrzkijFXv0dOjDhQlmKY6c
+    pNWsImF7CNhjTP7L27LKk49a+IGutyYLnXmrlarcNYeCQBin1meydA==
+    -----END RSA PRIVATE KEY-----
+public: |+
+    -----BEGIN RSA PUBLIC KEY-----
+    MIIBCgKCAQEAwxdZDfzxqz4hlRwTL060pm1J12mkJlXF0VnqpQjpnRTq0rnsCxMx
+    vSfb4crmWg6BRaI1cEN/zmNcT2sO+RZ4jIOZ2Vi8ujqcbzxqyoBQuMNwdb325Bf/
+   ...
+    VzYqyeQyvvRbNe73BXc5temCaQayzsbghkoWK+Wrc33yLsvpeVQBcB93Xhus+Lt1
+    1lxsoIrQf/HBsiu/5Q3M8L6klxeAUcDbYwIDAQAB
+    -----END RSA PUBLIC KEY-----
+```
+
+#### `(( x509cert(spec) ))`
+
+The function `x509cert` creates locally signed certificates, either a self signed
+one or a certificate signed by a given ca. It returns PEM encoded certificate
+as a multi-line string value.
+
+The single _spec_ parameter take a map with some optional and non optional
+fields used to specify the certificate information. It can be an
+[inline map expression](#--alice--25--) or any map reference into the rest of
+the yaml document.
+
+The following map fields are observed:
+
+| Field Name  | Type | Required | Meaning |
+| ------------| ---- | -------- | ------- |
+| `commonName` | string | optional |  Common Name field of the subject |
+| `organization` | string or string list | optional |  Organization field of the subject |
+| `country` | string or string list | optional |  Country field of the subject |
+| `isCA` | bool | optional |  CA option of certificate |
+| `usage` | string or string list | required |  usage keys for the certificate (see below) |
+| `validity` | integer | optional |  validity interval in hours |
+| `validFrom` | string | optional |  start time in the format "Jan 1 01:22:31 2019" |
+| `hosts` | string or string list | optional |  List of DNS names or IP addresses |
+| `privateKey` | string | required or publicKey |  private key to geberate the certificate for |
+| `publicKey` | string | required or privateKey|  public key to generate the certificate for |
+| `caCert` | string | optional|  certificate to sign with |
+| `caPrivateKey` | string | optional|  priavte key for `caCert` |
+
+For self-signed certificates, the `privateKey`field must be set. `publicKey`
+and the `ca` fields should be omitted. If the `caCert`field is given, the `caKey`
+field is required, also. If the `privateKey`field is given together with the
+`caCert`, the public key for the certificate is extracted from the private key.
+
+Additional fields are silently ignored.
+
+The following usage keys are supported (case is ignored):
+
+| Key |  Meaning |
+| ------------| ---- |
+| `Signature` | x509.KeyUsageDigitalSignature |
+| `Commitment` | x509.KeyUsageContentCommitment |
+| `KeyEncipherment` | x509.KeyUsageKeyEncipherment |
+| `DataEncipherment` | x509.KeyUsageDataEncipherment |
+| `KeyAgreement` | x509.KeyUsageKeyAgreement |
+| `CertSign` | x509.KeyUsageCertSign |
+| `CRLSign` | x509.KeyUsageCRLSign |
+| `EncipherOnly` | x509.KeyUsageEncipherOnly |
+| `DecipherOnly` | x509.KeyUsageDecipherOnly |
+| `Any` | x509.ExtKeyUsageAny |
+| `ServerAuth` | x509.ExtKeyUsageServerAuth |
+| `ClientAuth` | x509.ExtKeyUsageClientAuth |
+| `codesigning` | x509.ExtKeyUsageCodeSigning |
+| `EmailProtection` | x509.ExtKeyUsageEmailProtection |
+| `IPSecEndSystem` | x509.ExtKeyUsageIPSECEndSystem |
+| `IPSecTunnel` | x509.ExtKeyUsageIPSECTunnel |
+| `IPSecUser` | x509.ExtKeyUsageIPSECUser |
+| `TimeStamping` | x509.ExtKeyUsageTimeStamping |
+| `OCSPSigning` | x509.ExtKeyUsageOCSPSigning |
+| `MicrosoftServerGatedCrypto` | x509.ExtKeyUsageMicrosoftServerGatedCrypto |
+| `NetscapeServerGatedCrypto` | x509.ExtKeyUsageNetscapeServerGatedCrypto |
+| `MicrosoftCommercialCodeSigning` | x509.ExtKeyUsageMicrosoftCommercialCodeSigning |
+| `MicrosoftKernelCodeSigning` | x509.ExtKeyUsageMicrosoftKernelCodeSigning |
+
+
+e.g.:
+
+```yaml
+spec:
+  <<: (( &local ))
+  ca:
+    organization: Mandelsoft
+    commonName: Uwe Krueger
+    privateKey: (( data.cakey ))
+    isCA: true
+    usage:
+      - Signature
+      - KeyEncipherment
+
+data:
+  cakey: (( x509genkey(2048) ))
+  cacert: (( x509cert(spec.ca) ))
+```
+
+generates a self-signed root certificate and resolves to something like
+
+```yaml
+cakey: |+
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEpAIBAAKCAQEAwxdZDfzxqz4hlRwTL060pm1J12mkJlXF0VnqpQjpnRTq0rns
+    CxMxvSfb4crmWg6BRaI1cEN/zmNcT2sO+RZ4jIOZ2Vi8ujqcbzxqyoBQuMNwdb32
+    ...
+    oqMC9QKBgQDEVP7FDuJEnCpzqddiXTC+8NsC+1+2/fk+ypj2qXMxcNiNG1Az95YE
+    gRXbnghNU7RUajILoimAHPItqeeskd69oB77gig4bWwrzkijFXv0dOjDhQlmKY6c
+    pNWsImF7CNhjTP7L27LKk49a+IGutyYLnXmrlarcNYeCQBin1meydA==
+    -----END RSA PRIVATE KEY-----
+cacert: |+
+    -----BEGIN CERTIFICATE-----
+    MIIDCjCCAfKgAwIBAgIQb5ex4iGfyCcOa1RvnKSkMDANBgkqhkiG9w0BAQsFADAk
+    MQ8wDQYDVQQKEwZTQVAgU0UxETAPBgNVBAMTCGdhcmRlbmVyMB4XDTE4MTIzMTE0
+    ...
+    pOUBE3Tgim5rnpa9K9RJ/m8IVqlupcONlxQmP3cCXm/lBEREjODPRNhU11DJwDdJ
+    5fd+t5SMEit2BvtTNFXLAwz48EKTxsDPdnHgiQKcbIV8NmgUNPHwXaqRMBLqssKl
+    Cyvds9xGtAtmZRvYNI0=
+    -----END CERTIFICATE-----
 ```
 
 ## `(( lambda |x|->x ":" port ))`
@@ -3050,6 +3237,74 @@ networks:
   ...
   ```
 
+- _X509_ and providing State
+
+  When generating keys or certificates with the [X509 Functions](#x509-functions)
+  there will be new keys or certificates for every execution of _spiff_. But 
+  it is also possible to use _spiff_ to maintain key state. A very simple script
+  could look like this:
+  
+  ```bash
+  #!/bin/bash
+  DIR="$(dirname "$0")/state"
+  if [ ! -f "$DIR/state.yaml" ]; then
+    echo "state:" > "$DIR/state.yaml"
+  fi
+  spiff merge "$DIR/template.yaml" "$DIR/state.yaml" > "$DIR/.$$" && mv "$DIR/.$$" "$DIR/state.yaml"
+  ```
+  
+  It uses a template file (containing the rules) and a state file with the
+  actual state as stub. The first time it is executed there is an empty state
+  and the rules are not overridden, therefore the keys and certificates are
+  generated. Later on, only additional new fields are calculated, the state
+  fields already containing values just overrule the _dynaml_ expressions
+  for those fields in the template.
+  
+  If a re-generation is required, the state file can just be deleted.
+  
+  A template may look like this:
+  
+  **state/template.yaml**
+  ```yaml
+  spec:
+    <<: (( &local ))
+    ca:
+      organization: Mandelsoft
+      commonName: rootca
+      privateKey: (( state.cakey ))
+      isCA: true
+      usage:
+        - Signature
+        - KeyEncipherment
+    peer:
+      organization: Mandelsoft
+      commonName: etcd
+      publicKey: (( state.pub ))
+      caCert: (( state.cacert ))
+      caPrivateKey: (( state.cakey ))
+      validity: 100
+      usage:
+        - ServerAuth
+        - ClientAuth
+        - KeyEncipherment
+      hosts:
+        - etcd.mandelsoft.org
+  
+  state:
+    cakey: (( x509genkey(2048) ))
+    capub: (( x509publickey(cakey) ))
+  
+    cacert: (( x509cert(spec.ca) ))
+  
+    key: (( x509genkey(2048) ))
+    pub: (( x509publickey(key) ))
+    peer: (( x509cert(spec.peer) ))
+
+  ```
+  
+  The merge then generates a rootca and some TLS certificate signed with
+  this CA.
+  
 # Error Reporting
 
 The evaluation of dynaml expressions may fail because of several reasons:

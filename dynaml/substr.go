@@ -15,7 +15,7 @@ func func_substr(arguments []interface{}, binding Binding) (interface{}, Evaluat
 	}
 	start, ok := arguments[1].(int64)
 	if !ok {
-		return info.Error("second argument for substr must be an intenger")
+		return info.Error("second argument for substr must be an integer")
 	}
 	if start < 0 {
 		start = int64(len(str)) + start

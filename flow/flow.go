@@ -8,6 +8,8 @@ import (
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/dynaml"
 	"github.com/mandelsoft/spiff/yaml"
+
+	_ "github.com/mandelsoft/spiff/dynaml/x509"
 )
 
 func Flow(source yaml.Node, stubs ...yaml.Node) (yaml.Node, error) {
