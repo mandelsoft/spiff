@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -22,7 +23,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "spiff"
 	app.Usage = "BOSH deployment manifest toolkit"
-	app.Version = "1.1.0-ms.1"
+	app.Version = "1.2.0"
 
 	app.Commands = []cli.Command{
 		{
@@ -82,14 +83,14 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 		templateFile, err = ioutil.ReadAll(os.Stdin)
 		stdin = true
 	} else {
-		templateFile, err = ioutil.ReadFile(templateFilePath)
+		templateFile, err = ReadFile(templateFilePath)
 	}
 
 	if err != nil {
 		log.Fatalln(fmt.Sprintf("error reading template [%s]:", path.Clean(templateFilePath)), err)
 	}
 
-	templateYAML, err := yaml.Parse(templateFilePath, templateFile)
+	templateYAMLs, err := yaml.ParseMulti(templateFilePath, templateFile)
 	if err != nil {
 		log.Fatalln(fmt.Sprintf("error parsing template [%s]:", path.Clean(templateFilePath)), err)
 	}
@@ -106,7 +107,7 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 			stubFile, err = ioutil.ReadAll(os.Stdin)
 			stdin = true
 		} else {
-			stubFile, err = ioutil.ReadFile(stubFilePath)
+			stubFile, err = ReadFile(stubFilePath)
 		}
 		if err != nil {
 			log.Fatalln(fmt.Sprintf("error reading stub [%s]:", path.Clean(stubFilePath)), err)
@@ -120,74 +121,128 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 		stubs = append(stubs, stubYAML)
 	}
 
-	flowed, err := flow.Cascade(templateYAML, partial, stubs...)
+	legend := "\nerror classification:\n" +
+		" *: error in local dynaml expression\n" +
+		" @: dependent of or involved in a cycle\n" +
+		" -: depending on a node with an error"
+
+	prepared, err := flow.PrepareStubs(partial, stubs...)
 	if !partial && err != nil {
-		legend := "\nerror classification:\n" +
-			" *: error in local dynaml expression\n" +
-			" @: dependent of or involved in a cycle\n" +
-			" -: depending on a node with an error"
 		log.Fatalln("error generating manifest:", err, legend)
 	}
-	if err != nil {
-		flowed = dynaml.ResetUnresolvedNodes(flowed)
-	}
-	yaml, err := candiedyaml.Marshal(flowed)
-	if err != nil {
-		log.Fatalln("error marshalling manifest:", err)
-	}
 
-	fmt.Println(string(yaml))
+	for no, templateYAML := range templateYAMLs {
+		doc := ""
+		if len(templateYAMLs) > 1 {
+			doc = fmt.Sprintf(" (document %d)", no+1)
+		}
+		if templateYAML.Value() != nil {
+			flowed, err := flow.Apply(templateYAML, prepared)
+			if !partial && err != nil {
+				log.Fatalln(fmt.Sprintf("error generating manifest%s:", doc), err, legend)
+			}
+			if err != nil {
+				flowed = dynaml.ResetUnresolvedNodes(flowed)
+			}
+			yaml, err := candiedyaml.Marshal(flowed)
+			if err != nil {
+				log.Fatalln(fmt.Sprintf("error marshalling manifest%s:", doc), err)
+			}
+			fmt.Println("---")
+			fmt.Println(string(yaml))
+		} else {
+			fmt.Println("---")
+		}
+	}
 }
 
 func diff(aFilePath, bFilePath string, separator string) {
-	aFile, err := ioutil.ReadFile(aFilePath)
+	aFile, err := ReadFile(aFilePath)
 	if err != nil {
 		log.Fatalln(fmt.Sprintf("error reading a [%s]:", path.Clean(aFilePath)), err)
 	}
 
-	aYAML, err := yaml.Parse(aFilePath, aFile)
+	aYAMLs, err := yaml.ParseMulti(aFilePath, aFile)
 	if err != nil {
 		log.Fatalln(fmt.Sprintf("error parsing a [%s]:", path.Clean(aFilePath)), err)
 	}
 
-	bFile, err := ioutil.ReadFile(bFilePath)
+	bFile, err := ReadFile(bFilePath)
 	if err != nil {
 		log.Fatalln(fmt.Sprintf("error reading b [%s]:", path.Clean(bFilePath)), err)
 	}
 
-	bYAML, err := yaml.Parse(bFilePath, bFile)
+	bYAMLs, err := yaml.ParseMulti(bFilePath, bFile)
 	if err != nil {
 		log.Fatalln(fmt.Sprintf("error parsing b [%s]:", path.Clean(bFilePath)), err)
 	}
 
-	diffs := compare.Compare(aYAML, bYAML)
-
-	if len(diffs) == 0 {
-		fmt.Println("no differences!")
+	if len(aYAMLs) != len(bYAMLs) {
+		fmt.Printf("Different number of documents (%d != %d)\n", len(aYAMLs), len(bYAMLs))
 		return
 	}
 
-	for _, diff := range diffs {
-		fmt.Println("Difference in", strings.Join(diff.Path, "."))
-
-		if diff.A != nil {
-			ayaml, err := candiedyaml.Marshal(diff.A)
-			if err != nil {
-				panic(err)
-			}
-
-			fmt.Printf("  %s has:\n    \x1b[31m%s\x1b[0m\n", aFilePath, strings.Replace(string(ayaml), "\n", "\n    ", -1))
+	ddiffs := make([][]compare.Diff, len(aYAMLs))
+	found := false
+	for no, aYAML := range aYAMLs {
+		bYAML := bYAMLs[no]
+		ddiffs[no] = compare.Compare(aYAML, bYAML)
+		if len(ddiffs[no]) != 0 {
+			found = true
 		}
-
-		if diff.B != nil {
-			byaml, err := candiedyaml.Marshal(diff.B)
-			if err != nil {
-				panic(err)
+	}
+	if !found {
+		fmt.Println("no differences!")
+		return
+	}
+	for no := range aYAMLs {
+		if len(ddiffs[no]) == 0 {
+			if len(aYAMLs) > 1 {
+				fmt.Printf("No difference in document %d\n", no+1)
 			}
+		} else {
+			diffs := ddiffs[no]
+			doc := ""
+			if len(aYAMLs) > 1 {
+				doc = fmt.Sprintf("document %d", no+1)
+			}
+			for _, diff := range diffs {
+				fmt.Println("Difference in", doc, strings.Join(diff.Path, "."))
 
-			fmt.Printf("  %s has:\n    \x1b[32m%s\x1b[0m\n", bFilePath, strings.Replace(string(byaml), "\n", "\n    ", -1))
+				if diff.A != nil {
+					ayaml, err := candiedyaml.Marshal(diff.A)
+					if err != nil {
+						panic(err)
+					}
+
+					fmt.Printf("  %s has:\n    \x1b[31m%s\x1b[0m\n", aFilePath, strings.Replace(string(ayaml), "\n", "\n    ", -1))
+				}
+
+				if diff.B != nil {
+					byaml, err := candiedyaml.Marshal(diff.B)
+					if err != nil {
+						panic(err)
+					}
+
+					fmt.Printf("  %s has:\n    \x1b[32m%s\x1b[0m\n", bFilePath, strings.Replace(string(byaml), "\n", "\n    ", -1))
+				}
+
+				fmt.Printf(separator)
+			}
 		}
+	}
+}
 
-		fmt.Printf(separator)
+func ReadFile(file string) ([]byte, error) {
+	if strings.HasPrefix(file, "http:") || strings.HasPrefix(file, "https:") {
+		response, err := http.Get(file)
+		if err != nil {
+			return nil, fmt.Errorf("error getting [%s]: %s", file, err)
+		} else {
+			defer response.Body.Close()
+			return ioutil.ReadAll(response.Body)
+		}
+	} else {
+		return ioutil.ReadFile(file)
 	}
 }

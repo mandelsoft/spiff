@@ -9,6 +9,8 @@ if [ ! -d "../../$O" ]; then
   cd "$O"
   echo "now in $(pwd)"
 fi
+echo faking missing projects from vendor
+cp -Rf vendor/* ../../..
 echo getting dependencies
 godep get -v
 echo getting test dependencies

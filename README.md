@@ -29,9 +29,7 @@ resource:
 Hybrid mean that the template processing is not restricted to the template itself. Additionally
 *spiff* is able to merge the template with information from additional yaml files, so-called stubs, that again may contain template expressions.
 
-
 Contents:
-
 - [Installation](#installation)
 - [Usage](#usage)
 - [dynaml Templating Language](#dynaml-templating-language)
@@ -79,13 +77,15 @@ Contents:
 		- [(( index(list, "foobar") ))](#-indexlist-foobar-)
 		- [(( lastindex(list, "foobar") ))](#-lastindexlist-foobar-)
 		- [(( replace(string, "foo", "bar") ))](#-replacestring-foo-bar-)
+		- [(( substr(string, 1, 3) ))](#-substrstring-1-3-)
 		- [(( match("(f.*)(b.*)", "xxxfoobar") ))](#-matchfb-xxxfoobar-)
 		- [(( length(list) ))](#-lengthlist-)
+		- [(( base64(string) ))](#-base64string-)
+		- [(( md5(string) ))](#-md5string-)
 		- [(( defined(foobar) ))](#-definedfoobar-)
 		- [(( valid(foobar) ))](#-validfoobar-)
 		- [(( require(foobar) ))](#-requirefoobar-)
 		- [(( stub(foo.bar) ))](#-stubfoobar-)
-		- [(( type(expr) ))](#-typeexpr-)
 		- [(( exec( "command", arg1, arg2) ))](#-exec-command-arg1-arg2-)
 		- [(( eval( foo "." bar ) ))](#-eval-foo--bar--)
 		- [(( env( "HOME" ) ))](#-env-HOME--)
@@ -96,6 +96,10 @@ Contents:
 		- [(( makemap(fieldlist) ))](#-makemapfieldlist-)
 		- [(( makemap(key, value) ))](#-makemapkey-value-)
 		- [(( merge(map1, map2) ))](#-mergemap1-map2-)
+		- [X509 Functions](#x509-functions)
+		    - [(( x509genkey(spec) ))](#-x509genkeyspec-)
+		    - [(( x509publickey(key) ))](#-x509publickeykey-)
+		    - [(( x509cert(spec) ))](#-x509certspec-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
 	- [(( &temporary ))](#-temporary-)
 	- [Mappings](#mappings)
@@ -106,10 +110,11 @@ Contents:
 		- [(( sum[list|initial|sum,elem|->dynaml-expr] ))](#-sumlistinitialsumelem-dynaml-expr-)
 		- [(( sum[list|initial|sum,idx,elem|->dynaml-expr] ))](#-sumlistinitialsumidxelem-dynaml-expr-)
 		- [(( sum[map|initial|sum,key,value|->dynaml-expr] ))](#-summapinitialsumkeyvalue-dynaml-expr-)
+	- [Projections](#projections)
+	    - [(( expr.[*].value ))](#-exprvalue-)
+		- [(( list.[1..2].value ))](#-list12value-)
 	- [Templates](#templates)
 		- [<<: (( &template ))](#--template-)
-		- [- <<: (( &template ))](#----template-)
-		- [foo: (( &template (expression) ))](#foo--template-expression-)
 		- [(( *foo.bar ))](#-foobar-)
 	- [Special Literals](#special-literals)
 	- [Access to evaluation context](#access-to-evaluation-context)
@@ -122,7 +127,7 @@ Contents:
 
 # Installation
 
-Official release executable binaries can be downloaded via [Github releases](https://github.com/mandelsoft/spiff/releases) for Darwin and Linux machines (and virtual machines).
+Official release executable binaries can be downloaded via [Github releases](https://github.com/cloudfoundry-incubator/spiff/releases) for Darwin and Linux machines (and virtual machines).
 
 Some of spiff's dependencies have changed since the last official release, and spiff will not be updated to keep up with these dependencies.  Working dependencies are vendored in the `Godeps` directory (more information on the `godep` tool is available [here](https://github.com/tools/godep)).  As such, trying to `go get` spiff will likely fail; the only supported way to use spiff is to use an official binary release.
 
@@ -140,33 +145,50 @@ Example:
 spiff merge cf-release/templates/cf-deployment.yml my-cloud-stub.yml
 ```
 
-The ` merge` command offers the option `--partial`. If this option is given spiff handles incomplete expression evaluation. All errors are ignored and the unresolvable parts of the yaml document are returned as strings.
+The ` merge` command offers the option `--partial`. If this option is
+given spiff handles incomplete expression evaluation. All errors are ignored
+and the unresolvable parts of the yaml document are returned as strings.
 
-It is possible to read one file from standard input by using the file name `-`. It may be used only once. This allows using spiff as part of a pipeline to just process a single stream or to process a stream based on several templates/stubs.
+It is possible to read one file from standard input by using the file
+name `-`. It may be used only once. This allows using spiff as part of a
+pipeline to just process a single stream or to process a stream based on
+several templates/stubs.
+
+The template file (first argument) may be a multiple document stream
+containing multiple YAML documents separated by a line containing only `---`.
+Each YAML document will be processed independently with the given stub files.
+The result is the stream of processed documents in the same order.
+For example, this can be used to generate *kubernetes* manifests to be used
+by `kubectl`.
 
 ### `spiff diff manifest.yml other-manifest.yml`
 
 Show structural differences between two deployment manifests.
+Here streams with multiple documents are supported, also.
+To indicate no difference the number of documents in both streams must be
+identical and each document in the first stream must have no difference
+compared to the document with the same index in the second stream.
+Found differences are shown for each document separately.
 
-Unlike basic diffing tools and even `bosh diff`, this command has semantic 
+Unlike basic diffing tools and even `bosh diff`, this command has semantic
 knowledge of a deployment manifest, and is not just text-based. For example,
 if two manifests are the same except they have some jobs listed in different
 orders, `spiff diff` will detect this, since job order matters in a manifest.
 On the other hand, if two manifests differ only in the order of their
-resource pools, for instance, then it will yield and empty diff since 
+resource pools, for instance, then it will yield and empty diff since
 resource pool order doesn't actually matter for a deployment.
 
 Also unlike `bosh diff`, this command doesn't modify either file.
 
-It's tailored for checking differences between one deployment and the next.
+It's tailed for checking differences between one deployment and the next.
 
 Typical flow:
 
 ```sh
-$ spiff merge template.yml [templates...] > upgrade.yml
+$ spiff merge template.yml [templates...] > deployment.yml
 $ bosh download manifest [deployment] current.yml
-$ spiff diff upgrade.yml current.yml
-$ bosh deployment upgrade.yml
+$ spiff diff deployment.yml current.yml
+$ bosh deployment deployment.yml
 $ bosh deploy
 ```
 
@@ -259,7 +281,7 @@ from:
 If the path starts with a dot (`.`) the path is always evaluated from the root
 of the document.
 
-List entries consisting of a map with `name` field can directly be addressed 
+List entries consisting of a map with `name` field can directly be addressed
 by their name value.
 
 e.g.:
@@ -347,7 +369,7 @@ String literal. The only escape character handled currently is '"'.
 
 ## `(( [ 1, 2, 3 ] ))`
 
-List literal. The list elements might again be expressions. There is a special list literal `[1 .. -1]`, that can be used to resolve an increasing or descreasing number range to a list. 
+List literal. The list elements might again be expressions. There is a special list literal `[1 .. -1]`, that can be used to resolve an increasing or descreasing number range to a list.
 
 e.g.:
 
@@ -371,7 +393,7 @@ the key and the value, might again be expressions, whereby the key expression mu
 evaluate to a string. This way it is possible to create maps with non-static keys.
 The assignment operator `=` has been chosen instead of the regular colon `:`
 character used in yaml, because this would result in conflicts with the yaml
-syntax. 
+syntax.
 
 A map literal might consist of any number of field assignments separated by a
 comma `,`.
@@ -445,7 +467,7 @@ Concatenation of maps as expression. Any sequences of maps can be concatenated, 
 e.g.:
 
 ```yaml
-foo: 
+foo:
   alice: 24
   bob: 25
 
@@ -459,7 +481,7 @@ concat: (( foo bar ))
 yields
 
 ```yaml
-foo: 
+foo:
   alice: 24
   bob: 25
 
@@ -527,13 +549,13 @@ Merging of maps or lists with the content of the same element found in some stub
 
 ** Attention **
 This form of `merge` has a compatibility propblem. In versions before 1.0.8, this expression
-was never parsed, only the existence of the key `<<:` was relevant. Therefore there are often 
+was never parsed, only the existence of the key `<<:` was relevant. Therefore there are often
 usages of `<<: (( merge ))` where `<<: (( merge || nil ))` is meant. The first variant would
 require content in at least one stub (as always for the merge operator). Now this expression
 is evaluated correctly, but this would break existing manifest template sets, which use the
 first variant, but mean the second. Therfore this case is explicitly handled to describe an
 optional merge. If really a required merge is meant an additional explicit qualifier has to
-be used (`(( merge required ))`).  
+be used (`(( merge required ))`).
 
 #### Merging maps
 
@@ -754,7 +776,7 @@ Redirecting merges can be used as direct field value, also. They can be combined
 foo:
   a: 10
   b: 20
-  
+
 bar:
   a: 1
   b: 2
@@ -784,7 +806,7 @@ Another way doing a merge with another element in some stub could also be done t
 foo:
   a: 10
   b: 20
-  
+
 bar:
   a: 1
   b: 2
@@ -792,15 +814,15 @@ bar:
 
 **template.yml**
 ```yaml
-bar: 
+bar:
   <<: (( merge ))
   b: 3
   c: 4
-  
+
 foo: (( bar ))
 ```
 
-But in this scenario the merge still performs the deep merge with the original element name. Therefore 
+But in this scenario the merge still performs the deep merge with the original element name. Therefore
 `spiff merge template.yml values.yml` yields:
 
 ```yaml
@@ -887,8 +909,7 @@ The result is the string `3 times 2 yields 6`.
 
 ## `(( "10.10.10.10" - 11 ))`
 
-Besides arithmetic on integers it is also possible to use addition and
-subtraction on ip addresses, or multiplication and division on CIDRs.
+Besides arithmetic on integers it is also possible to use addition and subtraction on ip addresses.
 
 e.g.:
 
@@ -921,7 +942,7 @@ Multiplication and division can be used to handle IP range shifts on CIDRs.
 With division a network can be partioned. The network size is increased
 to allow at least a dedicated number of subnets below the original CIDR.
 Multiplication then can be used to get the n-th next subnet of the same
-size. 
+size.
 
 e.g.:
 
@@ -981,7 +1002,7 @@ The operators `-or` and `-and` can be used to combine comparison operators to co
 
 **Remark:**
 
-The more traditional operator symbol `||` (and `&&`) cannot be used here, because the operator `||` already exists in dynaml with a different semantic, that does not hold for logical operations. The expression `false || true` evaluates to `false`, because it yields the first operand, if it is defined, regardless of its value. To be as compatible as possible this cannot be changed and the bare symbols `or` and `and` cannot be be used, because this would invalidate the concatenation of references with such names. 
+The more traditional operator symbol `||` (and `&&`) cannot be used here, because the operator `||` already exists in dynaml with a different semantic, that does not hold for logical operations. The expression `false || true` evaluates to `false`, because it yields the first operand, if it is defined, regardless of its value. To be as compatible as possible this cannot be changed and the bare symbols `or` and `and` cannot be be used, because this would invalidate the concatenation of references with such names.
 
 ## `(( 5 -or 6 ))`
 
@@ -996,11 +1017,11 @@ result: (( functionname(arg, arg, ...) ))
 ```
 
 Additional functions may be defined as part of the yaml document using [lambda expressions](#-lambda-x-x--port-). The function name then is either a grouped expression or the path to the node hosting the lambda expression.
- 
+
 ### `(( format( "%s %d", alice, 25) ))`
 
 Format a string based on arguments given by dynaml expressions. There is a second flavor of this function: `error` formats an error message and sets the evaluation to failed.
-  
+
 
 ### `(( join( ", ", list) ))`
 
@@ -1230,6 +1251,29 @@ string: (( replace("foobar", "o", "u") ))
 
 yields `fuubar`.
 
+### `(( substr(string, 1, 2) ))`
+
+Extract a stub string from a string, starting from a given start index up to an optional end index (exclusive). If no end index is given the sub struvt up to the end of the string is extracted.
+Both indices might be negative. In this case they are taken from the end of the string.
+
+e.g.:
+
+```yaml
+string: "foobar"
+end1: (( substr(string,-2) ))
+end2: (( substr(string,3) ))
+range: (( substr(string,1,-1) ))
+```
+
+evaluates to
+
+```yaml
+string: foobar
+end1: ar
+end2: bar
+range: ooba
+```
+
 ### `(( match("(f.*)(b.*)", "xxxfoobar") ))`
 
 Returns the match of a regular expression for a given string value. The match is a list of the matched values for the sub expressions contained in the regular expression. Index 0 refers to the match of the complete regular expression. If the string value does not match an empty list is returned.
@@ -1269,6 +1313,40 @@ list:
   - alice
   - bob
 length: 2
+```
+
+### `(( base64(string) ))`
+
+The function `base64` generates a base64 encoding of a given string. `base64_decode` decodes a base64 encoded string.
+
+e.g.:
+
+```yaml
+base64: (( base64("test") ))
+test: (( base64_decode(base64)))
+```
+
+evaluates to
+
+```yaml
+base54: dGVzdA==
+test: test
+```
+
+### `(( md5(string) ))`
+
+The function `md5` generates an md5 hash for the given string.
+
+e.g.:
+
+```yaml
+hash: (( md5("test") ))
+```
+
+evaluates to
+
+```yaml
+hash: 098f6bcd4621d373cade4e832627b4f6
 ```
 
 ### `(( defined(foobar) ))`
@@ -1377,21 +1455,6 @@ The argument passed to this function must either be a reference literal or an ex
 
 Alternatively the `merge` operation could be used, for example `merge foo.bar`. The difference is that `stub` does not merge, therefore the field will still be merged (with the original path in the document).
 
-### `(( type(expr) ))`
-
-Return the type of a dynaml expression. The expression must evaluate without error. The following type values are returned:
-
-| type     | type name |
-|----------|-----------|
-| integer  | int       |
-| boolean  | bool      |
-| string   | string    |
-| map      | map       |
-| list     | list      |
-| template value | template |
-| function | lambda    |
-| nil/~    | nil       |
-| ~~       | undef     |
 
 ### `(( exec( "command", arg1, arg2) ))`
 
@@ -1460,7 +1523,7 @@ Read the value of an environment variable whose name is given as dynaml expressi
 
 In a second flavor the function `env` accepts multiple arguments and/or list arguments, which are joined to a single list. Every entry in this list is used as name of an environment variable and the result of the function is a map of the given given variables as yaml element. Hereby non-existent environment variables are omitted.
 
-### `(( read("file.yml") ))` 
+### `(( read("file.yml") ))`
 
 Read a file and return its content. There is support for two content types: `yaml` files and `text` files.
 If the file suffix is `.yml`, by default the yaml type is used. An optional second parameter can be used
@@ -1470,7 +1533,9 @@ to explicitly specifiy the desired return type: `yaml` or `text`.
 
 A yaml document will be parsed and the tree is returned. The  elements of the tree can be accessed by regular dynaml expressions.
 
-Additionally the yaml file may again contain dynaml expressions. All included dynaml expressions will be evaluated in the context of the reading expression. This means that the same file included at different places in a yaml document may result in different sub trees, depending on the used dynaml expressions. 
+Additionally the yaml file may again contain dynaml expressions. All included dynaml expressions will be evaluated in the context of the reading expression. This means that the same file included at different places in a yaml document may result in different sub trees, depending on the used dynaml expressions.
+
+If the read type is set to `import`, the file content is read as yaml document and the root node is used to substitute the expression. Potential dynaml expressions contained in the document will not be evaluated with the actual binding of the expression but as it would have been part of the original file.
 
 #### text documents
 A text document will be returned as single string.
@@ -1616,7 +1681,7 @@ networks:
 `static_ips`also accepts list arguments, as long as all transitivly contained elements are either again lists or integer values. This allows to abbreviate the list of IPs as follows:
 
 ```
-  static_ips: (( static_ips([1..5]) )) 
+  static_ips: (( static_ips([1..5]) ))
 ```
 
 ### `(( ipset(ranges, 3, 3,4,5,6) ))`
@@ -1625,7 +1690,7 @@ While the function [static_ips](#-static_ips0-1-3-) for historical reasons
 relies on the structure of a bosh manifest
 and works only at dedicated locations in the manifest, the function *ipset*
 offers a similar calculation purely based on its arguments. So, the available
-ip ranges and the required numbers of IPs are passed as arguments. 
+ip ranges and the required numbers of IPs are passed as arguments.
 
 The first (ranges) argument can be a single range as a simple string or a
 list of strings. Every string might be
@@ -1634,7 +1699,7 @@ list of strings. Every string might be
 - a CIDR
 
 The second argument specifies the requested number of IP addresses in the
-result set. 
+result set.
 
 The additional arguments specify the indices of the IPs to choose (starting
 from 0) in the given ranges. Here again lists of indices might be used.
@@ -1650,7 +1715,7 @@ ipset: (( ipset(ranges,3,[256..260]) ))
 
 resolves *ipset* to `[ 10.0.2.0, 10.0.2.1, 10.0.2.2 ]`.
 
-If no IP indices are specified (only two arguments), the IPs are chosen 
+If no IP indices are specified (only two arguments), the IPs are chosen
 starting from the beginning of the first range up to the end of the last
 given range, without indirection.
 
@@ -1690,7 +1755,7 @@ In combination with templates and lambda expressions this can be used to generat
 
 ### `(( makemap(fieldlist) ))`
 
-In this flavor `makemap` creates a map with entries described by the given field list. 
+In this flavor `makemap` creates a map with entries described by the given field list.
 The list is expected to contain maps with the entries `key` and `value`, describing
 dedicated map entries.
 
@@ -1700,7 +1765,7 @@ e.g.:
 list:
   - key: alice
     value: 24
-  - key: bob 
+  - key: bob
     value: 25
   - key: 5
     value: 25
@@ -1708,14 +1773,14 @@ list:
 map: (( makemap(list) ))
 ```
 
-yields 
+yields
 
 
 ```yaml
 list:
   - key: alice
     value: 24
-  - key: bob 
+  - key: bob
     value: 25
   - key: 5
     value: 25
@@ -1731,7 +1796,7 @@ If the key value is a boolean or an integer it will be mapped to a string.
 ### `(( makemap(key, value) ))`
 
 In this flavor `makemap` creates a map with entries described by the given argument
-pairs. The arguments may be a sequence of key/values pairs (given by separate arguments). 
+pairs. The arguments may be a sequence of key/values pairs (given by separate arguments).
 
 e.g.:
 
@@ -1739,7 +1804,7 @@ e.g.:
 map: (( makemap("peter", 23, "paul", 22) ))
 ```
 
-yields 
+yields
 
 
 ```yaml
@@ -1753,9 +1818,8 @@ In contrast to the previous `makemap` flavor, this one could also be handled by
 
 ### `(( merge(map1, map2) ))`
 
-Beside the keyword ` merge` there is also a function called `merge` (It must always be followed by an opening bracket). It can be used to merge severals maps taken from the actual document.
-
-If the maps are specified by reference expressions, they cannot contain any _dynaml_ expressions, because they are always evaluated in the context of the actual document before evaluating the arguments.
+Beside the keyword ` merge` there is also a function called `merge` (It must always be followed by an opening bracket). It can be used to merge severals maps taken from the actual document analogous to the stub merge process. If the maps are specified by reference expressions, they cannot contain
+any _dynaml_ expressions, because they are always evaluated in the context of the actual document before evaluating the arguments.
 
 e.g.:
 
@@ -1777,7 +1841,7 @@ result:
   bob: 24  # <---- expression evaluated before mergeing
 ```
 
-Alternatively map [templates](#templates) can be passed (without evaluation operator!). In this case the _dynaml_ expressions from the template are evaluated while merging the given documents as for regular calls of _spiff merge_. 
+Alternatively map [templates](#templates) can be passed (without evaluation operator!). In this case the _dynaml_ expressions from the template are evaluated while merging the given documents as for regular calls of _spiff merge_.
 
 e.g.:
 
@@ -1797,10 +1861,10 @@ resolves `result` to
 ```yaml
 result:
   alice: 26
-  bob: 26   # <---- expression evaluate during merging
+  bob: 26
 ```
 
-A map might also be given by a map expression. Here it is possible to specify
+A map might also be given by a [map expression](#--alice--25--). Here it is possible to specify
 dynaml expressions using the usual syntax:
 
 e.g.:
@@ -1823,6 +1887,189 @@ resolves `result` to
 result:
   alice: 26
   bob: 100
+```
+
+### X509 Functions
+
+spiff supports some useful functions to work with _X509_ certificates and keys.
+Please refer also to the [Useful to Know](#useful-to-know) section to find some
+tips for providing state.
+
+#### `(( x509genkey(spec) ))`
+
+This function can be used generate private RSA or ECDSA keys. The result will
+be a PEM encoded key as multi line string value. If a key size (integer or string)
+is given as argument, an RSA key will be generated with the given key size
+(for example 2048). Given one of the string values
+
+- "P224"
+- "P256"
+- "P384"
+- "P521"
+
+the function will generate an appropriate ECDSA key.
+
+e.g.:
+
+```yaml
+keys:
+  key: (( x509genkey(2048) ))
+```
+
+resolves to something like
+
+```yaml
+key: |+
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEpAIBAAKCAQEAwxdZDfzxqz4hlRwTL060pm1J12mkJlXF0VnqpQjpnRTq0rns
+    CxMxvSfb4crmWg6BRaI1cEN/zmNcT2sO+RZ4jIOZ2Vi8ujqcbzxqyoBQuMNwdb32
+    ...
+    oqMC9QKBgQDEVP7FDuJEnCpzqddiXTC+8NsC+1+2/fk+ypj2qXMxcNiNG1Az95YE
+    gRXbnghNU7RUajILoimAHPItqeeskd69oB77gig4bWwrzkijFXv0dOjDhQlmKY6c
+    pNWsImF7CNhjTP7L27LKk49a+IGutyYLnXmrlarcNYeCQBin1meydA==
+    -----END RSA PRIVATE KEY-----
+```
+
+#### `(( x509publickey(key) ))`
+
+For a given key in PEM format (for example generated with the [x509genkey](#-x509genkeyspec-)
+function) this function extracts the public key and returns it again in PEM format as a
+multi-line string.
+
+e.g.:
+
+```yaml
+keys:
+  key: (( x509genkey(2048) ))
+  public: (( x509publickey(key)
+```
+
+resolves to something like
+
+```yaml
+key: |+
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEpAIBAAKCAQEAwxdZDfzxqz4hlRwTL060pm1J12mkJlXF0VnqpQjpnRTq0rns
+    CxMxvSfb4crmWg6BRaI1cEN/zmNcT2sO+RZ4jIOZ2Vi8ujqcbzxqyoBQuMNwdb32
+    ...
+    oqMC9QKBgQDEVP7FDuJEnCpzqddiXTC+8NsC+1+2/fk+ypj2qXMxcNiNG1Az95YE
+    gRXbnghNU7RUajILoimAHPItqeeskd69oB77gig4bWwrzkijFXv0dOjDhQlmKY6c
+    pNWsImF7CNhjTP7L27LKk49a+IGutyYLnXmrlarcNYeCQBin1meydA==
+    -----END RSA PRIVATE KEY-----
+public: |+
+    -----BEGIN RSA PUBLIC KEY-----
+    MIIBCgKCAQEAwxdZDfzxqz4hlRwTL060pm1J12mkJlXF0VnqpQjpnRTq0rnsCxMx
+    vSfb4crmWg6BRaI1cEN/zmNcT2sO+RZ4jIOZ2Vi8ujqcbzxqyoBQuMNwdb325Bf/
+   ...
+    VzYqyeQyvvRbNe73BXc5temCaQayzsbghkoWK+Wrc33yLsvpeVQBcB93Xhus+Lt1
+    1lxsoIrQf/HBsiu/5Q3M8L6klxeAUcDbYwIDAQAB
+    -----END RSA PUBLIC KEY-----
+```
+
+#### `(( x509cert(spec) ))`
+
+The function `x509cert` creates locally signed certificates, either a self signed
+one or a certificate signed by a given ca. It returns PEM encoded certificate
+as a multi-line string value.
+
+The single _spec_ parameter take a map with some optional and non optional
+fields used to specify the certificate information. It can be an
+[inline map expression](#--alice--25--) or any map reference into the rest of
+the yaml document.
+
+The following map fields are observed:
+
+| Field Name  | Type | Required | Meaning |
+| ------------| ---- | -------- | ------- |
+| `commonName` | string | optional |  Common Name field of the subject |
+| `organization` | string or string list | optional |  Organization field of the subject |
+| `country` | string or string list | optional |  Country field of the subject |
+| `isCA` | bool | optional |  CA option of certificate |
+| `usage` | string or string list | required |  usage keys for the certificate (see below) |
+| `validity` | integer | optional |  validity interval in hours |
+| `validFrom` | string | optional |  start time in the format "Jan 1 01:22:31 2019" |
+| `hosts` | string or string list | optional |  List of DNS names or IP addresses |
+| `privateKey` | string | required or publicKey |  private key to geberate the certificate for |
+| `publicKey` | string | required or privateKey|  public key to generate the certificate for |
+| `caCert` | string | optional|  certificate to sign with |
+| `caPrivateKey` | string | optional|  priavte key for `caCert` |
+
+For self-signed certificates, the `privateKey`field must be set. `publicKey`
+and the `ca` fields should be omitted. If the `caCert`field is given, the `caKey`
+field is required, also. If the `privateKey`field is given together with the
+`caCert`, the public key for the certificate is extracted from the private key.
+
+Additional fields are silently ignored.
+
+The following usage keys are supported (case is ignored):
+
+| Key |  Meaning |
+| ------------| ---- |
+| `Signature` | x509.KeyUsageDigitalSignature |
+| `Commitment` | x509.KeyUsageContentCommitment |
+| `KeyEncipherment` | x509.KeyUsageKeyEncipherment |
+| `DataEncipherment` | x509.KeyUsageDataEncipherment |
+| `KeyAgreement` | x509.KeyUsageKeyAgreement |
+| `CertSign` | x509.KeyUsageCertSign |
+| `CRLSign` | x509.KeyUsageCRLSign |
+| `EncipherOnly` | x509.KeyUsageEncipherOnly |
+| `DecipherOnly` | x509.KeyUsageDecipherOnly |
+| `Any` | x509.ExtKeyUsageAny |
+| `ServerAuth` | x509.ExtKeyUsageServerAuth |
+| `ClientAuth` | x509.ExtKeyUsageClientAuth |
+| `codesigning` | x509.ExtKeyUsageCodeSigning |
+| `EmailProtection` | x509.ExtKeyUsageEmailProtection |
+| `IPSecEndSystem` | x509.ExtKeyUsageIPSECEndSystem |
+| `IPSecTunnel` | x509.ExtKeyUsageIPSECTunnel |
+| `IPSecUser` | x509.ExtKeyUsageIPSECUser |
+| `TimeStamping` | x509.ExtKeyUsageTimeStamping |
+| `OCSPSigning` | x509.ExtKeyUsageOCSPSigning |
+| `MicrosoftServerGatedCrypto` | x509.ExtKeyUsageMicrosoftServerGatedCrypto |
+| `NetscapeServerGatedCrypto` | x509.ExtKeyUsageNetscapeServerGatedCrypto |
+| `MicrosoftCommercialCodeSigning` | x509.ExtKeyUsageMicrosoftCommercialCodeSigning |
+| `MicrosoftKernelCodeSigning` | x509.ExtKeyUsageMicrosoftKernelCodeSigning |
+
+
+e.g.:
+
+```yaml
+spec:
+  <<: (( &local ))
+  ca:
+    organization: Mandelsoft
+    commonName: Uwe Krueger
+    privateKey: (( data.cakey ))
+    isCA: true
+    usage:
+      - Signature
+      - KeyEncipherment
+
+data:
+  cakey: (( x509genkey(2048) ))
+  cacert: (( x509cert(spec.ca) ))
+```
+
+generates a self-signed root certificate and resolves to something like
+
+```yaml
+cakey: |+
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEpAIBAAKCAQEAwxdZDfzxqz4hlRwTL060pm1J12mkJlXF0VnqpQjpnRTq0rns
+    CxMxvSfb4crmWg6BRaI1cEN/zmNcT2sO+RZ4jIOZ2Vi8ujqcbzxqyoBQuMNwdb32
+    ...
+    oqMC9QKBgQDEVP7FDuJEnCpzqddiXTC+8NsC+1+2/fk+ypj2qXMxcNiNG1Az95YE
+    gRXbnghNU7RUajILoimAHPItqeeskd69oB77gig4bWwrzkijFXv0dOjDhQlmKY6c
+    pNWsImF7CNhjTP7L27LKk49a+IGutyYLnXmrlarcNYeCQBin1meydA==
+    -----END RSA PRIVATE KEY-----
+cacert: |+
+    -----BEGIN CERTIFICATE-----
+    MIIDCjCCAfKgAwIBAgIQb5ex4iGfyCcOa1RvnKSkMDANBgkqhkiG9w0BAQsFADAk
+    MQ8wDQYDVQQKEwZTQVAgU0UxETAPBgNVBAMTCGdhcmRlbmVyMB4XDTE4MTIzMTE0
+    ...
+    pOUBE3Tgim5rnpa9K9RJ/m8IVqlupcONlxQmP3cCXm/lBEREjODPRNhU11DJwDdJ
+    5fd+t5SMEit2BvtTNFXLAwz48EKTxsDPdnHgiQKcbIV8NmgUNPHwXaqRMBLqssKl
+    Cyvds9xGtAtmZRvYNI0=
+    -----END CERTIFICATE-----
 ```
 
 ## `(( lambda |x|->x ":" port ))`
@@ -2017,10 +2264,10 @@ list:
     age: 25
   - name: bob
     age: 24
-	
+
 ages: (( map[list|i,p|->i + 1 ". " p.name " is " p.age ] ))
 ```
- 
+
 yields
 
 ```yaml
@@ -2029,7 +2276,7 @@ list:
     age: 25
   - name: bob
     age: 24
-	
+
 ages:
 - 1. alice is 25
 - 2. bob is 24
@@ -2101,10 +2348,10 @@ list:
   - 1
   - 2
   - 3
-	
+
 prod: (( sum[list|0|s,i,x|->s + i * x ] ))
 ```
- 
+
 yields
 
 ```yaml
@@ -2112,7 +2359,7 @@ list:
   - 1
   - 2
   - 3
-	
+
 prod: 8
 ```
 
@@ -2141,16 +2388,93 @@ ages:
 sum: 49
 ```
 
+## Projections
+
+Projections work over the elements of a list or map yielding a result list. Hereby every element is mapped by an optional subsequent reference expression. This may contain again projections, dynamic references or lambda calls. Basically this is a simplified form of the more general [mapping](#mappings) yielding a list working with a lambda function using only a reference expression based on the elements.
+
+### `(( expr.[*].value ))`
+
+All elements of a map or list given by the expression `expr` are dereferenced with the subsequent reference expression (here `.expr`). If this expression works on a map the elements are ordered accoring to their key values. If the subsequent reference expression is omitted, the complete value list isreturned. For a list expression this means the identity operation.
+
+e.g.:
+
+```yaml
+list:
+  - name: alice
+    age: 25
+  - name: bob
+    age: 26
+  - name: peter
+    age: 24
+
+names: (( list.[*].name ))
+```
+
+yields for `names`:
+
+```yaml
+names:
+  - alice
+  - bob
+  - peter
+```
+
+or for maps:
+
+```yaml
+networks:
+  ext:
+    cidr: 10.8.0.0/16
+  zone1:
+    cidr: 10.9.0.0/16
+
+cidrs: (( .networks.[*].cidr ))
+```
+
+yields for `cidrs`:
+
+```yaml
+cidrs:
+  - 10.8.0.0/16
+  - 10.9.0.0/16
+```
+
+### `(( list.[1..2].value ))`
+
+This projection flavor only works for lists. The projection is done for a dedicated slice of the initial list.
+
+e.g.:
+
+```yaml
+list:
+  - name: alice
+    age: 25
+  - name: bob
+    age: 26
+  - name: peter
+    age: 24
+
+names: (( list.[1..2].name ))
+```
+
+yields for `names`:
+
+```yaml
+names:
+  - bob
+  - peter
+```
+
 ## Templates
 
-A maps, lists or even single values can be tagged by a dynaml expression to be used as template. Dynaml expressions in a template are not evaluated at its definition location in the document, but can be inserted at other locations using dynaml.
+A map can be tagged by a dynaml expression to be used as template. Dynaml expressions in a template are not evaluated at its definition location in the document, but can be inserted at other locations using dynaml.
 At every usage location it is evaluated separately.
 
 ### `<<: (( &template ))`
 
 The dynaml expression `&template` can be used to tag a map node as template:
 
-i.g.:
+e.g.:
 
 ```yaml
 foo:
@@ -2162,12 +2486,7 @@ foo:
 
 The template will be the value of the node `foo.bar`. As such it can be overwritten as a whole by settings in a stub during the merge process. Dynaml expressions in the template are not evaluated. A map can have only a single `<<` field. Therefore it is possible to combine the template marker with an expression just by adding the expression in parenthesis.
 
-### `- <<: (( &template ))`
-
 Adding `- <<: (( &template ))` to a list it is also possible to define list templates.
-
-### `foo: (( &template (expression) ))`
-
 It is also possible to convert a single expression value into a simple template by adding the template
 marker to the expression, for example `foo: (( &template (expression) ))`
 
@@ -2203,7 +2522,7 @@ foo:
     <<: (( &template ))
     alice: alice
     bob: (( verb " " alice ))
-	
+
 use:
   subst:
     alice: alice
@@ -2212,8 +2531,6 @@ use:
 
 verb: hates
 ```
-
-Templates can also be passed to the [merge](#-mergemap1-map2-) function to preserve the _dynaml_ expressions inside the map for use by the merge function.
 
 ## Special Literals
 
@@ -2308,9 +2625,9 @@ The complete grammar can be found in [dynaml.peg](dynaml/dynaml.peg).
 
 # Structural Auto-Merge
 
-By default `spiff` performs a deep structural merge of its first argument, the template file, with the given stub files. The merge is processed from right to left, providing an intermediate merged stub for every step. This means, that for every step all expressions must be locally resolvable. 
+By default `spiff` performs a deep structural merge of its first argument, the template file, with the given stub files. The merge is processed from right to left, providing an intermediate merged stub for every step. This means, that for every step all expressions must be locally resolvable.
 
-Structural merge means, that besides explicit dynaml `merge` expressions, values will be overridden by values of equivalent nodes found in right-most stub files. In general, flat value lists are not merged. Only lists of maps can be merged by entries in a stub with a matching index. 
+Structural merge means, that besides explicit dynaml `merge` expressions, values will be overridden by values of equivalent nodes found in right-most stub files. In general, flat value lists are not merged. Only lists of maps can be merged by entries in a stub with a matching index.
 
 There is a special support for the auto-merge of lists containing maps, if the
 maps contain a `name` field. Hereby the list is handled like a map with
@@ -2347,7 +2664,7 @@ list:
 and file **stub.yml**:
 
 ```yaml
-foo: 
+foo:
   - name: bob
     bar: stub
 
@@ -2408,7 +2725,7 @@ networks: (( merge ))
 
 **cf.yml**
 ```yaml
-utils: (( merge )) 
+utils: (( merge ))
 network: (( merge ))
 meta: (( merge ))
 
@@ -2451,7 +2768,7 @@ utils:
 ```yaml
 meta:
   deployment_no: 1
-  
+
 ```
 
 will yield a network setting for a dedicated deployment
@@ -2482,7 +2799,7 @@ Using a different `instance.yml`
 ```yaml
 meta:
   deployment_no: 0
-  
+
 ```
 
 will yield a network setting for a second deployment providing the appropriate settings for a unique other IP block.
@@ -2543,7 +2860,7 @@ networks:
 - _The auto merge never adds nodes to existing structures_
 
   For example, merging
- 
+
   **template.yml**
   ```yaml
   foo:
@@ -2578,7 +2895,7 @@ networks:
 - _Simple node values are replaced by values or complete structures coming from stubs, structures are deep_ merged.
 
   For example, merging
- 
+
   **template.yml**
   ```yaml
   foo: (( ["alice"] ))
@@ -2587,40 +2904,40 @@ networks:
 
   **stub.yml**
   ```yaml
-  foo: 
+  foo:
     - peter
     - paul
-  ``` 
+  ```
 
   yields
 
   ```yaml
   foo:
     - peter
-    - paul 
+    - paul
   ```
 
   But the template
 
   ```yaml
-   foo: [ (( "alice" )) ] 
+   foo: [ (( "alice" )) ]
   ```
 
   is merged without any change.
 
 - _Expressions are subject to be overridden as a whole_
-  
+
   A consequence of the behaviour described above is that nodes described by an expession are basically overridden by a complete merged structure, instead of doing a deep merge with the structues resulting from the expression evaluation.
 
   For example, merging
- 
+
   **template.yml**
   ```yaml
   men:
     - bob: 24
   women:
     - alice: 25
-	
+
   people: (( women men ))
   ```
   with
@@ -2637,9 +2954,9 @@ networks:
     - bob: 24
   women:
     - alice: 25
-	
+
   people:
-    - alice: 13
+    - alice: 24
   ```
 
   To request an auto-merge of the structure resulting from the expression evaluation, the expression has to be preceeded with the modifier `prefer` (`(( prefer women men ))`). This would yield the desired result:
@@ -2649,9 +2966,9 @@ networks:
     - bob: 24
   women:
     - alice: 25
-	
+
   people:
-    - alice: 13
+    - alice: 24
     - bob: 24
   ```
 
@@ -2724,7 +3041,7 @@ networks:
     template:
       <<: (( &template ))
       bob: (( x " " y ))
-	
+
 	banda:
       bob: loves alice
   ```
@@ -2753,14 +3070,14 @@ networks:
     prd: 24
     sum: 10
   ```
- 
+
 - _Taking advantage of the *undefined* value_
 
   At first glance it might look strange to introduce a value for *undefined*. But it can be really
   useful as will become apparent with the following examples.
 
-  - Whenever a stub syntactically defines a field it overwrites the default in the template during 
-    merging. Therefore it would not be possible to define some expression for that field that eventually 
+  - Whenever a stub syntactically defines a field it overwrites the default in the template during
+    merging. Therefore it would not be possible to define some expression for that field that eventually
 	keeps the default value. Here the *undefined* value can help:
 
     e.g.: merging
@@ -2790,7 +3107,7 @@ networks:
   * There is a problem accessing upstream values. This is only possible if the local stub contains
     the definition of the field to use. But then there will always be a value for this field, even
 	if the upstream does not overwrite it.
-	
+
     Here the *undefined* value can help by providing optional access to upstream values.
 	Optional means, that the field is only defined, if there is an upstream value. Otherwise it is
 	undefined for the expressions in the local stub and potential downstream templates. This is
@@ -2813,13 +3130,13 @@ networks:
     config:
       alice: (( ~~ ))
 	  bob: (( ~~ ))
-	
+
     alice: (( config.alice || ~~ ))
     bob: (( config.bob || ~~ ))
     peter: (( config.peter || ~~ ))
     ```
 
-    and 
+    and
 
     **config.yml**
     ```yaml
@@ -2834,7 +3151,7 @@ networks:
     bob: 25      # kept default value, because not set in config.yml
     peter: 26    # kept, because mapping source not available in mapping.yml
     ```
-  
+
   This can be used to add an intermediate stub, that offers a dedicated
   configuration interface and contains logic to map this interface to a manifest
   structure already defining default values.
@@ -2842,7 +3159,7 @@ networks:
 - _Templates versus map literals_
 
   As described earlier templates can be used inside functions and mappings to
-  easily describe complex data structures based on expressions refering to 
+  easily describe complex data structures based on expressions refering to
   parameters. Before the introduction of map literals this was the only way
   to achieve such behaviour. The advantage is the possibility to describe
   the complex structure as regular part of a yaml document, which allows using
@@ -2904,7 +3221,7 @@ networks:
 
   ```yaml
   range: (( (|cidr,first,size|->(*templates.addr).range)("10.0.0.0/16",10,255) ))
-  
+
   templates:
     addr:
       <<: (( &template ))
@@ -2921,6 +3238,74 @@ networks:
   ...
   ```
 
+- _X509_ and providing State
+
+  When generating keys or certificates with the [X509 Functions](#x509-functions)
+  there will be new keys or certificates for every execution of _spiff_. But 
+  it is also possible to use _spiff_ to maintain key state. A very simple script
+  could look like this:
+  
+  ```bash
+  #!/bin/bash
+  DIR="$(dirname "$0")/state"
+  if [ ! -f "$DIR/state.yaml" ]; then
+    echo "state:" > "$DIR/state.yaml"
+  fi
+  spiff merge "$DIR/template.yaml" "$DIR/state.yaml" > "$DIR/.$$" && mv "$DIR/.$$" "$DIR/state.yaml"
+  ```
+  
+  It uses a template file (containing the rules) and a state file with the
+  actual state as stub. The first time it is executed there is an empty state
+  and the rules are not overridden, therefore the keys and certificates are
+  generated. Later on, only additional new fields are calculated, the state
+  fields already containing values just overrule the _dynaml_ expressions
+  for those fields in the template.
+  
+  If a re-generation is required, the state file can just be deleted.
+  
+  A template may look like this:
+  
+  **state/template.yaml**
+  ```yaml
+  spec:
+    <<: (( &local ))
+    ca:
+      organization: Mandelsoft
+      commonName: rootca
+      privateKey: (( state.cakey ))
+      isCA: true
+      usage:
+        - Signature
+        - KeyEncipherment
+    peer:
+      organization: Mandelsoft
+      commonName: etcd
+      publicKey: (( state.pub ))
+      caCert: (( state.cacert ))
+      caPrivateKey: (( state.cakey ))
+      validity: 100
+      usage:
+        - ServerAuth
+        - ClientAuth
+        - KeyEncipherment
+      hosts:
+        - etcd.mandelsoft.org
+  
+  state:
+    cakey: (( x509genkey(2048) ))
+    capub: (( x509publickey(cakey) ))
+  
+    cacert: (( x509cert(spec.ca) ))
+  
+    key: (( x509genkey(2048) ))
+    pub: (( x509publickey(key) ))
+    peer: (( x509cert(spec.peer) ))
+
+  ```
+  
+  The merge then generates a rootca and some TLS certificate signed with
+  this CA.
+  
 # Error Reporting
 
 The evaluation of dynaml expressions may fail because of several reasons:
@@ -2936,13 +3321,13 @@ If a dynaml expression cannot be resolved to a value, it is reported by the
 ```
 	(( <failed expression> ))	in <file>	<path to node>	(<referred path>)	<tag><issue>
 ```
-	
+
 e.g.:
 
-```	
+```
 	(( min_ip("10") ))	in source.yml	node.a.[0]	()	*CIDR argument required
 ```
-	
+
 Cyclic dependencies are detected by iterative evaluation until the document is unchanged after a step.
 Nodes involved in a cycle are therefore typically reported just as unresolved node without a specific issue.
 
@@ -2958,4 +3343,4 @@ tag. The following tags are used (in reporting order):
 Problems occuring during inline template processing are reported as nested problems. The classification is
 propagated to the outer node.
 
- 
+

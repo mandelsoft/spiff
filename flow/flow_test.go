@@ -5584,6 +5584,253 @@ data:
 		})
 	})
 
+	Describe("when projecting", func() {
+		Context("a list", func() {
+			It("it handles an identity projection", func() {
+				source := parseYAML(`
+---
+list:
+  - name: a
+    value: aValue
+  - name: b
+    value: bValue
+  - name: c
+    value: cValue
+
+projection: (( .list.[*] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - name: a
+    value: aValue
+  - name: b
+    value: bValue
+  - name: c
+    value: cValue
+projection:
+  - name: a
+    value: aValue
+  - name: b
+    value: bValue
+  - name: c
+    value: cValue
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it handles a field projection", func() {
+				source := parseYAML(`
+---
+list:
+  - name: a
+    value: aValue
+  - name: b
+    value: bValue
+  - name: c
+    value: cValue
+
+projection: (( .list.[*].value ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - name: a
+    value: aValue
+  - name: b
+    value: bValue
+  - name: c
+    value: cValue
+projection:
+  - aValue
+  - bValue
+  - cValue
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it handles a field projection for a slice", func() {
+				source := parseYAML(`
+---
+list:
+  - name: a
+    value: aValue
+  - name: b
+    value: bValue
+  - name: c
+    value: cValue
+
+projection: (( .list.[1..2].value ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - name: a
+    value: aValue
+  - name: b
+    value: bValue
+  - name: c
+    value: cValue
+projection:
+  - bValue
+  - cValue
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("a map", func() {
+			It("it handles a value projection", func() {
+				source := parseYAML(`
+---
+map:
+  zz:
+    name: a
+    value: aValue
+  xx:
+    name: b
+    value: bValue
+  yy:
+    name: c
+    value: cValue
+
+projection: (( .map.[*] ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  zz:
+    name: a
+    value: aValue
+  xx:
+    name: b
+    value: bValue
+  yy:
+    name: c
+    value: cValue
+projection:
+  - name: b
+    value: bValue
+  - name: c
+    value: cValue
+  - name: a
+    value: aValue
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it handles a field value projection", func() {
+				source := parseYAML(`
+---
+map:
+  zz:
+    name: a
+    value: aValue
+  xx:
+    name: b
+    value: bValue
+  yy:
+    name: c
+    value: cValue
+
+projection: (( .map.[*].value ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  zz:
+    name: a
+    value: aValue
+  xx:
+    name: b
+    value: bValue
+  yy:
+    name: c
+    value: cValue
+projection:
+  - bValue
+  - cValue
+  - aValue
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("in combination", func() {
+			It("it handles chained projections", func() {
+				source := parseYAML(`
+---
+map:
+  zz:
+    name: a
+    value: aValue
+  xx:
+    name: b
+    value: bValue
+  yy:
+    name: c
+    value: cValue
+
+projection: (( (.map.[*]).[1..2] ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  zz:
+    name: a
+    value: aValue
+  xx:
+    name: b
+    value: bValue
+  yy:
+    name: c
+    value: cValue
+projection:
+  - name: c
+    value: cValue
+  - name: a
+    value: aValue
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it handles nested projections", func() {
+				source := parseYAML(`
+---
+list:
+- zz:
+    name: a
+    value: aValue
+- xx:
+    name: b
+    value: bValue
+- yy:
+    name: c
+    value: cValue
+
+projection: (( .list.[1..2].[*].value ))
+`)
+				resolved := parseYAML(`
+---
+list:
+- zz:
+    name: a
+    value: aValue
+- xx:
+    name: b
+    value: bValue
+- yy:
+    name: c
+    value: cValue
+projection:
+  - - bValue
+  - - cValue
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
 	Describe("when merging inline maps", func() {
 		It("it overrides field", func() {
 			source := parseYAML(`
@@ -5708,6 +5955,122 @@ template:
 data: {}
 `))
 			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling base64", func() {
+		Context("doing encoding", func() {
+			It("it encodes a string", func() {
+				source := parseYAML(`
+---
+value: (( base64("test") ))
+`)
+				resolved := parseYAML(`
+---
+value: dGVzdA==
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+		Context("doing decoding", func() {
+			It("it decodes a string", func() {
+				source := parseYAML(`
+---
+value: (( base64_decode("dGVzdA==") ))
+`)
+				resolved := parseYAML(`
+---
+value: test
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
+	Describe("when calling md5", func() {
+		It("it encodesgenerates md5 hash of a string", func() {
+			source := parseYAML(`
+---
+value: (( md5("test") ))
+`)
+			resolved := parseYAML(`
+---
+value: 098f6bcd4621d373cade4e832627b4f6
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling substr", func() {
+		Context("with 2 args", func() {
+			It("it handles positive start index", func() {
+				source := parseYAML(`
+---
+value: (( substr("test",1) ))
+`)
+				resolved := parseYAML(`
+---
+value: est
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("it handles negative start index", func() {
+				source := parseYAML(`
+---
+value: (( substr("test",-1) ))
+`)
+				resolved := parseYAML(`
+---
+value: t
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+		Context("with 3 args", func() {
+			It("it handles positive start index", func() {
+				source := parseYAML(`
+---
+value: (( substr("test",1,3) ))
+`)
+				resolved := parseYAML(`
+---
+value: es
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("it handles negative start index", func() {
+				source := parseYAML(`
+---
+value: (( substr("test",-2,3) ))
+`)
+				resolved := parseYAML(`
+---
+value: s
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("it handles positive start index with negative end index", func() {
+				source := parseYAML(`
+---
+value: (( substr("test",1,-1) ))
+`)
+				resolved := parseYAML(`
+---
+value: es
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("it handles negative start index with negative end index", func() {
+				source := parseYAML(`
+---
+value: (( substr("test",-2,-1) ))
+`)
+				resolved := parseYAML(`
+---
+value: s
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
 	})
 })

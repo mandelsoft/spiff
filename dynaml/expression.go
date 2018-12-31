@@ -61,14 +61,18 @@ type Expression interface {
 }
 
 func (i *EvaluationInfo) Error(msgfmt interface{}, args ...interface{}) (interface{}, EvaluationInfo, bool) {
-	i.LocalError = true
-	i.Issue = yaml.NewIssue(msgfmt.(string), args...)
+	i.SetError(msgfmt, args...)
 	return nil, *i, false
 }
 
 func (i *EvaluationInfo) SetError(msgfmt interface{}, args ...interface{}) {
 	i.LocalError = true
-	i.Issue = yaml.NewIssue(msgfmt.(string), args...)
+	switch f := msgfmt.(type) {
+	case string:
+		i.Issue = yaml.NewIssue(f, args...)
+	default:
+		i.Issue = yaml.NewIssue("%s", msgfmt)
+	}
 }
 
 func (i *EvaluationInfo) PropagateError(value interface{}, state Status, msgfmt string, args ...interface{}) (interface{}, EvaluationInfo, bool) {

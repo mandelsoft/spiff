@@ -2,6 +2,7 @@ package dynaml
 
 import (
 	"io/ioutil"
+	"net/http"
 	"path"
 	"strings"
 
@@ -20,11 +21,11 @@ func func_read(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 
 	file, ok := arguments[0].(string)
 	if !ok {
-		return info.Error("string value requiredfor file path")
+		return info.Error("string value required for file path")
 	}
 
 	t := "text"
-	if strings.HasSuffix(file, ".yml") {
+	if strings.HasSuffix(file, ".yml") || strings.HasSuffix(file, ".yaml") {
 		t = "yaml"
 	}
 	if len(arguments) > 1 {
@@ -40,9 +41,23 @@ func func_read(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 	data := fileCache[file]
 	if data == nil {
 		debug.Debug("reading %s file %s\n", t, file)
-		data, err = ioutil.ReadFile(file)
-		if err != nil {
-			return info.Error("error reading [%s]: %s", path.Clean(file), err)
+		if strings.HasPrefix(file, "http:") || strings.HasPrefix(file, "https:") {
+			response, err := http.Get(file)
+			if err != nil {
+				return info.Error("error getting [%s]: %s", file, err)
+			} else {
+				defer response.Body.Close()
+				contents, err := ioutil.ReadAll(response.Body)
+				if err != nil {
+					return info.Error("error getting body [%s]: %s", file, err)
+				}
+				data = contents
+			}
+		} else {
+			data, err = ioutil.ReadFile(file)
+			if err != nil {
+				return info.Error("error reading [%s]: %s", path.Clean(file), err)
+			}
 		}
 		fileCache[file] = data
 	}
@@ -62,6 +77,13 @@ func func_read(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 		debug.Debug("resolving yaml file succeeded")
 		info.Source = file
 		return result.Value(), info, true
+	case "import":
+		node, err := yaml.Parse(file, data)
+		if err != nil {
+			return info.Error("error parsing stub [%s]: %s", path.Clean(file), err)
+		}
+		info.Source = file
+		return node.Value(), info, true
 
 	case "text":
 		info.Source = file

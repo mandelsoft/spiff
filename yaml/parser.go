@@ -1,11 +1,11 @@
 package yaml
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-	"reflect"
-
 	"github.com/cloudfoundry-incubator/candiedyaml"
+	"reflect"
 )
 
 type NonStringKeyError struct {
@@ -17,14 +17,34 @@ func (e NonStringKeyError) Error() string {
 }
 
 func Parse(sourceName string, source []byte) (Node, error) {
-	var parsed interface{}
-
-	err := candiedyaml.Unmarshal(source, &parsed)
+	docs, err := ParseMulti(sourceName, source)
 	if err != nil {
 		return nil, err
 	}
+	if len(docs) > 1 {
+		return nil, fmt.Errorf("multi document not possible")
+	}
+	return docs[0], err
+}
 
-	return sanitize(sourceName, parsed)
+func ParseMulti(sourceName string, source []byte) ([]Node, error) {
+	docs := []Node{}
+	r := bytes.NewBuffer(source)
+	d := candiedyaml.NewDecoder(r)
+
+	for d.HasNext() {
+		var parsed interface{}
+		err := d.Decode(&parsed)
+		if err != nil {
+			return nil, err
+		}
+		n, err := sanitize(sourceName, parsed)
+		if err != nil {
+			return nil, err
+		}
+		docs = append(docs, n)
+	}
+	return docs, nil
 }
 
 func sanitize(sourceName string, root interface{}) (Node, error) {

@@ -117,10 +117,24 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			tokens.Push(SliceExpr{expr, slice.(RangeExpr)})
 
 		case ruleChainedCall:
+			args := tokens.PopExpressionList()
+			f := tokens.Pop()
 			tokens.Push(CallExpr{
-				Function:  tokens.Pop(),
-				Arguments: tokens.GetExpressionList(),
+				Function:  f,
+				Arguments: args,
 			})
+
+		case ruleAction0:
+		case ruleProjectionValue:
+			value := &ProjectionValue{}
+			tokens.Push(ProjectionValueExpr{value})
+			tokens.Push(ProjectionValueExpr{value})
+
+		case ruleProjection:
+			qual := tokens.Pop()
+			value := tokens.Pop()
+			expr := tokens.Pop()
+			tokens.Push(ProjectionExpr{expr, value.(ProjectionValueExpr).Value, qual})
 
 		case ruleInteger:
 			val, err := strconv.ParseInt(contents, 10, 64)
@@ -262,23 +276,23 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			tokens.Push(RangeExpr{lhs.(Expression), rhs.(Expression)})
 
 		case ruleList:
-			seq := tokens.GetExpressionList()
+			seq := tokens.PopExpressionList()
 			tokens.Push(ListExpr{seq})
 
 		case ruleNextExpression:
 			rhs := tokens.Pop()
-
-			list := tokens.PopExpressionList()
+			list := tokens.Pop().(expressionListHelper)
 			list.list = append(list.list, rhs)
 			tokens.Push(list)
 
-		case ruleContents, ruleArguments:
-			tokens.SetExpressionList(tokens.PopExpressionList())
+		case ruleStartList, ruleStartArguments:
+			tokens.Push(expressionListHelper{})
 
 		case ruleKey, ruleIndex:
 		case ruleGrouped:
 		case ruleLevel0, ruleLevel1, ruleLevel2, ruleLevel3, ruleLevel4, ruleLevel5, ruleLevel6, ruleLevel7:
 		case ruleExpression:
+		case ruleExpressionList:
 		case ruleMap:
 		case ruleAssignments:
 		case rulews:
@@ -311,8 +325,6 @@ func equals(p1 []string, p2 []string) bool {
 
 type tokenStack struct {
 	list.List
-
-	expressionList *expressionListHelper
 }
 
 func (s *tokenStack) Pop() Expression {
@@ -339,26 +351,8 @@ func (s *tokenStack) Push(expr Expression) {
 	s.PushFront(expr)
 }
 
-func (s *tokenStack) PopExpressionList() expressionListHelper {
-	lhs := s.Pop()
-	list, ok := lhs.(expressionListHelper)
-	if !ok {
-		list = expressionListHelper{list: []Expression{lhs}}
-	}
-	return list
-}
-
-func (s *tokenStack) SetExpressionList(list expressionListHelper) {
-	s.expressionList = &list
-}
-
-func (s *tokenStack) GetExpressionList() []Expression {
-	list := s.expressionList
-	s.expressionList = nil
-	if list == nil {
-		return []Expression(nil)
-	}
-	return list.list
+func (s *tokenStack) PopExpressionList() []Expression {
+	return (s.Pop().(expressionListHelper)).list
 }
 
 func (s *tokenStack) PopNameList() nameListHelper {

@@ -4,21 +4,33 @@ import (
 	"github.com/mandelsoft/spiff/yaml"
 )
 
-func Cascade(template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error) {
-	for i := len(templates) - 1; i >= 0; i-- {
-		flowed, err := Flow(templates[i], templates[i+1:]...)
+func PrepareStubs(partial bool, stubs ...yaml.Node) ([]yaml.Node, error) {
+	for i := len(stubs) - 1; i >= 0; i-- {
+		flowed, err := Flow(stubs[i], stubs[i+1:]...)
 		if !partial && err != nil {
 			return nil, err
 		}
 
-		templates[i] = Cleanup(flowed, testLocal)
+		stubs[i] = Cleanup(flowed, testLocal)
 	}
+	return stubs, nil
+}
 
-	result, err := Flow(template, templates...)
+func Apply(template yaml.Node, prepared []yaml.Node) (yaml.Node, error) {
+	result, err := Flow(template, prepared...)
 	if err == nil {
 		result = Cleanup(result, testTemporary)
 	}
 	return result, err
+}
+
+func Cascade(template yaml.Node, partial bool, stubs ...yaml.Node) (yaml.Node, error) {
+	prepared, err := PrepareStubs(partial, stubs...)
+	if err != nil {
+		return nil, err
+	}
+
+	return Apply(template, prepared)
 }
 
 func testTemporary(node yaml.Node) bool {

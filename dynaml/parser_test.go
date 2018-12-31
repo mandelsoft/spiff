@@ -265,6 +265,16 @@ var _ = Describe("parsing", func() {
 	})
 
 	Describe("calls", func() {
+		It("parses simple calls without arguments", func() {
+			parsesAs(
+				`foo()`,
+				CallExpr{
+					ReferenceExpr{[]string{"foo"}},
+					nil,
+				},
+			)
+		})
+
 		It("parses simple calls for name", func() {
 			parsesAs(
 				`foo(1)`,

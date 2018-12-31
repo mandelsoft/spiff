@@ -7,6 +7,14 @@ import (
 	"github.com/mandelsoft/spiff/debug"
 )
 
+type Function func(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool)
+
+var functions = map[string]Function{}
+
+func RegisterFunction(name string, f Function) {
+	functions[name] = f
+}
+
 type CallExpr struct {
 	Function  Expression
 	Arguments []Expression
@@ -145,6 +153,17 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "merge":
 		result, sub, ok = func_merge(values, binding)
 
+	case "base64":
+		result, sub, ok = func_base64(values, binding)
+	case "base64_decode":
+		result, sub, ok = func_base64_decode(values, binding)
+
+	case "md5":
+		result, sub, ok = func_md5(values, binding)
+
+	case "substr":
+		result, sub, ok = func_substr(values, binding)
+
 	case "type":
 		if info.Undefined {
 			info.Undefined = false
@@ -154,7 +173,11 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		}
 
 	default:
-		return info.Error("unknown function '%s'", funcName)
+		f := functions[funcName]
+		if f == nil {
+			return info.Error("unknown function '%s'", funcName)
+		}
+		result, sub, ok = f(values, binding)
 	}
 
 	if ok && (result == nil || isExpression(result)) {
