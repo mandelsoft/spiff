@@ -46,9 +46,10 @@ ChainedQualifiedExpression <- ChainedCall / ( '.' ( ChainedRef / ChainedDynRef /
 ChainedRef <- ( Key / Index ) FollowUpRef
 ChainedDynRef <- '[' Expression ']'
 Slice <- Range
-ChainedCall <- '(' Arguments ')'
-Arguments <- Expression (NextExpression)*
-NextExpression <- ',' Expression
+ChainedCall <- StartArguments ExpressionList? ')'
+StartArguments <- '(' ws
+ExpressionList <- NextExpression ( ',' NextExpression)*
+NextExpression <- Expression
 
 Projection <- ( '[*]' / Slice ) ProjectionValue ChainedQualifiedExpression*
 ProjectionValue <- {}
@@ -64,8 +65,8 @@ Boolean <- 'true' / 'false'
 Nil <- 'nil' / '~'
 Undefined <- '~~'
 
-List <- '[' Contents? ']'
-Contents <- Expression (NextExpression)*
+List <- StartList ExpressionList? ']'
+StartList <- '['
 
 Map <- CreateMap ws Assignments? '}'
 CreateMap <- '{'
