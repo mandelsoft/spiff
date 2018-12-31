@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -82,7 +83,7 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 		templateFile, err = ioutil.ReadAll(os.Stdin)
 		stdin = true
 	} else {
-		templateFile, err = ioutil.ReadFile(templateFilePath)
+		templateFile, err = ReadFile(templateFilePath)
 	}
 
 	if err != nil {
@@ -106,7 +107,7 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 			stubFile, err = ioutil.ReadAll(os.Stdin)
 			stdin = true
 		} else {
-			stubFile, err = ioutil.ReadFile(stubFilePath)
+			stubFile, err = ReadFile(stubFilePath)
 		}
 		if err != nil {
 			log.Fatalln(fmt.Sprintf("error reading stub [%s]:", path.Clean(stubFilePath)), err)
@@ -135,24 +136,28 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 		if len(templateYAMLs) > 1 {
 			doc = fmt.Sprintf(" (document %d)", no+1)
 		}
-		flowed, err := flow.Apply(templateYAML, prepared)
-		if !partial && err != nil {
-			log.Fatalln(fmt.Sprintf("error generating manifest%s:", doc), err, legend)
+		if templateYAML.Value() != nil {
+			flowed, err := flow.Apply(templateYAML, prepared)
+			if !partial && err != nil {
+				log.Fatalln(fmt.Sprintf("error generating manifest%s:", doc), err, legend)
+			}
+			if err != nil {
+				flowed = dynaml.ResetUnresolvedNodes(flowed)
+			}
+			yaml, err := candiedyaml.Marshal(flowed)
+			if err != nil {
+				log.Fatalln(fmt.Sprintf("error marshalling manifest%s:", doc), err)
+			}
+			fmt.Println("---")
+			fmt.Println(string(yaml))
+		} else {
+			fmt.Println("---")
 		}
-		if err != nil {
-			flowed = dynaml.ResetUnresolvedNodes(flowed)
-		}
-		yaml, err := candiedyaml.Marshal(flowed)
-		if err != nil {
-			log.Fatalln(fmt.Sprintf("error marshalling manifest%s:", doc), err)
-		}
-		fmt.Println("---")
-		fmt.Println(string(yaml))
 	}
 }
 
 func diff(aFilePath, bFilePath string, separator string) {
-	aFile, err := ioutil.ReadFile(aFilePath)
+	aFile, err := ReadFile(aFilePath)
 	if err != nil {
 		log.Fatalln(fmt.Sprintf("error reading a [%s]:", path.Clean(aFilePath)), err)
 	}
@@ -162,7 +167,7 @@ func diff(aFilePath, bFilePath string, separator string) {
 		log.Fatalln(fmt.Sprintf("error parsing a [%s]:", path.Clean(aFilePath)), err)
 	}
 
-	bFile, err := ioutil.ReadFile(bFilePath)
+	bFile, err := ReadFile(bFilePath)
 	if err != nil {
 		log.Fatalln(fmt.Sprintf("error reading b [%s]:", path.Clean(bFilePath)), err)
 	}
@@ -225,5 +230,19 @@ func diff(aFilePath, bFilePath string, separator string) {
 				fmt.Printf(separator)
 			}
 		}
+	}
+}
+
+func ReadFile(file string) ([]byte, error) {
+	if strings.HasPrefix(file, "http:") || strings.HasPrefix(file, "https:") {
+		response, err := http.Get(file)
+		if err != nil {
+			return nil, fmt.Errorf("error getting [%s]: %s", file, err)
+		} else {
+			defer response.Body.Close()
+			return ioutil.ReadAll(response.Body)
+		}
+	} else {
+		return ioutil.ReadFile(file)
 	}
 }
