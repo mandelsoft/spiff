@@ -72,7 +72,7 @@ func func_read(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 		result, state := binding.Flow(node, false)
 		if state != nil {
 			debug.Debug("resolving yaml file failed: " + state.Error())
-			return info.Error("yaml file resolution failed")
+			return info.PropagateError(nil, state, "resolution of yaml file '%s' failed", file)
 		}
 		debug.Debug("resolving yaml file succeeded")
 		info.Source = file
