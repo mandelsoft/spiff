@@ -161,6 +161,13 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "md5":
 		result, sub, ok = func_md5(values, binding)
 
+	case "asjson":
+		result, sub, ok = func_as_json(values, binding)
+	case "asyaml":
+		result, sub, ok = func_as_yaml(values, binding)
+	case "parse":
+		result, sub, ok = func_parse_yaml(values, binding)
+
 	case "substr":
 		result, sub, ok = func_substr(values, binding)
 

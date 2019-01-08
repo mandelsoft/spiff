@@ -23,7 +23,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "spiff"
 	app.Usage = "BOSH deployment manifest toolkit"
-	app.Version = "1.1.0-dev"
+	app.Version = "1.2.0-dev"
 
 	app.Commands = []cli.Command{
 		{
@@ -32,6 +32,10 @@ func main() {
 			Usage:           "merge stub files into a manifest template",
 			SkipFlagParsing: true,
 			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "json",
+					Usage: "print output in json format",
+				},
 				cli.BoolFlag{
 					Name:  "debug",
 					Usage: "print state info",
@@ -47,7 +51,7 @@ func main() {
 					os.Exit(1)
 				}
 				debug.DebugFlag = c.Bool("debug")
-				merge(c.Args()[0], c.Bool("partial"), c.Args()[1:])
+				merge(c.Args()[0], c.Bool("partial"), c.Bool("json"), c.Args()[1:])
 			},
 		},
 		{
@@ -74,7 +78,7 @@ func main() {
 	app.Run(os.Args)
 }
 
-func merge(templateFilePath string, partial bool, stubFilePaths []string) {
+func merge(templateFilePath string, partial bool, json bool, stubFilePaths []string) {
 	var templateFile []byte
 	var err error
 	var stdin = false
@@ -131,12 +135,16 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 		log.Fatalln("error generating manifest:", err, legend)
 	}
 
+	result := [][]byte{}
+	count := 0
 	for no, templateYAML := range templateYAMLs {
 		doc := ""
 		if len(templateYAMLs) > 1 {
 			doc = fmt.Sprintf(" (document %d)", no+1)
 		}
+		var bytes []byte
 		if templateYAML.Value() != nil {
+			count++
 			flowed, err := flow.Apply(templateYAML, prepared)
 			if !partial && err != nil {
 				log.Fatalln(fmt.Sprintf("error generating manifest%s:", doc), err, legend)
@@ -144,14 +152,27 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 			if err != nil {
 				flowed = dynaml.ResetUnresolvedNodes(flowed)
 			}
-			yaml, err := candiedyaml.Marshal(flowed)
+			if json {
+				bytes, err = yaml.ToJSON(flowed)
+			} else {
+				bytes, err = candiedyaml.Marshal(flowed)
+			}
 			if err != nil {
 				log.Fatalln(fmt.Sprintf("error marshalling manifest%s:", doc), err)
 			}
+		}
+		result = append(result, bytes)
+	}
+
+	for _, bytes := range result {
+		if !json {
 			fmt.Println("---")
-			fmt.Println(string(yaml))
-		} else {
-			fmt.Println("---")
+		}
+		if bytes != nil {
+			fmt.Print(string(bytes))
+			if json {
+				fmt.Println()
+			}
 		}
 	}
 }
