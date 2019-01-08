@@ -40,6 +40,11 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		}
 	}
 
+	if !okf {
+		debug.Debug("failed to resolve function: %s\n", info.Issue)
+		return nil, info, false
+	}
+
 	switch funcName {
 	case "defined":
 		return e.defined(binding)
@@ -49,14 +54,11 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		return e.valid(binding)
 	case "stub":
 		return e.stub(binding)
+	case "catch":
+		return e.catch(binding)
 	}
 
 	values, info, ok := ResolveExpressionListOrPushEvaluation(&e.Arguments, &resolved, nil, binding, false)
-
-	if !okf {
-		debug.Debug("failed to resolve function: %s\n", info.Issue)
-		return nil, info, false
-	}
 
 	if !ok {
 		debug.Debug("call args failed\n")
