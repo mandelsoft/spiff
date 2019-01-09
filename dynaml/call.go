@@ -56,6 +56,8 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		return e.stub(binding)
 	case "catch":
 		return e.catch(binding)
+	case "sync":
+		return e.sync(binding)
 	}
 
 	values, info, ok := ResolveExpressionListOrPushEvaluation(&e.Arguments, &resolved, nil, binding, false)

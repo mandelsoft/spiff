@@ -65,6 +65,14 @@ func (i *EvaluationInfo) Error(msgfmt interface{}, args ...interface{}) (interfa
 	return nil, *i, false
 }
 
+func (i *EvaluationInfo) AnnotateError(err EvaluationInfo, msgfmt interface{}, args ...interface{}) (interface{}, EvaluationInfo, bool) {
+	i.SetError(msgfmt, args...)
+	if err.Issue.Issue!="" {
+		i.Issue.Nested = append(i.Issue.Nested, err.Issue)
+	}
+	return nil, *i, false
+}
+
 func (i *EvaluationInfo) SetError(msgfmt interface{}, args ...interface{}) {
 	i.LocalError = true
 	switch f := msgfmt.(type) {
