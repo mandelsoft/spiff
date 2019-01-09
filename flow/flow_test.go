@@ -6073,4 +6073,59 @@ value: s
 			})
 		})
 	})
+
+	Describe("yaml and json", func() {
+		Context("parsing", func() {
+			It("it parses json", func() {
+				source := parseYAML(`
+---
+json: |
+    { "alice": 25 }
+
+result: (( parse( json ) ))
+`)
+				resolved := parseYAML(`
+---
+json: |
+    { "alice": 25 }
+result:
+    alice: 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("it transforms json", func() {
+				source := parseYAML(`
+---
+data:
+    alice: 25
+
+result: (( asjson( data ) ))
+`)
+				resolved := parseYAML(`
+---
+data:
+    alice: 25
+result: '{"alice":25}'
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("it transforms yaml", func() {
+				source := parseYAML(`
+---
+data:
+    alice: 25
+
+result: (( asyaml( data ) ))
+`)
+				resolved := parseYAML(`
+---
+data:
+    alice: 25
+result: |+
+    alice: 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
 })

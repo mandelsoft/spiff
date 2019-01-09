@@ -95,6 +95,9 @@ Contents:
 		- [(( makemap(fieldlist) ))](#-makemapfieldlist-)
 		- [(( makemap(key, value) ))](#-makemapkey-value-)
 		- [(( merge(map1, map2) ))](#-mergemap1-map2-)
+		- [(( parse(yamlorjson) ))](#-parseyamlorjson-)
+		- [(( asjson(expr) ))](#-asjsonexpr-)
+		- [(( asyaml(expr) ))](#-asjsonexpr-)
 		- [X509 Functions](#x509-functions)
 		    - [(( x509genkey(spec) ))](#-x509genkeyspec-)
 		    - [(( x509publickey(key) ))](#-x509publickeykey-)
@@ -1527,6 +1530,50 @@ In a second flavor the function `env` accepts multiple arguments and/or list arg
 Read a file and return its content. There is support for two content types: `yaml` files and `text` files.
 If the file suffix is `.yml`, by default the yaml type is used. An optional second parameter can be used
 to explicitly specifiy the desired return type: `yaml` or `text`.
+
+### `(( parse(yamlorjson) ))`
+
+Parse a yaml or json string and return the content as yaml value. It can therefore be used for
+further dynaml evaluation.
+
+e.g.:
+
+```yaml
+
+json: |
+   { "alice": 25 }
+result: (( parse( json ).alice ))
+```
+
+yields the value `25` for the field `result`.
+
+### `(( asjson(expr) ))`
+
+This function transforms a yaml value given by its argument to a _json_ string.
+The corresponding function `asyaml` yields the yaml value as _yaml document_ string.
+
+e.g.:
+
+```yaml
+data:
+  alice: 25
+
+mapped:
+  json: (( asjson(.data) ))
+  yaml: (( asyaml(.data) ))
+```
+
+resolves to
+
+```yaml
+data:
+  alice: 25
+
+mapped:
+  json: '{"alice":25}'
+  yaml: |+
+    alice: 25
+```
 
 #### yaml documents
 
