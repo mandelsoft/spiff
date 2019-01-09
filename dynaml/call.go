@@ -119,7 +119,14 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		result, sub, ok = func_match(values, binding)
 
 	case "exec":
-		result, sub, ok = func_exec(values, binding)
+		result, sub, ok = func_exec(true, values, binding)
+case "exec_uncached":
+		result, sub, ok = func_exec(false, values, binding)
+
+	case "pipe":
+		result, sub, ok = func_pipe(true, values, binding)
+case "pipe_uncached":
+		result, sub, ok = func_pipe(false, values, binding)
 
 	case "eval":
 		result, sub, ok = func_eval(values, binding, locally)
@@ -128,7 +135,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		result, sub, ok = func_env(values, binding)
 
 	case "read":
-		result, sub, ok = func_read(values, binding)
+		result, sub, ok = func_read(true, values, binding)
+	case "read_uncached":
+		result, sub, ok = func_read(false, values, binding)
 
 	case "format":
 		result, sub, ok = func_format(values, binding)

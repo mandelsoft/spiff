@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	"reflect"
+	"time"
 )
 
 type NonStringKeyError struct {
@@ -49,6 +50,8 @@ func ParseMulti(sourceName string, source []byte) ([]Node, error) {
 
 func sanitize(sourceName string, root interface{}) (Node, error) {
 	switch rootVal := root.(type) {
+	case time.Time:
+		return NewNode(rootVal.Format("2019-01-08T10:06:26Z"), sourceName), nil
 	case map[interface{}]interface{}:
 		sanitized := map[string]Node{}
 

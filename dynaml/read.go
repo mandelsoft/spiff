@@ -12,7 +12,7 @@ import (
 
 var fileCache = map[string][]byte{}
 
-func func_read(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
+func func_read(cached bool, arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 
 	if len(arguments) > 2 {
@@ -39,7 +39,7 @@ func func_read(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 	var err error
 
 	data := fileCache[file]
-	if data == nil {
+	if !cached || data == nil {
 		debug.Debug("reading %s file %s\n", t, file)
 		if strings.HasPrefix(file, "http:") || strings.HasPrefix(file, "https:") {
 			response, err := http.Get(file)
