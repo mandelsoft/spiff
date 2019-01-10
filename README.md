@@ -85,10 +85,8 @@ Contents:
 		- [(( valid(foobar) ))](#-validfoobar-)
 		- [(( require(foobar) ))](#-requirefoobar-)
 		- [(( stub(foo.bar) ))](#-stubfoobar-)
-		- [(( exec( "command", arg1, arg2) ))](#-exec-command-arg1-arg2-)
-		- [(( eval( foo "." bar ) ))](#-eval-foo--bar--)
-		- [(( env( "HOME" ) ))](#-env-HOME--)
-		- [(( read("file.yml") ))](#-readfileyml-)
+		- [(( eval(foo "." bar ) ))](#-evalfoo--bar--)
+		- [(( env( HOME" ) ))](#-envHOME--)
 		- [(( static_ips(0, 1, 3) ))](#-static_ips0-1-3-)
 		- [(( ipset(ranges, 3, 3,4,5,6) ))](#-ipsetranges-3-3456-)
 		- [(( list_to_map(list, "key") ))](#-list_to_maplist-key-)
@@ -99,7 +97,11 @@ Contents:
 		- [(( asjson(expr) ))](#-asjsonexpr-)
 		- [(( asyaml(expr) ))](#-asjsonexpr-)
 		- [(( catch(expr) ))](#-catchexpr-)
-		- [(( sync(expr,condition,value,10) ))](#-syncexprconditionvalue10-)
+		- [(( sync(expr, condition, value, 10) ))](#-syncexprconditionvalue10-)
+		- [Accessing External Content](#accessing-external-content)
+		    - [(( read("file.yml") ))](#-readfileyml-)
+		    - [(( exec("command", arg1, arg2) ))](#-execcommand-arg1-arg2-)
+            - [(( pipe(data, "command", arg1, arg2) ))](#-pipedata-command-arg1-arg2-)
 		- [X509 Functions](#x509-functions)
 		    - [(( x509genkey(spec) ))](#-x509genkeyspec-)
 		    - [(( x509publickey(key) ))](#-x509publickeykey-)
@@ -1459,41 +1461,7 @@ The argument passed to this function must either be a reference literal or an ex
 
 Alternatively the `merge` operation could be used, for example `merge foo.bar`. The difference is that `stub` does not merge, therefore the field will still be merged (with the original path in the document).
 
-
-### `(( exec( "command", arg1, arg2) ))`
-
-Execute a command. Arguments can be any dynaml expressions including reference expressions evaluated to lists or maps. Lists or maps are passed as single arguments containing a yaml document with the given fragment.
-
-The result is determined by parsing the standard output of the command. It might be a yaml document or a single multi-line string or integer value. A yaml document must start with the document prefix `---`. If the command fails the expression is handled as undefined.
-
-e.g.
-
-```yaml
-arg:
-  - a
-  - b
-list: (( exec( "echo", arg ) ))
-string: (( exec( "echo", arg.[0] ) ))
-
-```
-
-yields
-
-```yaml
-arg:
-- a
-- b
-list:
-- a
-- b
-string: a
-```
-
-Alternatively `exec` can be called with a single list argument completely describing the command line.
-
-The same command will be executed once, only, even if it is used in multiple expressions.
-
-### `(( eval( foo "." bar ) ))`
+### `(( eval(foo "." bar ) ))`
 
 Evaluate the evaluation result of a string expression again as dynaml expression. This can, for example, be used to realize indirections.
 
@@ -1521,17 +1489,11 @@ bar: bob
 status: married
 ```
 
-### `(( env( "HOME" ) ))`
+### `(( env("HOME" ) ))`
 
 Read the value of an environment variable whose name is given as dynaml expression. If the environment variable is not set the evaluation fails.
 
 In a second flavor the function `env` accepts multiple arguments and/or list arguments, which are joined to a single list. Every entry in this list is used as name of an environment variable and the result of the function is a map of the given given variables as yaml element. Hereby non-existent environment variables are omitted.
-
-### `(( read("file.yml") ))`
-
-Read a file and return its content. There is support for two content types: `yaml` files and `text` files.
-If the file suffix is `.yml`, by default the yaml type is used. An optional second parameter can be used
-to explicitly specifiy the desired return type: `yaml` or `text`.
 
 ### `(( parse(yamlorjson) ))`
 
@@ -1611,7 +1573,7 @@ data:
     value: 25
 ```
 
-### `(( sync(expr,condition,value,10) ))`
+### `(( sync(expr, condition, value, 10) ))`
 
 If an expression `expr` may return a different result for different evaluations,
 it is possible to synchronize the final output with a dedicated condition
@@ -1645,18 +1607,6 @@ result: 25
 
 This example is quite useless, because the sync expression is a constant. It
 just demonstrates the usage.
-
-
-#### yaml documents
-
-A yaml document will be parsed and the tree is returned. The  elements of the tree can be accessed by regular dynaml expressions.
-
-Additionally the yaml file may again contain dynaml expressions. All included dynaml expressions will be evaluated in the context of the reading expression. This means that the same file included at different places in a yaml document may result in different sub trees, depending on the used dynaml expressions.
-
-If the read type is set to `import`, the file content is read as yaml document and the root node is used to substitute the expression. Potential dynaml expressions contained in the document will not be evaluated with the actual binding of the expression but as it would have been part of the original file.
-
-#### text documents
-A text document will be returned as single string.
 
 ### `(( static_ips(0, 1, 3) ))`
 
@@ -2006,6 +1956,114 @@ result:
   alice: 26
   bob: 100
 ```
+
+
+### Accessing External Content
+
+_Spiff_ supports access to content outside of the template and sub files. It is
+possible to read files, execute commands and pipelines. All those functions exist
+in two flavors.
+- A cached flavor executes the operation ones and caches the result
+  for subsequent identical operations. This speeds up the processing, especially
+  for command executions.
+- If the result evolves over time, it might be useful to always get the latest 
+  content. This is the case if the [`sync`](#-syncexpr-condition.value-10-) 
+  function is used, which is intended to synchronize the template processing
+  with a dedicate state (provided by external content). Here the caching 
+  operations would not be useful, therefore there is a second uncached flavor.
+  Every function is available with the suffix `_uncached` (for example 
+  `read_uncached()`)
+
+#### `(( read("file.yml") ))`
+
+Read a file and return its content. There is support for two content types: `yaml` files and `text` files.
+If the file suffix is `.yml`, by default the yaml type is used. An optional second parameter can be used
+to explicitly specifiy the desired return type: `yaml` or `text`.
+
+##### yaml documents
+
+A yaml document will be parsed and the tree is returned. The  elements of the tree can be accessed by regular dynaml expressions.
+
+Additionally the yaml file may again contain dynaml expressions. All included dynaml expressions will be evaluated in the context of the reading expression. This means that the same file included at different places in a yaml document may result in different sub trees, depending on the used dynaml expressions.
+
+If the read type is set to `import`, the file content is read as yaml document and the root node is used to substitute the expression. Potential dynaml expressions contained in the document will not be evaluated with the actual binding of the expression but as it would have been part of the original file.
+
+##### text documents
+A text document will be returned as single string.
+
+
+#### `(( exec("command", arg1, arg2) ))`
+
+Execute a command. Arguments can be any dynaml expressions including reference expressions evaluated to lists or maps. Lists or maps are passed as single arguments containing a yaml document with the given fragment.
+
+The result is determined by parsing the standard output of the command. It might be a yaml document or a single multi-line string or integer value. A yaml document should start with the document prefix `---`. If the command fails the expression is handled as undefined.
+
+e.g.
+
+```yaml
+arg:
+  - a
+  - b
+list: (( exec( "echo", arg ) ))
+string: (( exec( "echo", arg.[0] ) ))
+
+```
+
+yields
+
+```yaml
+arg:
+- a
+- b
+list:
+- a
+- b
+string: a
+```
+
+Alternatively `exec` can be called with a single list argument completely describing the command line.
+
+The same command will be executed once, only, even if it is used in multiple expressions.
+
+#### `(( pipe(data, "command", arg1, arg2) ))`
+
+Execute a command and feed its standard input with dedicated data. 
+The command argument must be a string. Arguments
+for the command can be any dynaml expressions including reference expressions
+evaluated to lists or maps. Lists or maps are passed as single arguments
+containing a yaml document with the given fragment.
+
+The input stream is generated from the given data. If this is a simple type its
+string representation is used. Otherwise a yaml document is generated from the
+input data. The result is determined by parsing the standard output of the
+command. It might be a yaml document or a single multi-line string or integer
+value. A yaml document should start with the document prefix `---`. If
+the command fails the expression is handled as undefined.
+
+e.g.
+
+```yaml
+data:
+  - a
+  - b
+list: (( pipe( data, "tr", "a", "z") ))
+```
+
+yields
+
+```yaml
+arg:
+- a
+- b
+list:
+- z
+- b
+```
+
+Alternatively `pipe` can be called with data and a list argument completely describing the command line.
+
+The same command will be executed once, only, even if it is used in multiple expressions.
+
 
 ### X509 Functions
 
