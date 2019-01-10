@@ -21,9 +21,9 @@ import (
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "spiff"
-	app.Usage = "BOSH deployment manifest toolkit"
-	app.Version = "1.2.0"
+	app.Name = "spiff++"
+	app.Usage = "deployment manifest toolkit"
+	app.Version = "1.2.1"
 
 	app.Commands = []cli.Command{
 		{

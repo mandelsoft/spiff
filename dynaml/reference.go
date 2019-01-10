@@ -33,6 +33,7 @@ func (e ReferenceExpr) find(f func(int, []string) (node yaml.Node, x bool), bind
 	var ok bool
 
 	info := DefaultInfo()
+	debug.Debug("resolving ref [%v]", e.Path)
 	for i := 0; i < len(e.Path); i++ {
 		step, ok = f(i, e.Path)
 
