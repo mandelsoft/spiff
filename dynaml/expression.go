@@ -67,7 +67,7 @@ func (i *EvaluationInfo) Error(msgfmt interface{}, args ...interface{}) (interfa
 
 func (i *EvaluationInfo) AnnotateError(err EvaluationInfo, msgfmt interface{}, args ...interface{}) (interface{}, EvaluationInfo, bool) {
 	i.SetError(msgfmt, args...)
-	if err.Issue.Issue!="" {
+	if err.Issue.Issue != "" {
 		i.Issue.Nested = append(i.Issue.Nested, err.Issue)
 	}
 	return nil, *i, false

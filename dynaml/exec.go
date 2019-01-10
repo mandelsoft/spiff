@@ -59,7 +59,7 @@ func convertOutput(data []byte) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 	str := string(data)
 	execYML, err := yaml.Parse("exec", data)
-	if execYML!=nil && err == nil {
+	if execYML != nil && err == nil {
 		debug.Debug("exec: found yaml result %+v\n", execYML)
 		return execYML.Value(), info, true
 	} else {
@@ -115,7 +115,7 @@ func cachedExecute(cached bool, content *string, args []string) ([]byte, error) 
 	}
 	debug.Debug("exec: calling %v\n", args)
 	cmd := exec.Command(args[0], args[1:]...)
-	if content!=nil {
+	if content != nil {
 		cmd.Stdin = bytes.NewReader([]byte(*content))
 	}
 	result, err := cmd.Output()

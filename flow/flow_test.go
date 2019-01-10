@@ -6128,4 +6128,94 @@ result: |+
 			})
 		})
 	})
+
+	Describe("catch", func() {
+		Context("failed expressions", func() {
+			It("provide error message", func() {
+				source := parseYAML(`
+---
+fail: (( catch( 1 / 0 ) ))
+`)
+				resolved := parseYAML(`
+---
+fail:
+    error: division by zero
+    valid: false
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+		Context("valid expressions", func() {
+			It("provide value", func() {
+				source := parseYAML(`
+---
+fail: (( catch( 5 * 5 ) ))
+`)
+				resolved := parseYAML(`
+---
+fail:
+    error: ""
+    valid: true
+    value: 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
+	Describe("sync", func() {
+		Context("succeeded", func() {
+			It("yields value", func() {
+				source := parseYAML(`
+---
+data:
+  alice: 25
+result: (( sync( data, defined(value.alice), value.alice) ))
+`)
+				resolved := parseYAML(`
+---
+data:
+  alice: 25
+result: 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+		Context("timeout", func() {
+			It("stops for succeeded evaluation", func() {
+				source := parseYAML(`
+---
+data:
+  alice: 25
+result: (( catch(sync( data, defined(value.bob), value.bob, 1)) ))
+`)
+				resolved := parseYAML(`
+---
+data:
+  alice: 25
+result:
+  error: sync timeout reached
+  valid: false
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("stops for failed evaluation", func() {
+				source := parseYAML(`
+---
+data:
+  alice: 25
+result: (( catch(sync( data.bob, defined(value.bob), value.bob, 1)) ))
+`)
+				resolved := parseYAML(`
+---
+data:
+  alice: 25
+result:
+  error: "'data.bob' not found"
+  valid: false
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
 })

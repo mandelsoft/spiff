@@ -120,12 +120,12 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "exec":
 		result, sub, ok = func_exec(true, values, binding)
-case "exec_uncached":
+	case "exec_uncached":
 		result, sub, ok = func_exec(false, values, binding)
 
 	case "pipe":
 		result, sub, ok = func_pipe(true, values, binding)
-case "pipe_uncached":
+	case "pipe_uncached":
 		result, sub, ok = func_pipe(false, values, binding)
 
 	case "eval":

@@ -98,6 +98,8 @@ Contents:
 		- [(( parse(yamlorjson) ))](#-parseyamlorjson-)
 		- [(( asjson(expr) ))](#-asjsonexpr-)
 		- [(( asyaml(expr) ))](#-asjsonexpr-)
+		- [(( catch(expr) ))](#-catchexpr-)
+		- [(( sync(expr,condition,value,10) ))](#-syncexprconditionvalue10-)
 		- [X509 Functions](#x509-functions)
 		    - [(( x509genkey(spec) ))](#-x509genkeyspec-)
 		    - [(( x509publickey(key) ))](#-x509publickeykey-)
@@ -1574,6 +1576,76 @@ mapped:
   yaml: |+
     alice: 25
 ```
+
+### `(( catch(expr) ))`
+
+This function executes an expression and yields some evaluation info map.
+If always succeeds, even if the expression fails. The map includes the 
+following fields:
+
+| name  | type   | meaning |
+| ----- | ------ | ------- |
+| `valid` | bool   | expression is valid |
+| `error` | string | the error message text of the evaluation |
+| `value` | any    | the value of the expression, if evaluation was successful |
+
+
+e.g.:
+
+```yaml
+data:
+  fail: (( catch(1 / 0) ))
+  valid: (( catch( 5 * 5) ))
+```
+
+resolves to 
+
+```yaml
+data:
+  fail:
+    error: division by zero
+    valid: false
+  valid:
+    error: ""
+    valid: true
+    value: 25
+```
+
+### `(( sync(expr,condition,value,10) ))`
+
+If an expression `expr` may return a different result for different evaluations,
+it is possible to synchronize the final output with a dedicated condition
+on the expression value. Such an expression could, for example, be an
+uncached `read`, `exec` or `pipe` call.
+
+The evaluation of the condition expression gets a local binding according to the
+[`catch`](#-catchexpr-) function. Therefore it can access the actual value
+of the expression with the reference `value`. When the condition evaluates to
+`true`, the synchronization finishes and the result of the `value` expression is
+returned. This expression is optional. If not given, the value of the synched
+expression is returned. If given, it gets the same binding as the condition
+expression. The optional fourth argument is a timeout in seconds
+(default is 5 min).
+
+e.g.:
+
+```yaml
+data:
+  alice: 25
+result: (( sync(data,defined(value.alice),value.alice) ))
+```
+
+resolves to 
+
+```yaml
+data:
+  alice: 25
+result: 25
+```
+
+This example is quite useless, because the sync expression is a constant. It
+just demonstrates the usage.
+
 
 #### yaml documents
 
