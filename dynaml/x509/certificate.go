@@ -180,8 +180,8 @@ func func_x509cert(arguments []interface{}, binding Binding) (interface{}, Evalu
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
 
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		KeyUsage:              0,
+		ExtKeyUsage:           []x509.ExtKeyUsage{},
 		BasicConstraintsValid: true,
 	}
 
