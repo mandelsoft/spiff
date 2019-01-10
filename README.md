@@ -26,7 +26,8 @@ resource:
   description: (( "This document describes a " name " located at " url ))
 ```
 
-spiff is a command line tool and declarative YAML templating system, specially designed for generating BOSH deployment manifests.
+spiff is a command line tool and declarative YAML templating system, specially designed for generating deployment
+manifests (for example BOSH manifests or [kubernetes](https://github.com/kubernetes) manifests).
 
 Contents:
 - [Installation](#installation)
@@ -3482,6 +3483,52 @@ networks:
   The merge then generates a rootca and some TLS certificate signed with
   this CA.
   
+- Generating, Deploying and Accessing Status for Kubernetes Resources
+
+  The [`sync`](#-syncexpr-condition-value-10-) function offers the possibility
+  to synchronize the template processing with external content. This can also
+  be the output of a command execution. Therefore the template processing
+  can not only be used to generate a deployment manifest, but also for
+  applying this to a target system and retrieving deployment status values
+  for the further processing.
+  
+  A typical scenario of this kind could be a kubernetes setup including
+  a service of type _LoadBalancer_. Once deployed it gets assigned
+  status information about the IP address or hostname of the assigned
+  load balancer. This information might be required for some other deployment
+  manifest.
+  
+  A simple template for such a deployment could like this:
+  
+  ```yaml
+  service:
+    apiVersion: v1
+    kind: Service
+    metadata:
+      annotations:
+        dns.mandelsoft.org/dnsnames: echo.test.garden.mandelsoft.org
+        dns.mandelsoft.org/ttl: "500"
+      name: test-service
+      namespace: default
+    spec:
+      ports:
+      - name: http
+        port: 80
+        protocol: TCP
+        targetPort: 8080
+      sessionAffinity: None
+      type: LoadBalancer
+  
+  deployment:
+     testservice: (( sync(pipe_uncached(service, "kubectl", "apply", "-f", "-", "-o", "yaml"), defined(value.status.loadBalancer.ingress)) ))
+  
+  
+  otherconfig:
+     lb: (( deployment.testservice.status.loadBalancer.ingress ))
+  
+  ```
+
+
 # Error Reporting
 
 The evaluation of dynaml expressions may fail because of several reasons:
