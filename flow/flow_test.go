@@ -6001,6 +6001,20 @@ value: 098f6bcd4621d373cade4e832627b4f6
 		})
 	})
 
+	Describe("when calling bcrypt", func() {
+		It("it crypts and validates a password", func() {
+			source := parseYAML(`
+---
+value: (( bcrypt_check("test", bcrypt("test", 10)) ))
+`)
+			resolved := parseYAML(`
+---
+value: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
 	Describe("when calling substr", func() {
 		Context("with 2 args", func() {
 			It("it handles positive start index", func() {

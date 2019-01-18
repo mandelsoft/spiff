@@ -49,6 +49,7 @@ func NewIssue(msg string, args ...interface{}) Issue {
 const (
 	FLAG_TEMPORARY = 0x001
 	FLAG_LOCAL     = 0x002
+	FLAG_STATE     = 0x004
 )
 
 type NodeFlags int
@@ -70,6 +71,13 @@ func (f NodeFlags) Local() bool {
 }
 func (f *NodeFlags) SetLocal() *NodeFlags {
 	*f |= FLAG_LOCAL
+	return f
+}
+func (f NodeFlags) State() bool {
+	return (f & FLAG_STATE) != 0
+}
+func (f *NodeFlags) SetState() *NodeFlags {
+	*f |= FLAG_STATE
 	return f
 }
 
@@ -139,6 +147,10 @@ func TemporaryNode(node Node) Node {
 
 func LocalNode(node Node) Node {
 	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().SetLocal()}
+}
+
+func StateNode(node Node) Node {
+	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().SetState()}
 }
 
 func MassageType(value interface{}) interface{} {
@@ -213,6 +225,11 @@ func (n Annotation) SetTemporary() Annotation {
 
 func (n Annotation) SetLocal() Annotation {
 	n.NodeFlags.SetLocal()
+	return n
+}
+
+func (n Annotation) SetState() Annotation {
+	n.NodeFlags.SetState()
 	return n
 }
 

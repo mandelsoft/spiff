@@ -44,6 +44,14 @@ func main() {
 					Name:  "partial",
 					Usage: "allow partial evaluation only",
 				},
+				cli.BoolFlag{
+					Name:  "split",
+					Usage: "if the output is alist it will be split into separate documents",
+				},
+				cli.StringFlag{
+					Name:  "path",
+					Usage: "output is taken from given path",
+				},
 			},
 			Action: func(c *cli.Context) {
 				if len(c.Args()) < 1 {
@@ -51,7 +59,7 @@ func main() {
 					os.Exit(1)
 				}
 				debug.DebugFlag = c.Bool("debug")
-				merge(c.Args()[0], c.Bool("partial"), c.Bool("json"), c.Args()[1:])
+				merge(c.Args()[0], c.Bool("partial"), c.Bool("json"), c.Bool("split"), c.String("path"), c.Args()[1:])
 			},
 		},
 		{
@@ -78,7 +86,7 @@ func main() {
 	app.Run(os.Args)
 }
 
-func merge(templateFilePath string, partial bool, json bool, stubFilePaths []string) {
+func merge(templateFilePath string, partial bool, json, split bool, subpath string, stubFilePaths []string) {
 	var templateFile []byte
 	var err error
 	var stdin = false
@@ -151,6 +159,30 @@ func merge(templateFilePath string, partial bool, json bool, stubFilePaths []str
 			}
 			if err != nil {
 				flowed = dynaml.ResetUnresolvedNodes(flowed)
+			}
+			if subpath!="" {
+				comps := strings.Split(subpath, ".")
+				node, ok := yaml.FindR(true, flowed, comps...)
+				if !ok {
+					log.Fatalln(fmt.Sprintf("path %q not found%s", subpath, doc))
+				}
+				flowed=node
+			}
+			if split {
+				if list,ok:=flowed.Value().([]yaml.Node); ok {
+					for _, d:=range list {
+						if json {
+							bytes, err = yaml.ToJSON(d)
+						} else {
+							bytes, err = candiedyaml.Marshal(d)
+						}
+						if err != nil {
+							log.Fatalln(fmt.Sprintf("error marshalling manifest%s:", doc), err)
+						}
+						result = append(result, bytes)
+					}
+					continue
+				}
 			}
 			if json {
 				bytes, err = yaml.ToJSON(flowed)

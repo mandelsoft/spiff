@@ -12,6 +12,7 @@ const (
 	TEMPORARY = "&temporary"
 	TEMPLATE  = "&template"
 	LOCAL     = "&local"
+	STATE     = "&state"
 )
 
 type MarkerExpr struct {
@@ -34,6 +35,8 @@ func (e MarkerExpr) GetFlags() yaml.NodeFlags {
 			flags.SetTemporary()
 		case LOCAL:
 			flags.SetLocal()
+		case STATE:
+			flags.SetState()
 		}
 	}
 	return flags

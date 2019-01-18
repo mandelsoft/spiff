@@ -9,7 +9,7 @@ func func_md5(arguments []interface{}, binding Binding) (interface{}, Evaluation
 	info := DefaultInfo()
 
 	if len(arguments) != 1 {
-		return info.Error("md5 takes exactly 2 arguments")
+		return info.Error("md5 takes exactly one arguments")
 	}
 
 	str, ok := arguments[0].(string)

@@ -82,6 +82,8 @@ Contents:
 		- [(( length(list) ))](#-lengthlist-)
 		- [(( base64(string) ))](#-base64string-)
 		- [(( md5(string) ))](#-md5string-)
+		- [(( bcrypt("password", 10) ))](#-bcryptpassword-10-)
+		- [(( bcrypt_check("password", hash) ))](#-bcrypt_checkpassword-hash-)
 		- [(( defined(foobar) ))](#-definedfoobar-)
 		- [(( valid(foobar) ))](#-validfoobar-)
 		- [(( require(foobar) ))](#-requirefoobar-)
@@ -167,6 +169,14 @@ Each YAML document will be processed independently with the given stub files.
 The result is the stream of processed documents in the same order.
 For example, this can be used to generate *kubernetes* manifests to be used
 by `kubectl`.
+
+With the option `--json` the output will be in JSON format instead of YAML.
+The Option `--path <path>` can be used to output a nested path, instead of the 
+the complete processed document.
+
+If the output is a list, the option `--split` outputs every list element as
+deparate document.
+
 
 ### `spiff diff manifest.yml other-manifest.yml`
 
@@ -1354,6 +1364,41 @@ evaluates to
 
 ```yaml
 hash: 098f6bcd4621d373cade4e832627b4f6
+```
+
+### `(( bcrypt("password", 10) ))`
+
+The function `bcrypt` generates a bcrypt password hash for the given string
+using the specified cost factor (defaulted to 10, if missing).
+
+e.g.:
+
+```yaml
+hash: (( bcrypt("password", 10) ))
+```
+
+evaluates to
+
+```yaml
+hash: $2a$10$b9RKb8NLuHB.tM9haPD3N.qrCsWrZy8iaCD4/.cCFFCRmWO4h.koe
+```
+
+### `(( bcrypt_check("password", hash) ))`
+
+The function `bcrypt_check` validates a password against a given bcrypt hash.
+
+e.g.:
+
+```yaml
+hash: $2a$10$b9RKb8NLuHB.tM9haPD3N.qrCsWrZy8iaCD4/.cCFFCRmWO4h.koe
+valid: (( bcrypt_check("password", hash) ))
+```
+
+evaluates to
+
+```yaml
+hash: $2a$10$b9RKb8NLuHB.tM9haPD3N.qrCsWrZy8iaCD4/.cCFFCRmWO4h.koe
+valid: true
 ```
 
 ### `(( defined(foobar) ))`
