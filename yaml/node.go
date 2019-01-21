@@ -49,7 +49,10 @@ func NewIssue(msg string, args ...interface{}) Issue {
 const (
 	FLAG_TEMPORARY = 0x001
 	FLAG_LOCAL     = 0x002
-	FLAG_STATE     = 0x004
+	FLAG_INJECT    = 0x004
+	FLAG_STATE     = 0x008
+
+	FLAG_INJECTED  = 0x040
 )
 
 type NodeFlags int
@@ -66,6 +69,7 @@ func (f *NodeFlags) SetTemporary() *NodeFlags {
 	*f |= FLAG_TEMPORARY
 	return f
 }
+
 func (f NodeFlags) Local() bool {
 	return (f & FLAG_LOCAL) != 0
 }
@@ -73,6 +77,15 @@ func (f *NodeFlags) SetLocal() *NodeFlags {
 	*f |= FLAG_LOCAL
 	return f
 }
+
+func (f NodeFlags) Inject() bool {
+	return (f & FLAG_INJECT) != 0
+}
+func (f *NodeFlags) SetInject() *NodeFlags {
+	*f |= FLAG_INJECT
+	return f
+}
+
 func (f NodeFlags) State() bool {
 	return (f & FLAG_STATE) != 0
 }
@@ -80,6 +93,11 @@ func (f *NodeFlags) SetState() *NodeFlags {
 	*f |= FLAG_STATE
 	return f
 }
+
+func (f NodeFlags) Injected() bool {
+	return (f & FLAG_INJECTED) != 0
+}
+
 
 type Annotation struct {
 	redirectPath []string

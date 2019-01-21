@@ -12,6 +12,7 @@ const (
 	TEMPORARY = "&temporary"
 	TEMPLATE  = "&template"
 	LOCAL     = "&local"
+	INJECT    = "&inject"
 	STATE     = "&state"
 )
 
@@ -35,6 +36,8 @@ func (e MarkerExpr) GetFlags() yaml.NodeFlags {
 			flags.SetTemporary()
 		case LOCAL:
 			flags.SetLocal()
+		case INJECT:
+			flags.SetInject()
 		case STATE:
 			flags.SetState()
 		}

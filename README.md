@@ -111,6 +111,7 @@ Contents:
 		    - [(( x509cert(spec) ))](#-x509certspec-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
 	- [(( &temporary ))](#-temporary-)
+	- [(( &inject ))](#-inject-)
 	- [Mappings](#mappings)
 		- [(( map[list|elem|->dynaml-expr] ))](#-maplistelem-dynaml-expr-)
 		- [(( map[list|idx,elem|->dynaml-expr] ))](#-maplistidxelem-dynaml-expr-)
@@ -2420,6 +2421,41 @@ The temporary marker can be combined with the [template marker](#templates) to o
 The marker `&local` acts similar to `&temporary` but local nodes are always
 removed from a stub directly after resolving dynaml expressions. Such nodes
 are therefore not available for merging.
+
+## `(( &inject ))`
+
+This marker requests the marked item to be injected into the next stub level,
+even is the hosting element (list or map) does not requests a merge.
+This only works if the next level stub already contains the hosting element.
+
+e.g.:
+
+**template.yaml**
+```yaml
+alice:
+ foo: 1
+```
+
+**stub.yaml**
+```yaml
+alice:
+  bar: (( &inject(2) ))
+  nope: not injected
+bob:
+  <<: (( &inject ))
+  foobar: yep
+
+```
+
+is merged to
+
+```yaml
+alice:
+  foo: 1
+  bar: 2
+bob:
+  foobar: yep
+```
 
 ## Mappings
 

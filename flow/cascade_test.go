@@ -723,4 +723,160 @@ types:
 			Expect(source).To(CascadeAs(resolved))
 		})
 	})
+
+	Describe("injecting fields", func() {
+
+		Context("for maps", func() {
+			It("injects top level field", func() {
+				source := parseYAML(`
+---
+map:
+`)
+				stub := parseYAML(`
+---
+injected:
+   <<: (( &inject ))
+   foo: bar
+`)
+				resolved := parseYAML(`
+---
+map:
+injected:
+  foo: bar
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+
+			It("injects selected sub level field", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+`)
+				stub := parseYAML(`
+---
+map:
+   bob: (( &inject(27) ))
+   foo: bar
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 27
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+
+			It("injects selected sub level field and overrided others", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  tom: 26
+`)
+				stub := parseYAML(`
+---
+map:
+   bob: (( &inject(27) ))
+   foo: bar
+   tom: 28
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 27
+  tom: 28
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+
+			It("injects selected temporary sub level field", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  solution: (( alice + bob ))
+`)
+				stub := parseYAML(`
+---
+map:
+   bob: (( &inject &temporary (17) ))
+   foo: bar
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  solution: 42
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+		})
+		Context("for lists", func() {
+			It("injects top level entries", func() {
+				source := parseYAML(`
+---
+- a
+- b
+`)
+				stub := parseYAML(`
+---
+- (( &inject("c") ))
+- d
+`)
+				resolved := parseYAML(`
+---
+- c
+- a
+- b
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+			It("injects sub level entries", func() {
+				source := parseYAML(`
+---
+list:
+- a
+- b
+`)
+				stub := parseYAML(`
+---
+list:
+- (( &inject("c") ))
+- d
+`)
+				resolved := parseYAML(`
+---
+list:
+- c
+- a
+- b
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+			It("injects temporary sub level entries", func() {
+				source := parseYAML(`
+---
+list:
+- a
+- b
+`)
+				stub := parseYAML(`
+---
+list:
+- (( &inject &temporary ("c") ))
+- d
+`)
+				resolved := parseYAML(`
+---
+list:
+- a
+- b
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+		})
+	})
 })
