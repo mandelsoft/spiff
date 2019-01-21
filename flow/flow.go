@@ -293,13 +293,18 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 	}
 
 	debug.Debug("MAP DONE %v\n", env.Path())
-	if !merged && stub != nil {
-		if m, ok := stub.Value().(map[string]yaml.Node); ok {
-			for k, v := range m {
-				if v.Flags().Inject() && newMap[k] == nil {
-					newMap[k] = v
+	if merged {
+		flags |= yaml.FLAG_INJECTED
+	} else {
+		if stub != nil && !flags.Injected() {
+			if m, ok := stub.Value().(map[string]yaml.Node); ok {
+				for k, v := range m {
+					if v.Flags().Inject() && newMap[k] == nil {
+						newMap[k] = v
+					}
 				}
 			}
+			flags |= yaml.FLAG_INJECTED
 		}
 	}
 	var result interface{}
@@ -344,16 +349,20 @@ func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
 				newList = append(newList, val)
 			}
 		}
-		if !ismerged && stub != nil && !root.Flags().Injected(){
-			if m, ok := stub.Value().([]yaml.Node); ok {
-				injected:=[]yaml.Node{}
-				for _, v := range m {
-					if v.Flags().Inject() {
-						injected=append(injected, v)
+		if ismerged {
+			flags |= yaml.FLAG_INJECTED
+		} else {
+			if stub != nil && !root.Flags().Injected() {
+				if m, ok := stub.Value().([]yaml.Node); ok {
+					injected := []yaml.Node{}
+					for _, v := range m {
+						if v.Flags().Inject() {
+							injected = append(injected, v)
+						}
 					}
+					newList = append(injected, newList...)
 				}
-				newList=append(injected, newList...)
-				flags|=yaml.FLAG_INJECTED
+				flags |= yaml.FLAG_INJECTED
 			}
 		}
 
@@ -364,7 +373,6 @@ func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
 		root = yaml.KeyNameNode(root, keyName)
 	}
 	debug.Debug("LIST DONE (%s)%v\n", root.KeyName(), env.Path())
-
 
 	if replaced {
 		root = yaml.ReplaceNode(merged, root, redirectPath)
@@ -435,7 +443,7 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 	spliced := []yaml.Node{}
 	process := true
 	template := false
-	merged:= false
+	merged := false
 	keyName := orig.KeyName()
 	replaced := orig.ReplaceFlag()
 	redirectPath := orig.RedirectPath()
@@ -481,7 +489,7 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 				inline, ok := result.Value().([]yaml.Node)
 
 				if ok {
-					merged=true
+					merged = true
 					inlineNew := newEntries(inline, root, keyName)
 					replaced = result.ReplaceFlag()
 					redirectPath = result.RedirectPath()
@@ -490,7 +498,7 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 						process = false
 						break
 					} else {
-						merged=true
+						merged = true
 						spliced = append(spliced, inlineNew...)
 					}
 				}

@@ -877,6 +877,31 @@ list:
 `)
 				Expect(source).To(CascadeAs(resolved, stub))
 			})
+			It("merges lists ony once", func() {
+				source := parseYAML(`
+---
+list:
+- <<: (( merge ))
+- a
+- b
+`)
+				stub := parseYAML(`
+---
+list:
+- (( &inject ("c") ))
+- d
+`)
+				resolved := parseYAML(`
+---
+list:
+- c
+- d
+- a
+- b
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+
 		})
 	})
 })

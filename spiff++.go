@@ -160,17 +160,17 @@ func merge(templateFilePath string, partial bool, json, split bool, subpath stri
 			if err != nil {
 				flowed = dynaml.ResetUnresolvedNodes(flowed)
 			}
-			if subpath!="" {
+			if subpath != "" {
 				comps := strings.Split(subpath, ".")
 				node, ok := yaml.FindR(true, flowed, comps...)
 				if !ok {
 					log.Fatalln(fmt.Sprintf("path %q not found%s", subpath, doc))
 				}
-				flowed=node
+				flowed = node
 			}
 			if split {
-				if list,ok:=flowed.Value().([]yaml.Node); ok {
-					for _, d:=range list {
+				if list, ok := flowed.Value().([]yaml.Node); ok {
+					for _, d := range list {
 						if json {
 							bytes, err = yaml.ToJSON(d)
 						} else {

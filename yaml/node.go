@@ -52,7 +52,7 @@ const (
 	FLAG_INJECT    = 0x004
 	FLAG_STATE     = 0x008
 
-	FLAG_INJECTED  = 0x040
+	FLAG_INJECTED = 0x040
 )
 
 type NodeFlags int
@@ -97,7 +97,6 @@ func (f *NodeFlags) SetState() *NodeFlags {
 func (f NodeFlags) Injected() bool {
 	return (f & FLAG_INJECTED) != 0
 }
-
 
 type Annotation struct {
 	redirectPath []string
