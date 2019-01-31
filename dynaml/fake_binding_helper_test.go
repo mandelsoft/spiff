@@ -15,6 +15,10 @@ type FakeBinding struct {
 	stubPath []string
 }
 
+func (c FakeBinding) Outer() Binding {
+	return nil
+}
+
 func (c FakeBinding) Path() []string {
 	return c.path
 }
@@ -58,6 +62,10 @@ func (c FakeBinding) GetLocalBinding() map[string]yaml.Node {
 	return map[string]yaml.Node{}
 }
 
+func (c FakeBinding) GetRootBinding() map[string]yaml.Node {
+	return c.FoundFromRoot
+}
+
 func (c FakeBinding) FindFromRoot(path []string) (yaml.Node, bool) {
 	p := strings.Join(path, ".")
 	if len(path) == 0 {
@@ -81,6 +89,6 @@ func (c FakeBinding) Flow(source yaml.Node, shouldOverride bool) (yaml.Node, Sta
 	return nil, nil
 }
 
-func (c FakeBinding) Cascade(template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error) {
+func (c FakeBinding) Cascade(outer Binding, template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error) {
 	return nil, nil
 }

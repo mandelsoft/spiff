@@ -37,6 +37,11 @@ type DefaultEnvironment struct {
 	currentSourceName string
 
 	local map[string]yaml.Node
+	outer dynaml.Binding
+}
+
+func (e DefaultEnvironment) Outer() dynaml.Binding {
+	return e.outer
 }
 
 func (e DefaultEnvironment) Path() []string {
@@ -55,6 +60,10 @@ func (e DefaultEnvironment) CurrentSourceName() string {
 	return e.currentSourceName
 }
 
+func (e DefaultEnvironment) GetRootBinding() map[string]yaml.Node {
+	return e.scope.root.local
+}
+
 func (e DefaultEnvironment) GetLocalBinding() map[string]yaml.Node {
 	return e.local
 }
@@ -70,6 +79,9 @@ func (e DefaultEnvironment) FindFromRoot(path []string) (yaml.Node, bool) {
 func (e DefaultEnvironment) FindReference(path []string) (yaml.Node, bool) {
 	root, found := resolveSymbol(&e, path[0], e.scope)
 	if !found {
+		if e.outer != nil {
+			return e.outer.FindReference(path)
+		}
 		return nil, false
 	}
 
@@ -145,16 +157,19 @@ func (e DefaultEnvironment) Flow(source yaml.Node, shouldOverride bool) (yaml.No
 	return result, nil
 }
 
-func (e DefaultEnvironment) Cascade(template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error) {
-	return Cascade(template, partial, templates...)
+func (e DefaultEnvironment) Cascade(outer dynaml.Binding, template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error) {
+	return Cascade(outer, template, partial, templates...)
 }
 
 func NewEnvironment(stubs []yaml.Node, source string) dynaml.Binding {
-	return DefaultEnvironment{stubs: stubs, sourceName: source, currentSourceName: source}
+	return NewNestedEnvironment(stubs, source, nil)
+}
+
+func NewNestedEnvironment(stubs []yaml.Node, source string, outer dynaml.Binding) dynaml.Binding {
+	return DefaultEnvironment{stubs: stubs, sourceName: source, currentSourceName: source, outer: outer}
 }
 
 func resolveSymbol(env *DefaultEnvironment, name string, scope *Scope) (yaml.Node, bool) {
-
 	if name == "__ctx" {
 		return createContext(env), true
 	}
@@ -188,6 +203,14 @@ func createContext(env *DefaultEnvironment) yaml.Node {
 		path[i] = node(v)
 	}
 	ctx["PATH"] = node(path)
+	if outer := env.Outer(); outer != nil {
+		list := []yaml.Node{}
+		for outer != nil {
+			list = append(list, node(outer.GetRootBinding()))
+			outer = outer.Outer()
+		}
+		ctx["OUTER"] = node(list)
+	}
 	return node(ctx)
 }
 

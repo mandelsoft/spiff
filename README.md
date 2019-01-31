@@ -100,7 +100,7 @@ Contents:
 		- [(( asjson(expr) ))](#-asjsonexpr-)
 		- [(( asyaml(expr) ))](#-asjsonexpr-)
 		- [(( catch(expr) ))](#-catchexpr-)
-		- [(( sync(expr, condition, value, 10) ))](#-syncexprconditionvalue10-)
+		- [(( sync(expr, condition, value, 10) ))](#-syncexpr-condition-value-10-)
 		- [Accessing External Content](#accessing-external-content)
 		    - [(( read("file.yml") ))](#-readfileyml-)
 		    - [(( exec("command", arg1, arg2) ))](#-execcommand-arg1-arg2-)
@@ -2004,6 +2004,41 @@ result:
   bob: 100
 ```
 
+Nested merges have access to all outer bindings. Relative references are first
+searched in the actual document. If they are not found there all outer bindings
+are used to lookup the reference, from inner to outer bindings. Additionally the
+[context (`__ctx`)](#access-to-evaluation-context) offers a field `OUTER`,
+which is a list of all outer documents of the nested merges, which can be used
+to lookup absolute references.
+
+e.g.:
+
+```yaml
+data:
+  alice:
+    age: 24
+
+template:
+  <<: (( &template ))
+  bob:  25
+  outer1: (( __ctx.OUTER.[0].data )) # absolute access to outer context
+  outer2: (( data.alice.age ))       # relative access to outer binding
+  sum: (( .bob + .outer2 ))
+
+merged: (( merge(template) ))
+```
+
+resolves `merged` to
+
+```yaml
+merged:
+  bob: 25
+  outer1:
+    alice:
+      age: 24
+  outer2: 24
+  sum: 49
+```
 
 ### Accessing External Content
 
@@ -2836,6 +2871,7 @@ The following fields are supported:
 | `RESOLVED_DIR`  | string | name of directory of actually processed template file with resolved symbolic links |
 | `PATHNAME` | string | path name of actually processed field |
 | `PATH` | list[string] | path name as component list |
+| `OUTER` | yaml doc | outer documents for nested [merges](#-mergemap1-map2-), index 0 is the next outer document  |
 
 e.g.:
 

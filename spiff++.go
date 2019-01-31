@@ -23,7 +23,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "spiff"
 	app.Usage = "BOSH deployment manifest toolkit"
-	app.Version = "1.2.0-dev"
+	app.Version = "1.3.0-dev"
 
 	app.Commands = []cli.Command{
 		{
@@ -138,7 +138,7 @@ func merge(templateFilePath string, partial bool, json, split bool, subpath stri
 		" @: dependent of or involved in a cycle\n" +
 		" -: depending on a node with an error"
 
-	prepared, err := flow.PrepareStubs(partial, stubs...)
+	prepared, err := flow.PrepareStubs(nil, partial, stubs...)
 	if !partial && err != nil {
 		log.Fatalln("error generating manifest:", err, legend)
 	}
@@ -153,7 +153,7 @@ func merge(templateFilePath string, partial bool, json, split bool, subpath stri
 		var bytes []byte
 		if templateYAML.Value() != nil {
 			count++
-			flowed, err := flow.Apply(templateYAML, prepared)
+			flowed, err := flow.Apply(nil, templateYAML, prepared)
 			if !partial && err != nil {
 				log.Fatalln(fmt.Sprintf("error generating manifest%s:", doc), err, legend)
 			}

@@ -24,9 +24,10 @@ func func_merge(arguments []interface{}, binding Binding) (interface{}, Evaluati
 		}
 		args[i] = yaml.NewNode(m, "dynaml")
 	}
-	result, err := binding.Cascade(args[0], false, args[1:]...)
+	result, err := binding.Cascade(binding, args[0], false, args[1:]...)
 	if err != nil {
-		return info.Error("merging failed: %s", err)
+		info.SetError("merging failed: %s", err)
+		return nil, info, false
 	}
 
 	return result.Value(), info, true

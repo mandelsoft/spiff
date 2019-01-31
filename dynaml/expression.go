@@ -17,6 +17,8 @@ type SourceProvider interface {
 type Binding interface {
 	SourceProvider
 	GetLocalBinding() map[string]yaml.Node
+	GetRootBinding() map[string]yaml.Node
+
 	FindFromRoot([]string) (yaml.Node, bool)
 	FindReference([]string) (yaml.Node, bool)
 	FindInStubs([]string) (yaml.Node, bool)
@@ -27,11 +29,12 @@ type Binding interface {
 	WithSource(source string) Binding
 	RedirectOverwrite(path []string) Binding
 
+	Outer() Binding
 	Path() []string
 	StubPath() []string
 
 	Flow(source yaml.Node, shouldOverride bool) (yaml.Node, Status)
-	Cascade(template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error)
+	Cascade(outer Binding, template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error)
 }
 
 type EvaluationInfo struct {

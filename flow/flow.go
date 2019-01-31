@@ -13,7 +13,11 @@ import (
 )
 
 func Flow(source yaml.Node, stubs ...yaml.Node) (yaml.Node, error) {
-	return NewEnvironment(stubs, source.SourceName()).Flow(source, true)
+	return NestedFlow(nil, source, stubs...)
+}
+
+func NestedFlow(outer dynaml.Binding, source yaml.Node, stubs ...yaml.Node) (yaml.Node, error) {
+	return NewNestedEnvironment(stubs, source.SourceName(), outer).Flow(source, true)
 }
 
 func get_inherited_flags(env dynaml.Binding) (yaml.NodeFlags, yaml.Node) {

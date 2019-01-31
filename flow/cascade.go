@@ -1,12 +1,13 @@
 package flow
 
 import (
+	"github.com/mandelsoft/spiff/dynaml"
 	"github.com/mandelsoft/spiff/yaml"
 )
 
-func PrepareStubs(partial bool, stubs ...yaml.Node) ([]yaml.Node, error) {
+func PrepareStubs(outer dynaml.Binding, partial bool, stubs ...yaml.Node) ([]yaml.Node, error) {
 	for i := len(stubs) - 1; i >= 0; i-- {
-		flowed, err := Flow(stubs[i], stubs[i+1:]...)
+		flowed, err := NestedFlow(outer, stubs[i], stubs[i+1:]...)
 		if !partial && err != nil {
 			return nil, err
 		}
@@ -16,21 +17,21 @@ func PrepareStubs(partial bool, stubs ...yaml.Node) ([]yaml.Node, error) {
 	return stubs, nil
 }
 
-func Apply(template yaml.Node, prepared []yaml.Node) (yaml.Node, error) {
-	result, err := Flow(template, prepared...)
+func Apply(outer dynaml.Binding, template yaml.Node, prepared []yaml.Node) (yaml.Node, error) {
+	result, err := NestedFlow(outer, template, prepared...)
 	if err == nil {
 		result = Cleanup(result, testTemporary)
 	}
 	return result, err
 }
 
-func Cascade(template yaml.Node, partial bool, stubs ...yaml.Node) (yaml.Node, error) {
-	prepared, err := PrepareStubs(partial, stubs...)
+func Cascade(outer dynaml.Binding, template yaml.Node, partial bool, stubs ...yaml.Node) (yaml.Node, error) {
+	prepared, err := PrepareStubs(outer, partial, stubs...)
 	if err != nil {
 		return nil, err
 	}
 
-	return Apply(template, prepared)
+	return Apply(outer, template, prepared)
 }
 
 func testTemporary(node yaml.Node) bool {
