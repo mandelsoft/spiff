@@ -138,6 +138,8 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		result, sub, ok = func_read(true, values, binding)
 	case "read_uncached":
 		result, sub, ok = func_read(false, values, binding)
+	case "write":
+		result, sub, ok = func_write(values, binding)
 
 	case "format":
 		result, sub, ok = func_format(values, binding)

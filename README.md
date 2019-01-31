@@ -105,6 +105,7 @@ Contents:
 		    - [(( read("file.yml") ))](#-readfileyml-)
 		    - [(( exec("command", arg1, arg2) ))](#-execcommand-arg1-arg2-)
             - [(( pipe(data, "command", arg1, arg2) ))](#-pipedata-command-arg1-arg2-)
+		    - [(( write("file.yml", data) ))](#-writefileyml-data-)
 		- [X509 Functions](#x509-functions)
 		    - [(( x509genkey(spec) ))](#-x509genkeyspec-)
 		    - [(( x509publickey(key) ))](#-x509publickeykey-)
@@ -2145,6 +2146,12 @@ list:
 Alternatively `pipe` can be called with data and a list argument completely describing the command line.
 
 The same command will be executed once, only, even if it is used in multiple expressions.
+
+#### `(( write("file.yml", data) ))`
+
+Write a file and return its content. If the result can be parsed as yaml document,
+the document is returned. An optional 3rd argument can be used to pass the
+file permissions (default is `0644`).
 
 
 ### X509 Functions
