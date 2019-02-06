@@ -39,10 +39,10 @@ func (e MapExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluatio
 	var result []yaml.Node
 	switch value.(type) {
 	case []yaml.Node:
-		result, info, ok = mapList(value.([]yaml.Node), lambda, binding)
+		result, info, ok = mapList(value.([]yaml.Node), lambda, binding, mapResult)
 
 	case map[string]yaml.Node:
-		result, info, ok = mapMap(value.(map[string]yaml.Node), lambda, binding)
+		result, info, ok = mapMap(value.(map[string]yaml.Node), lambda, binding, mapResult)
 
 	default:
 		return info.Error("map or list required for mapping")
@@ -66,7 +66,16 @@ func (e MapExpr) String() string {
 	}
 }
 
-func mapList(source []yaml.Node, e LambdaValue, binding Binding) ([]yaml.Node, EvaluationInfo, bool) {
+type MappingResult func(mapped interface{}, n yaml.Node, info EvaluationInfo) yaml.Node
+
+func mapResult(mapped interface{}, n yaml.Node, info EvaluationInfo) yaml.Node {
+	if mapped != nil {
+		return node(mapped, info)
+	}
+	return nil
+}
+
+func mapList(source []yaml.Node, e LambdaValue, binding Binding, mapper MappingResult) ([]yaml.Node, EvaluationInfo, bool) {
 	inp := make([]interface{}, len(e.lambda.Names))
 	result := []yaml.Node{}
 	info := DefaultInfo()
@@ -91,14 +100,15 @@ func mapList(source []yaml.Node, e LambdaValue, binding Binding) ([]yaml.Node, E
 			return nil, info, true
 		}
 		debug.Debug("map:  %d --> %+v\n", i, mapped)
-		if mapped != nil {
-			result = append(result, node(mapped, info))
+		node := mapper(mapped, n, info)
+		if node != nil {
+			result = append(result, node)
 		}
 	}
 	return result, info, true
 }
 
-func mapMap(source map[string]yaml.Node, e LambdaValue, binding Binding) ([]yaml.Node, EvaluationInfo, bool) {
+func mapMap(source map[string]yaml.Node, e LambdaValue, binding Binding, mapper MappingResult) ([]yaml.Node, EvaluationInfo, bool) {
 	inp := make([]interface{}, len(e.lambda.Names))
 	result := []yaml.Node{}
 	info := DefaultInfo()
@@ -121,8 +131,9 @@ func mapMap(source map[string]yaml.Node, e LambdaValue, binding Binding) ([]yaml
 			return nil, info, true
 		}
 		debug.Debug("map:  %s --> %+v\n", k, mapped)
-		if mapped != nil {
-			result = append(result, node(mapped, info))
+		node := mapper(mapped, n, info)
+		if node != nil {
+			result = append(result, node)
 		}
 	}
 	return result, info, true

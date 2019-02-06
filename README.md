@@ -117,6 +117,7 @@ Contents:
 		- [(( map[list|elem|->dynaml-expr] ))](#-maplistelem-dynaml-expr-)
 		- [(( map[list|idx,elem|->dynaml-expr] ))](#-maplistidxelem-dynaml-expr-)
 		- [(( map[map|key,value|->dynaml-expr] ))](#-mapmapkeyvalue-dynaml-expr-)
+		- [(( select[expr|elem|->dynaml-expr] ))](#-selectexprelem-dynaml-expr-)
 	- [Aggregations](#aggregations)
 		- [(( sum[list|initial|sum,elem|->dynaml-expr] ))](#-sumlistinitialsumelem-dynaml-expr-)
 		- [(( sum[list|initial|sum,idx,elem|->dynaml-expr] ))](#-sumlistinitialsumidxelem-dynaml-expr-)
@@ -1012,6 +1013,14 @@ name: (( age > 24 ? foo :bar ))
 ```
 
 yields the value `bob` for the property `name`.
+
+An expression is considered to be `false` if it evaluates to
+- the boolean value `false`
+- the integer value 0
+- an empty string, map or list
+
+Otherwise it is considered to be `true`
+
 
 **Remark**
 
@@ -2614,6 +2623,39 @@ keys:
 - alice
 - bob
 ```
+
+### `(( select[expr|elem|->dynaml-expr] ))`
+
+With `select` a map or list can be filtered by evaluating a boolean expression
+for every entry. An entry is selected if the expression evaluates to true
+equivalent value. (see [conditions](#-a--1--foo-bar-)).
+
+Basically it offers all the mapping flavors available for `map[]`
+
+e.g.
+
+```yaml
+list:
+  - name: alice
+    age: 25
+  - name: bob
+    age: 26
+
+
+selected: (( select[list|v|->v.age > 25 ] ))
+```
+
+evaluates selected to
+
+```yaml
+selected:
+- name: bob
+  age: 26
+```
+
+**Remark**
+
+An alternate way to express the same is to use `map[list|v|->v.age > 25 ? v :~]`.
 
 ## Aggregations
 

@@ -90,8 +90,8 @@ func func_read(cached bool, arguments []interface{}, binding Binding) (interface
 			return info.Error("error parsing stub [%s]: %s", path.Clean(file), err)
 		}
 		info.Source = file
-		for len(nodes)>1 && nodes[len(nodes)-1].Value()==nil {
-			nodes=nodes[:len(nodes)-1]
+		for len(nodes) > 1 && nodes[len(nodes)-1].Value() == nil {
+			nodes = nodes[:len(nodes)-1]
 		}
 		return nodes, info, true
 

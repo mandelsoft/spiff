@@ -41,7 +41,7 @@ Modulo <-  '%' req_ws Level0
 Level0 <- IP / String / Integer / Boolean / Undefined / Nil / Not /
           Substitution / Merge / Auto / Lambda / Chained 
 
-Chained <- ( Mapping / Sum / List / Map / Range / Grouped / Reference ) ChainedQualifiedExpression* 
+Chained <- ( Mapping / Selection / Sum / List / Map / Range / Grouped / Reference ) ChainedQualifiedExpression*
 ChainedQualifiedExpression <- ChainedCall / ( '.' ( ChainedRef / ChainedDynRef / Projection) )
 ChainedRef <- ( Key / Index ) FollowUpRef
 ChainedDynRef <- '[' Expression ']'
@@ -83,6 +83,7 @@ On <- 'on' req_ws Name
 Auto <- 'auto'
 
 Mapping <- 'map[' Level7 ( LambdaExpr / ( '|' Expression )) ']'
+Selection <- 'select[' Level7 ( LambdaExpr / ( '|' Expression )) ']'
 Sum <- 'sum[' Level7 '|' Level7 ( LambdaExpr / ( '|' Expression )) ']'
 Lambda <- 'lambda' ( LambdaRef / LambdaExpr )
 LambdaRef <- req_ws Expression
