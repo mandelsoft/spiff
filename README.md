@@ -2069,7 +2069,13 @@ A yaml document will be parsed and the tree is returned. The  elements of the tr
 
 Additionally the yaml file may again contain dynaml expressions. All included dynaml expressions will be evaluated in the context of the reading expression. This means that the same file included at different places in a yaml document may result in different sub trees, depending on the used dynaml expressions.
 
-If the read type is set to `import`, the file content is read as yaml document and the root node is used to substitute the expression. Potential dynaml expressions contained in the document will not be evaluated with the actual binding of the expression but as it would have been part of the original file.
+If the read type is set to `import`, the file content is read as yaml document
+and the root node is used to substitute the expression. Potential dynaml
+expressions contained in the document will not be evaluated with the actual
+binding of the expression but as it would have been part of the original file.
+
+The read type `importmulti` can be used to import multi document yaml files as a 
+list of nodes.
 
 ##### text documents
 A text document will be returned as single string.
