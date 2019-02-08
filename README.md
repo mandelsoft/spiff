@@ -84,6 +84,7 @@ Contents:
 		- [(( md5(string) ))](#-md5string-)
 		- [(( bcrypt("password", 10) ))](#-bcryptpassword-10-)
 		- [(( bcrypt_check("password", hash) ))](#-bcrypt_checkpassword-hash-)
+		- [(( type(foobar) ))](#-typefoobar-)
 		- [(( defined(foobar) ))](#-definedfoobar-)
 		- [(( valid(foobar) ))](#-validfoobar-)
 		- [(( require(foobar) ))](#-requirefoobar-)
@@ -1410,6 +1411,41 @@ evaluates to
 ```yaml
 hash: $2a$10$b9RKb8NLuHB.tM9haPD3N.qrCsWrZy8iaCD4/.cCFFCRmWO4h.koe
 valid: true
+```
+
+### `(( type(foobar) ))`
+
+The function `type` yields a string denoting the type of the given expression.
+
+e.g.:
+
+```yaml
+template:
+  <<: (( &template ))
+  
+types:
+  - int: (( type(1) ))
+  - bool: (( type(true) ))
+  - string: (( type("foobar") ))
+  - list:   (( type([]) ))
+  - map:    (( type({}) ))
+  - lambda: (( type(|x|->x) ))
+  - template: (( type(.template) ))
+  - nil: (( type(~) ))
+  - undef: (( type(~~) ))
+```
+
+evaluates types to
+
+```yaml
+types:
+- int: int
+- bool: bool
+- string: string
+- list: list
+- map: map
+- lambda: lambda
+- template: template
 ```
 
 ### `(( defined(foobar) ))`
