@@ -25,7 +25,12 @@ func (e SliceExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluat
 		return e, info, true
 	}
 
-	start, end, infoe, ok, resolved := e.Range.getRange(binding)
+	array, ok := root.([]yaml.Node)
+	if !ok {
+		return info.Error("slice requires array expression")
+	}
+
+	start, end, infoe, ok, resolved := e.Range.getRange(binding, len(array))
 	info.Join(infoe)
 	if !ok {
 		return nil, info, ok
@@ -37,10 +42,6 @@ func (e SliceExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluat
 		return []yaml.Node{}, info, ok
 	}
 
-	array, ok := root.([]yaml.Node)
-	if !ok {
-		return info.Error("slice requires array expression")
-	}
 	if start < 0 {
 		if end >= 0 {
 			return info.Error("mixed negative and non-negative range not possible for slice")

@@ -41,31 +41,39 @@ func (e ComparisonExpr) Evaluate(binding Binding, locally bool) (interface{}, Ev
 	case "!=":
 		result, infor, ok = compareEquals(a, b)
 		result = !result
-	case "<=":
-		fallthrough
-	case "<":
-		fallthrough
-	case ">":
-		fallthrough
-	case ">=":
-		var va, vb int64
-		va, ok = a.(int64)
-		if !ok {
-			return infor.Error("comparision %s only for integers", e.Op)
-		}
-		vb, ok = b.(int64)
-		if !ok {
-			return infor.Error("comparision %s only for integers", e.Op)
-		}
-		switch e.Op {
-		case "<=":
-			result = va <= vb
-		case "<":
-			result = va < vb
-		case ">":
-			result = va > vb
-		case ">=":
-			result = va >= vb
+	case "<=", "<", ">", ">=":
+		switch va := a.(type) {
+		case int64:
+			vb, ok := b.(int64)
+			if !ok {
+				return infor.Error("comparision %s only for integers or strings", e.Op)
+			}
+			switch e.Op {
+			case "<=":
+				result = va <= vb
+			case "<":
+				result = va < vb
+			case ">":
+				result = va > vb
+			case ">=":
+				result = va >= vb
+			}
+
+		case string:
+			vb, ok := b.(string)
+			if !ok {
+				return infor.Error("comparision %s only for strings or integers", e.Op)
+			}
+			switch e.Op {
+			case "<=":
+				result = va <= vb
+			case "<":
+				result = va < vb
+			case ">":
+				result = va > vb
+			case ">=":
+				result = va >= vb
+			}
 		}
 	}
 	infor = info.Join(infor)

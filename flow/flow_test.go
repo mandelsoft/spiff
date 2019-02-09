@@ -5460,6 +5460,52 @@ data:
 			})
 		})
 
+		Context("for range literal", func() {
+			It("handles positive increasing indices", func() {
+				source := parseYAML(`
+---
+value: (( [1..3] ))
+`)
+				resolved := parseYAML(`
+---
+value:
+  - 1
+  - 2
+  - 3
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handled mixed increasing indices", func() {
+				source := parseYAML(`
+---
+value: (( [-1..1] ))
+`)
+				resolved := parseYAML(`
+---
+value:
+  - -1
+  - 0
+  - 1
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("handled mixed decreasing indices", func() {
+				source := parseYAML(`
+---
+value: (( [1..-1] ))
+`)
+				resolved := parseYAML(`
+---
+value:
+  - 1
+  - 0
+  - -1
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
 		Context("for range index", func() {
 			It("it extracts a slice for non-negative range", func() {
 				source := parseYAML(`
@@ -5510,6 +5556,54 @@ data:
 				Expect(source).To(FlowAs(resolved))
 			})
 
+			It("it extracts a slice for non-negative start range", func() {
+				source := parseYAML(`
+---
+value: (( data.[1..] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value:
+  - b
+  - c
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it extracts a slice for non-negative end range", func() {
+				source := parseYAML(`
+---
+value: (( data.[..1] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value:
+  - a
+  - b
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
 			It("it extracts a slice for negative range", func() {
 				source := parseYAML(`
 ---
@@ -5538,6 +5632,54 @@ data:
 				source := parseYAML(`
 ---
 value: (( data.[-3..-1] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value:
+  - a
+  - b
+  - c
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it extracts a slice for negative start range", func() {
+				source := parseYAML(`
+---
+value: (( data.[-1..] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value:
+  - c
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it extracts a slice for negative end range", func() {
+				source := parseYAML(`
+---
+value: (( data.[..-1] ))
 
 data:
   - a

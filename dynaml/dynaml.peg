@@ -12,7 +12,7 @@ MarkerExpression <- Grouped
 
 Expression <- ws ( Scoped / LambdaExpr / Level7 ) ws
 
-Scoped <- Scope ws ( LambdaExpr / Level7 )
+Scoped <- Scope ws Expression
 Scope <- CreateScope ws Assignments? ')'
 CreateScope <- '('
 
@@ -61,7 +61,9 @@ ProjectionValue <- {}
 Substitution <- '*' Level0
 Not <- '!' ws Level0
 Grouped <- '(' Expression ')'
-Range <- '[' Expression '..' Expression ']'
+Range <- StartRange Expression? RangeOp Expression? ']'
+StartRange <- '['
+RangeOp <- '..'
 
 Integer <- '-'? [0-9] [0-9_]*
 String <- '"' ('\\"' / !'"' .)* '"'

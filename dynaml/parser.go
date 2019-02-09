@@ -284,10 +284,25 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 				tokens.Push(LambdaRefExpr{Source: rhs, Path: path, StubPath: stubPath})
 			}
 
+		case ruleStartRange:
+			tokens.Push(operationHelper{op: ""})
+		case ruleRangeOp:
+			tokens.Push(operationHelper{op: contents})
+
 		case ruleRange:
 			rhs := tokens.Pop()
+			if _, ok := rhs.(operationHelper); ok {
+				rhs = nil
+			} else {
+				tokens.Pop()
+			}
 			lhs := tokens.Pop()
-			tokens.Push(RangeExpr{lhs.(Expression), rhs.(Expression)})
+			if _, ok := lhs.(operationHelper); ok {
+				lhs = nil
+			} else {
+				tokens.Pop()
+			}
+			tokens.Push(RangeExpr{lhs, rhs})
 
 		case ruleList:
 			seq := tokens.PopExpressionList()

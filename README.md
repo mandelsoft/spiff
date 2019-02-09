@@ -370,7 +370,7 @@ The slice expression can be used to extract a dedicated sub list from a list
 expression. The range *start* `..` *end* extracts a list of the length
 *end-start+1* with the elements from
 index *start* to *end*. If the start index is negative the slice is taken
-from the end of the list from *length-start* to *length-end*. If the end
+from the end of the list from *length+start* to *length+end*. If the end
 index is lower than the start index, the result is an empty array.
 
 e.g.:
@@ -382,6 +382,10 @@ list:
   - c
 foo: (( list.[1..length(list) - 1] ))
 ```
+
+The start or end index might be omitted. It is then selected according to the 
+actual size of the list. Therefore `list.[1..length(list)]` is equivalent
+to `list.[1..]`.
 
 evaluates `foo` to the list `[b,c]`.
 
