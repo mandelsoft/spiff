@@ -8,6 +8,12 @@ import (
 	"github.com/cloudfoundry-incubator/candiedyaml"
 )
 
+const SELF = "_"
+
+type RefResolver interface {
+	FindReference([]string) (Node, bool)
+}
+
 type Node interface {
 	candiedyaml.Marshaler
 
@@ -27,12 +33,15 @@ type Node interface {
 	Undefined() bool
 	Issue() Issue
 
+	Resolver() RefResolver
+
 	GetAnnotation() Annotation
 	EquivalentToNode(Node) bool
 }
 
 type AnnotatedNode struct {
 	value      interface{}
+	resolver   RefResolver
 	sourceName string
 	Annotation
 }
@@ -111,63 +120,84 @@ type Annotation struct {
 	NodeFlags
 }
 
+func copyNode(node Node) AnnotatedNode {
+	return AnnotatedNode{node.Value(), node.Resolver(), node.SourceName(), node.GetAnnotation()}
+}
+func copyNodeAnnotated(node Node, anno Annotation) AnnotatedNode {
+	return AnnotatedNode{node.Value(), node.Resolver(), node.SourceName(), anno}
+}
+
 func NewNode(value interface{}, sourcePath string) Node {
-	return AnnotatedNode{MassageType(value), sourcePath, EmptyAnnotation()}
+	return AnnotatedNode{MassageType(value), nil, sourcePath, EmptyAnnotation()}
+}
+
+func ResolverNode(node Node, resolver RefResolver) Node {
+	n := copyNode(node)
+	n.resolver = resolver
+	return n
 }
 
 func ReplaceValue(value interface{}, node Node) Node {
-	return AnnotatedNode{value, node.SourceName(), node.GetAnnotation()}
+	n := copyNode(node)
+	n.value = value
+	return n
 }
 func ReferencedNode(node Node) Node {
-	return AnnotatedNode{node.Value(), node.SourceName(), NewReferencedAnnotation(node)}
+	return copyNodeAnnotated(node, NewReferencedAnnotation(node))
 }
 
 func SubstituteNode(value interface{}, node Node) Node {
-	return AnnotatedNode{MassageType(value), node.SourceName(), node.GetAnnotation()}
+	n := copyNode(node)
+	n.value = MassageType(value)
+	return n
 }
 
 func RedirectNode(value interface{}, node Node, redirect []string) Node {
-	return AnnotatedNode{MassageType(value), node.SourceName(), node.GetAnnotation().SetRedirectPath(redirect)}
+	n := copyNodeAnnotated(node, node.GetAnnotation().SetRedirectPath(redirect))
+	n.value = MassageType(value)
+	return n
 }
 
 func ReplaceNode(value interface{}, node Node, redirect []string) Node {
-	return AnnotatedNode{MassageType(value), node.SourceName(), node.GetAnnotation().SetReplaceFlag().SetRedirectPath(redirect)}
+	n := copyNodeAnnotated(node, node.GetAnnotation().SetReplaceFlag().SetRedirectPath(redirect))
+	n.value = MassageType(value)
+	return n
 }
 
 func PreferredNode(node Node) Node {
-	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().SetPreferred()}
+	return copyNodeAnnotated(node, node.GetAnnotation().SetPreferred())
 }
 
 func MergedNode(node Node) Node {
-	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().SetMerged()}
+	return copyNodeAnnotated(node, node.GetAnnotation().SetMerged())
 }
 
 func KeyNameNode(node Node, keyName string) Node {
-	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().AddKeyName(keyName)}
+	return copyNodeAnnotated(node, node.GetAnnotation().AddKeyName(keyName))
 }
 
 func IssueNode(node Node, error bool, failed bool, issue Issue) Node {
-	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().AddIssue(error, failed, issue)}
+	return copyNodeAnnotated(node, node.GetAnnotation().AddIssue(error, failed, issue))
 }
 
 func UndefinedNode(node Node) Node {
-	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().SetUndefined()}
+	return copyNodeAnnotated(node, node.GetAnnotation().SetUndefined())
 }
 
 func AddFlags(node Node, flags NodeFlags) Node {
-	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().AddFlags(flags)}
+	return copyNodeAnnotated(node, node.GetAnnotation().AddFlags(flags))
 }
 
 func TemporaryNode(node Node) Node {
-	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().SetTemporary()}
+	return copyNodeAnnotated(node, node.GetAnnotation().SetTemporary())
 }
 
 func LocalNode(node Node) Node {
-	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().SetLocal()}
+	return copyNodeAnnotated(node, node.GetAnnotation().SetLocal())
 }
 
 func StateNode(node Node) Node {
-	return AnnotatedNode{node.Value(), node.SourceName(), node.GetAnnotation().SetState()}
+	return copyNodeAnnotated(node, node.GetAnnotation().SetState())
 }
 
 func MassageType(value interface{}) interface{} {
@@ -299,6 +329,10 @@ func (n AnnotatedNode) SourceName() string {
 	return n.sourceName
 }
 
+func (n AnnotatedNode) Resolver() RefResolver {
+	return n.resolver
+}
+
 func (n AnnotatedNode) GetAnnotation() Annotation {
 	return n.Annotation
 }
@@ -373,7 +407,10 @@ func (n AnnotatedNode) EquivalentToNode(o Node) bool {
 var embeddedDynaml = regexp.MustCompile(`^\(\((([^!].*)?)\)\)$`)
 
 func EmbeddedDynaml(root Node) *string {
-	rootString := root.Value().(string)
+	rootString, ok := root.Value().(string)
+	if !ok {
+		return nil
+	}
 
 	sub := embeddedDynaml.FindStringSubmatch(rootString)
 	if sub == nil {

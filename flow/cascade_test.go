@@ -322,6 +322,61 @@ values:
 				Expect(template).To(CascadeAs(resolved, source))
 			})
 
+			It("supports definition scope access", func() {
+				source := parseYAML(`
+---
+env:
+  func: (( |x|->[ x, scope, _.scope ] ))
+  scope: func
+
+values:
+   value: (( env.func("arg") ))
+   scope: call
+`)
+
+				resolved := parseYAML(`
+---
+values:
+  value:
+   - arg
+   - call
+   - func
+  scope: call
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("supports definition scope access accross stubs", func() {
+				source := parseYAML(`
+---
+func:
+
+values:
+   value: (( (lambda func)("arg") ))
+   scope: call
+`)
+
+				stub := parseYAML(`
+---
+env:
+  func: (( |x|->[ x, scope, _.scope ] ))
+  scope: func
+
+func: (( env.func ))
+`)
+
+				resolved := parseYAML(`
+---
+values:
+  value:
+   - arg
+   - call
+   - func
+  scope: call
+`)
+				Expect(template).To(CascadeAs(resolved, source, stub))
+			})
+
 			It("supports currying", func() {
 				source := parseYAML(`
 ---

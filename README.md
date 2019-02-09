@@ -2425,7 +2425,7 @@ mod: lambda|x,y,m|->(lambda m)(x, y) + 3
 value: 6
 ```
 
-A lambda expression might refer to absolute or relative nodes of the actual template. Relative references are evaluated in the context of the function call. Therefore
+A lambda expression might refer to absolute or relative nodes of the actual yaml document of the call. Relative references are evaluated in the context of the function call. Therefore
 
 ```yaml
 lvalue: (( lambda |x,y|->x + y + offset ))
@@ -2437,7 +2437,10 @@ values:
 
 yields `6` for `values.value`.
 
-Besides the specified parameters, there is an implicit name (`_`), that can be used to refer to the function itself. It can be used to define self recursive function. Together with the logical and conditional operators a fibunacci function can be defined:
+Besides the specified parameters, there is an implicit name (`_`), that can be
+used to refer to the function itself. It can be used to define self recursive
+function. Together with the logical and conditional operators a fibunacci
+function can be defined:
 
 ```yaml
 fibonacci: (( lambda |x|-> x <= 0 ? 0 :x == 1 ? 1 :_(x - 2) + _( x - 1 ) ))
@@ -2446,7 +2449,40 @@ value: (( .fibonacci(5) ))
 
 yields the value `8` for the `value` property.
 
-Inner lambda expressions remember the local binding of outer lambda expressions. This can be used to return functions based an arguments of the outer function.
+By default reference expressions in a lambda expression are evaluated in the
+context of the caller. The name `_` can also be used as an anchor to refer to
+the definition scope of the lambda expression. Those references are always
+interpreted as relative references related to the definition scope.
+
+e.g.:
+
+````yaml
+env:
+  func: (( |x|->[ x, scope, _, _.scope ] ))
+  scope: definition
+
+call:
+   result: (( env.func("arg") ))
+   scope: call
+````
+
+yields the `result` list:
+
+```yaml
+call:
+  result:
+  - arg
+  - call
+  - (( lambda|x|->[x, scope, _, _.scope] ))  # the lambda expression as lambda value
+  - definition
+```
+
+This also works across multiple stubs. The definition context is the stub the
+lambda expression is defined in, even if it is used in stubs down the chain.
+Therefore it is possible to use references in the lambda expression, not visible
+at the caller location. 
+
+Inner lambda expressions remember the local binding of outer lambda expressions. This can be used to return functions based on arguments of the outer function.
 
 e.g.:
 

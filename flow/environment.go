@@ -85,6 +85,10 @@ func (e DefaultEnvironment) FindReference(path []string) (yaml.Node, bool) {
 		return nil, false
 	}
 
+	if len(path) > 1 && path[0] == yaml.SELF {
+		resolver := root.Resolver()
+		return resolver.FindReference(path[1:])
+	}
 	return yaml.FindR(true, root, path[1:]...)
 }
 

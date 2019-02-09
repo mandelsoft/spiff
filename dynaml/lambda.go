@@ -14,7 +14,7 @@ type LambdaExpr struct {
 
 func (e LambdaExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
-	return LambdaValue{e, binding.GetLocalBinding()}, info, true
+	return LambdaValue{e, binding.GetLocalBinding(), binding}, info, true
 }
 
 func (e LambdaExpr) String() string {
@@ -58,7 +58,7 @@ func (e LambdaRefExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 			debug.Debug("no lambda expression: %T\n", expr)
 			return info.Error("'%s' is no lambda expression", v)
 		}
-		lambda = LambdaValue{lexpr, binding.GetLocalBinding()}
+		lambda = LambdaValue{lexpr, binding.GetLocalBinding(), binding}
 
 	default:
 		return info.Error("lambda reference must resolve to lambda value or string")
@@ -73,14 +73,15 @@ func (e LambdaRefExpr) String() string {
 
 type LambdaValue struct {
 	lambda  LambdaExpr
-	binding map[string]yaml.Node
+	local   map[string]yaml.Node
+	binding Binding
 }
 
 func (e LambdaValue) String() string {
 	binding := ""
-	if len(e.binding) > 0 {
+	if len(e.local) > 0 {
 		binding = "{"
-		for n, v := range e.binding {
+		for n, v := range e.local {
 			if n != "_" {
 				binding += fmt.Sprintf("%s: %v,", n, v.Value())
 			}
@@ -102,19 +103,19 @@ func (e LambdaValue) Evaluate(args []interface{}, binding Binding, locally bool)
 		return nil, info, false
 	}
 	inp := map[string]yaml.Node{}
-	for n, v := range e.binding {
+	for n, v := range e.local {
 		inp[n] = v
 	}
-	debug.Debug("LAMBDA CALL: inherit binding %+v\n", inp)
-	inp["_"] = node(e, binding)
+	debug.Debug("LAMBDA CALL: inherit local %+v\n", inp)
+	inp[yaml.SELF] = yaml.ResolverNode(node(e, binding), e.binding)
 	for i, v := range args {
 		inp[e.lambda.Names[i]] = node(v, binding)
 	}
-	debug.Debug("LAMBDA CALL: effective binding %+v\n", inp)
+	debug.Debug("LAMBDA CALL: effective local %+v\n", inp)
 
 	if len(args) < len(e.lambda.Names) {
 		rest := e.lambda.Names[len(args):]
-		return LambdaValue{LambdaExpr{rest, e.lambda.E}, inp}, DefaultInfo(), true
+		return LambdaValue{LambdaExpr{rest, e.lambda.E}, inp, e.binding}, DefaultInfo(), true
 	}
 
 	return e.lambda.E.Evaluate(binding.WithLocalScope(inp), locally)
