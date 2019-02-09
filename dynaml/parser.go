@@ -147,7 +147,13 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			tokens.Push(NilExpr{})
 		case ruleUndefined:
 			tokens.Push(UndefinedExpr{})
-		case ruleCreateMap:
+
+		case ruleScoped:
+			e := tokens.Pop()
+			m := tokens.Pop().(CreateMapExpr)
+			tokens.Push(ScopeExpr{m, e})
+
+		case ruleCreateMap, ruleCreateScope:
 			tokens.Push(CreateMapExpr{})
 		case ruleAssignment:
 			rhs := tokens.Pop()
@@ -235,6 +241,10 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 
 			tokens.Push(ModuloExpr{A: lhs, B: rhs})
 
+		case ruleSymbol:
+			name := tokens.Pop().(nameHelper)
+			tokens.Push(StringExpr{name.name})
+
 		case ruleName:
 			tokens.Push(nameHelper{name: contents})
 		case ruleNextName:
@@ -298,6 +308,7 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 		case ruleExpression:
 		case ruleExpressionList:
 		case ruleMap:
+		case ruleScope:
 		case ruleAssignments:
 		case rulews:
 		case rulereq_ws:

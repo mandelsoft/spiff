@@ -15,22 +15,22 @@ type SubstitutionExpr struct {
 }
 
 func (e SubstitutionExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
-	if e.Node == nil {
-		debug.Debug("evaluating expression to determine template\n")
-		n, info, ok := e.Template.Evaluate(binding, false)
-		if !ok || isExpression(n) {
-			return e, info, ok
-		}
-		e.Val, ok = n.(TemplateValue)
-		if !ok {
-			return info.Error("template value required")
-		} else {
-			e.Node = node_copy(e.Val.Prepared)
-		}
+	//if e.Node == nil {
+	debug.Debug("evaluating expression to determine template: %s\n", binding)
+	n, info, ok := e.Template.Evaluate(binding, false)
+	if !ok || isExpression(n) {
+		return e, info, ok
 	}
-	debug.Debug("resolving template '%s'\n", strings.Join(e.Val.Path, "."))
+	e.Val, ok = n.(TemplateValue)
+	if !ok {
+		return info.Error("template value required")
+	} else {
+		e.Node = node_copy(e.Val.Prepared)
+	}
+	//}
+	debug.Debug("resolving template '%s' %s\n", strings.Join(e.Val.Path, "."), binding)
 	result, state := binding.Flow(e.Node, false)
-	info := DefaultInfo()
+	info = DefaultInfo()
 	if state != nil {
 		if state.HasError() {
 			debug.Debug("resolving template failed: " + state.Error())

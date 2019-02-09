@@ -40,6 +40,7 @@ Contents:
 	- [(( "foo" ))](#-foo--1)
 	- [(( [ 1, 2, 3 ] ))](#--1-2-3--)
 	- [(( { "alice" = 25 } ))](#--alice--25--)
+	- [(( ( "alice" = 25 ) alice ))](#--alice--25---alice-)
 	- [(( foo bar ))](#-foo-bar-)
 		- [(( "foo" bar ))](#-foo-bar--1)
 		- [(( [1,2] bar ))](#-12-bar-)
@@ -440,6 +441,28 @@ map:
 Another way to compose lists based on expressions are the functions
 [`makemap`](#-makemapkey-value-) and [`list_to_map`](#-list_to_maplist-key-).
 
+## `(( ( "alice" = 25 ) alice ))`
+
+Any expression may be preluded by an explicit scope literal. It describes a map
+whose values are available for relative reference resolution of the expression.
+
+A scope literal might consist of any number of field assignments separated by a
+comma `,`. The key as well as the value are given by expressions, whereas the
+key expression must evaluate to a string.
+
+e.g.:
+
+```yaml
+scoped: (( ( "alice" = 25, "bob" = 26 ) alice + bob ))
+```
+
+yields
+
+```yaml
+scoped: 51
+```
+
+A field name might also be denoted by a symbol (_`$`name_).
 
 ## `(( foo bar ))`
 
@@ -3466,6 +3489,34 @@ networks:
 	banda:
       bob: loves alice
   ```
+
+- _Scopes can be used to parameterize templates_
+
+  Scope literals are also considered when instantiating templates. Therefore
+  they can be used to set explicit values for relative reference expressions
+  used in templates.
+
+  e.g.:
+
+  ```yaml
+  alice: 1
+  template:
+    <<: (( &template ))
+    sum: (( alice + bob ))
+  scoped: (( ( $alice = 25, "bob" = 26 ) *template ))
+  ```
+
+  evaluates to
+
+  ```yaml
+  alice: 1
+  template:
+    <<: (( &template ))
+    sum: (( alice + bob ))
+  scoped:
+    sum: 51
+  ```
+
 
 - _Aggregations may yield complex values by using templates_
 

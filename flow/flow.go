@@ -45,7 +45,9 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 		env = env.RedirectOverwrite(redirect)
 	}
 
-	debug.Debug("/// FLOW %v: %+v\n", env.Path(), root)
+	debug.Debug("//{ FLOW %v: %+v\n", env.Path(), root)
+	debug.Debug("/// BIND: %+v\n", env)
+	defer debug.Debug("//}\n")
 	if !replace {
 		if _, ok := root.Value().(dynaml.Expression); !ok && merged {
 			debug.Debug("  skip handling of merged node")

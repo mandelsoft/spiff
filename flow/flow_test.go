@@ -6232,4 +6232,96 @@ result:
 			})
 		})
 	})
+	Describe("scoped expressions", func() {
+		Context("in normal expressions", func() {
+			It("accepts empty scopes", func() {
+				source := parseYAML(`
+---
+alice: 1
+bob: 2
+scoped: (( () alice + bob ))
+`)
+				resolved := parseYAML(`
+---
+alice: 1
+bob: 2
+scoped: 3
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("resolve scope fields", func() {
+				source := parseYAML(`
+---
+alice: 1
+bob: 2
+scoped: (( ( $alice = 25, "bob" = 26 ) alice + bob ))
+`)
+				resolved := parseYAML(`
+---
+alice: 1
+bob: 2
+scoped: 51
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+		Context("in template expressions", func() {
+			It("resolve scope fields in map templates", func() {
+				source := parseYAML(`
+---
+alice: 1
+template:
+  <<: (( &template ))
+  sum: (( alice + bob ))
+scoped: (( ( $alice = 25, "bob" = 26 ) *template ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+alice: 1
+template:
+  <<: (( &template ))
+  sum: (( alice + bob ))
+scoped:
+  sum: 51
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("resolve scope fields in value templates", func() {
+				source := parseYAML(`
+---
+alice: 1
+template: (( &template ( alice + bob ) ))
+scoped: (( ( $alice = 25, "bob" = 26 ) *template ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+alice: 1
+template: (( &template ( alice + bob ) ))
+scoped: 51
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("resolve scope fields in list templates", func() {
+				source := parseYAML(`
+---
+alice: 1
+template: 
+ - <<: (( &template ))
+ - (( alice + bob ))
+scoped: (( ( $alice = 25, "bob" = 26 ) *template ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+alice: 1
+template:
+template: 
+ - <<: (( &template ))
+ - (( alice + bob ))
+scoped:
+  - 51
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
 })

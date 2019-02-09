@@ -10,7 +10,11 @@ SubsequentMarker <- Marker
 Marker <- '&' ( 'template' / 'temporary' / 'local' / 'inject' / 'state' )
 MarkerExpression <- Grouped
 
-Expression <- ws ( LambdaExpr / Level7 ) ws
+Expression <- ws ( Scoped / LambdaExpr / Level7 ) ws
+
+Scoped <- Scope ws ( LambdaExpr / Level7 )
+Scope <- CreateScope ws Assignments? ')'
+CreateScope <- '('
 
 Level7 <- Level6 ( req_ws Or )*
 Or <- '||' req_ws Level6
@@ -38,7 +42,7 @@ Multiplication <- '*' req_ws Level0
 Division <-  '/' req_ws Level0
 Modulo <-  '%' req_ws Level0
 
-Level0 <- IP / String / Integer / Boolean / Undefined / Nil / Not /
+Level0 <- IP / String / Integer / Boolean / Undefined / Nil / Symbol / Not /
           Substitution / Merge / Auto / Lambda / Chained 
 
 Chained <- ( Mapping / Selection / Sum / List / Map / Range / Grouped / Reference ) ChainedQualifiedExpression*
@@ -64,6 +68,7 @@ String <- '"' ('\\"' / !'"' .)* '"'
 Boolean <- 'true' / 'false'
 Nil <- 'nil' / '~'
 Undefined <- '~~'
+Symbol <- '$' Name
 
 List <- StartList ExpressionList? ']'
 StartList <- '['

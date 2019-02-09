@@ -1,6 +1,7 @@
 package flow
 
 import (
+	"fmt"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -38,6 +39,26 @@ type DefaultEnvironment struct {
 
 	local map[string]yaml.Node
 	outer dynaml.Binding
+}
+
+func keys(s map[string]yaml.Node) string {
+	keys := "[ "
+	sep := ""
+	for k := range s {
+		keys = keys + sep + k
+		sep = ", "
+	}
+	return keys + "]"
+}
+
+func (e DefaultEnvironment) String() string {
+	result := fmt.Sprintf("ENV: %s local: %s", strings.Join(e.path, ", "), keys(e.local))
+	s := e.scope
+	for s != nil {
+		result = result + "\n  " + keys(s.local)
+		s = s.next
+	}
+	return result
 }
 
 func (e DefaultEnvironment) Outer() dynaml.Binding {
