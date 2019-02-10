@@ -12,7 +12,7 @@ func PrepareStubs(outer dynaml.Binding, partial bool, stubs ...yaml.Node) ([]yam
 			return nil, err
 		}
 
-		stubs[i] = Cleanup(flowed, testLocal)
+		stubs[i] = Cleanup(flowed, discardLocal)
 	}
 	return stubs, nil
 }
@@ -20,7 +20,7 @@ func PrepareStubs(outer dynaml.Binding, partial bool, stubs ...yaml.Node) ([]yam
 func Apply(outer dynaml.Binding, template yaml.Node, prepared []yaml.Node) (yaml.Node, error) {
 	result, err := NestedFlow(outer, template, prepared...)
 	if err == nil {
-		result = Cleanup(result, testTemporary)
+		result = Cleanup(result, discardTemporary)
 	}
 	return result, err
 }
@@ -34,14 +34,20 @@ func Cascade(outer dynaml.Binding, template yaml.Node, partial bool, stubs ...ya
 	return Apply(outer, template, prepared)
 }
 
-func testTemporary(node yaml.Node) bool {
-	return node.Temporary() || node.Local()
+func discardTemporary(node yaml.Node) yaml.Node {
+	if node.Temporary() || node.Local() {
+		return nil
+	}
+	return node
 }
-func testLocal(node yaml.Node) bool {
-	return node.Local()
+func discardLocal(node yaml.Node) yaml.Node {
+	if node.Local() {
+		return nil
+	}
+	return node
 }
 
-func Cleanup(node yaml.Node, test func(yaml.Node) bool) yaml.Node {
+func Cleanup(node yaml.Node, test func(yaml.Node) yaml.Node) yaml.Node {
 	if node == nil {
 		return nil
 	}
@@ -50,8 +56,8 @@ func Cleanup(node yaml.Node, test func(yaml.Node) bool) yaml.Node {
 	case []yaml.Node:
 		r := []yaml.Node{}
 		for _, e := range v {
-			if !test(e) {
-				r = append(r, Cleanup(e, test))
+			if n := test(e); n != nil {
+				r = append(r, Cleanup(n, test))
 			}
 		}
 		value = r
@@ -59,8 +65,8 @@ func Cleanup(node yaml.Node, test func(yaml.Node) bool) yaml.Node {
 	case map[string]yaml.Node:
 		r := map[string]yaml.Node{}
 		for k, e := range v {
-			if !test(e) {
-				r[k] = Cleanup(e, test)
+			if n := test(e); n != nil {
+				r[k] = Cleanup(n, test)
 			}
 		}
 		value = r

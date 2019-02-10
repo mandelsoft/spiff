@@ -13,12 +13,13 @@ import (
 
 type Scope struct {
 	local map[string]yaml.Node
+	path  []string
 	next  *Scope
 	root  *Scope
 }
 
-func newScope(outer *Scope, local map[string]yaml.Node) *Scope {
-	scope := &Scope{local, outer, nil}
+func newScope(outer *Scope, path []string, local map[string]yaml.Node) *Scope {
+	scope := &Scope{local, path, outer, nil}
 	if outer == nil {
 		scope.root = scope
 	} else {
@@ -39,6 +40,8 @@ type DefaultEnvironment struct {
 
 	local map[string]yaml.Node
 	outer dynaml.Binding
+
+	active bool
 }
 
 func keys(s map[string]yaml.Node) string {
@@ -65,6 +68,15 @@ func (e DefaultEnvironment) Outer() dynaml.Binding {
 	return e.outer
 }
 
+func (e DefaultEnvironment) Active() bool {
+	return e.active
+}
+
+func (e DefaultEnvironment) Deactivate() dynaml.Binding {
+	e.active = false
+	return e
+}
+
 func (e DefaultEnvironment) Path() []string {
 	return e.path
 }
@@ -83,6 +95,10 @@ func (e DefaultEnvironment) CurrentSourceName() string {
 
 func (e DefaultEnvironment) GetRootBinding() map[string]yaml.Node {
 	return e.scope.root.local
+}
+
+func (e DefaultEnvironment) GetScope() *Scope {
+	return e.scope
 }
 
 func (e DefaultEnvironment) GetLocalBinding() map[string]yaml.Node {
@@ -130,13 +146,13 @@ func (e DefaultEnvironment) WithSource(source string) dynaml.Binding {
 }
 
 func (e DefaultEnvironment) WithScope(step map[string]yaml.Node) dynaml.Binding {
-	e.scope = newScope(e.scope, step)
+	e.scope = newScope(e.scope, e.path, step)
 	e.local = map[string]yaml.Node{}
 	return e
 }
 
 func (e DefaultEnvironment) WithLocalScope(step map[string]yaml.Node) dynaml.Binding {
-	e.scope = newScope(e.scope, step)
+	e.scope = newScope(e.scope, nil, step)
 	e.local = step
 	return e
 }
@@ -163,10 +179,11 @@ func (e DefaultEnvironment) Flow(source yaml.Node, shouldOverride bool) (yaml.No
 	result := source
 
 	for {
-		debug.Debug("@@@ loop:  %+v\n", result)
+		debug.Debug("@@{ loop:  %+v\n", result)
 		next := flow(result, e, shouldOverride)
-		debug.Debug("@@@ --->   %+v\n", next)
+		debug.Debug("@@} --->   %+v\n", next)
 
+		next = Cleanup(next, updateBinding(next))
 		if reflect.DeepEqual(result, next) {
 			break
 		}
@@ -174,6 +191,7 @@ func (e DefaultEnvironment) Flow(source yaml.Node, shouldOverride bool) (yaml.No
 		result = next
 	}
 	debug.Debug("@@@ Done\n")
+	result = Cleanup(result, deactivateScopes)
 	unresolved := dynaml.FindUnresolvedNodes(result)
 	if len(unresolved) > 0 {
 		return result, dynaml.UnresolvedNodes{unresolved}
@@ -191,7 +209,52 @@ func NewEnvironment(stubs []yaml.Node, source string) dynaml.Binding {
 }
 
 func NewNestedEnvironment(stubs []yaml.Node, source string, outer dynaml.Binding) dynaml.Binding {
-	return DefaultEnvironment{stubs: stubs, sourceName: source, currentSourceName: source, outer: outer}
+	return DefaultEnvironment{stubs: stubs, sourceName: source, currentSourceName: source, outer: outer, active: true}
+}
+
+type Updateable interface {
+	Active() bool
+	GetScope() *Scope
+	Deactivate() dynaml.Binding
+}
+
+func updateBinding(root yaml.Node) func(yaml.Node) yaml.Node {
+	return func(node yaml.Node) yaml.Node {
+		if v := node.Value(); v != nil {
+			if lambda, ok := v.(dynaml.LambdaValue); ok {
+				debug.Debug("update found lambda %q\n", lambda)
+				if env := lambda.Binding().(Updateable); env.Active() {
+					for scope := env.GetScope(); scope != nil; scope = scope.next {
+						debug.Debug("update scope %v\n", scope.path)
+						if scope.path != nil {
+							ref, ok := yaml.FindR(true, root, scope.path...)
+							if ok {
+								debug.Debug("found %#v\n", ref.Value())
+								m := ref.Value().(map[string]yaml.Node)
+								scope.local = m
+							}
+						} else {
+							break
+						}
+					}
+				}
+			}
+		}
+		return node
+	}
+}
+
+func deactivateScopes(node yaml.Node) yaml.Node {
+	if v := node.Value(); v != nil {
+		if lambda, ok := v.(dynaml.LambdaValue); ok {
+			debug.Debug("deactivate lambda %q\n", lambda)
+			if env := lambda.Binding().(Updateable); env.Active() {
+				lambda = lambda.SetBinding(env.Deactivate())
+				return yaml.ReplaceValue(lambda, node)
+			}
+		}
+	}
+	return node
 }
 
 func resolveSymbol(env *DefaultEnvironment, name string, scope *Scope) (yaml.Node, bool) {

@@ -346,6 +346,58 @@ values:
 				Expect(template).To(CascadeAs(resolved, source))
 			})
 
+			It("supports nested calls in definition scope", func() {
+				source := parseYAML(`
+---
+util:
+  func: (( |x|-> _.ident(x) ))
+  ident: (( |v|->v ))
+
+
+values: (( util.func(2) ))
+`)
+
+				resolved := parseYAML(`
+---
+values: 2
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("supports nested definitions (map) in definition scope", func() {
+				source := parseYAML(`
+---
+util:
+  l1: (( |x|->x <= 0 ? x :map[[x]|dep|->_.l1(dep - 1)].[0] ))
+
+values: (( util.l1(1) ))
+
+`)
+
+				resolved := parseYAML(`
+---
+values: 0
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("supports nested definitions (lambda) in definition scope", func() {
+				source := parseYAML(`
+---
+util:
+  l1: (( |x|->x <= 0 ? x :(|dep|->_.l1(dep - 1))(x) ))
+
+values: (( util.l1(1) ))
+
+`)
+
+				resolved := parseYAML(`
+---
+values: 0
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
 			It("supports definition scope access accross stubs", func() {
 				source := parseYAML(`
 ---

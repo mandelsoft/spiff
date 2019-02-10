@@ -21,6 +21,7 @@ func (e MapExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluatio
 	if !ok {
 		return nil, info, false
 	}
+	debug.Debug("MAP EXPR with binding %+v\n", binding)
 	lvalue, infoe, ok := ResolveExpressionOrPushEvaluation(&e.Lambda, &resolved, nil, binding, false)
 	if !ok {
 		return nil, info, false
@@ -88,12 +89,14 @@ func mapList(source []yaml.Node, e LambdaValue, binding Binding, mapper MappingR
 		debug.Debug("map:  mapping for %d: %+v\n", i, n)
 		inp[0] = i
 		inp[len(inp)-1] = n.Value()
-		mapped, info, ok := e.Evaluate(inp, binding, false)
+		resolved, mapped, info, ok := e.Evaluate(inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %d %+v: failed\n", i, n)
 			return nil, info, false
 		}
-
+		if !resolved {
+			return nil, info, ok
+		}
 		_, ok = mapped.(Expression)
 		if ok {
 			debug.Debug("map:  %d unresolved  -> KEEP\n")
@@ -119,12 +122,14 @@ func mapMap(source map[string]yaml.Node, e LambdaValue, binding Binding, mapper 
 		debug.Debug("map:  mapping for %s: %+v\n", k, n)
 		inp[0] = k
 		inp[len(inp)-1] = n.Value()
-		mapped, info, ok := e.Evaluate(inp, binding, false)
+		resolved, mapped, info, ok := e.Evaluate(inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %s %+v: failed\n", k, n)
 			return nil, info, false
 		}
-
+		if !resolved {
+			return nil, info, ok
+		}
 		_, ok = mapped.(Expression)
 		if ok {
 			debug.Debug("map:  %d unresolved  -> KEEP\n")

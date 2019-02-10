@@ -77,7 +77,10 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	switch funcName {
 	case "":
 		debug.Debug("calling lambda function %#v\n", value)
-		result, sub, ok = value.(LambdaValue).Evaluate(values, binding, false)
+		resolved, result, sub, ok = value.(LambdaValue).Evaluate(values, binding, false)
+		if !resolved && ok {
+			result = nil
+		}
 
 	case "static_ips":
 		result, sub, ok = func_static_ips(e.Arguments, binding)

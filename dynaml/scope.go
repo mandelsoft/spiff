@@ -25,10 +25,8 @@ func (e ScopeExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluat
 	binding = binding.WithLocalScope(b)
 	debug.Debug("SCOPE: %s\n", binding)
 	local, info, ok = e.E.Evaluate(binding, locally)
-	if ok {
-		if _, ok := local.(Expression); ok {
-			return e, info, ok
-		}
+	if ok && isExpression(local) {
+		return e, info, ok
 	}
 	return local, info, ok
 }

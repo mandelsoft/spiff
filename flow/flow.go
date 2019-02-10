@@ -86,7 +86,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 			}
 			replace = replace || info.Replace
 			flags |= info.NodeFlags
-			debug.Debug("??? ---> %+v\n", eval)
+			debug.Debug("??? ---> %t %#v\n", ok, eval)
 			if !ok {
 				root = yaml.IssueNode(root, true, false, info.Issue)
 				debug.Debug("??? failed ---> KEEP\n")
@@ -187,6 +187,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 		}
 	}
 
+	debug.Debug("result: %#v\n", root)
 	return root
 }
 
@@ -289,10 +290,12 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 		} else {
 			if processed {
 				val = flow(val, env.WithPath(key), true)
+			} else {
+				debug.Debug("skip %q flow for unprocessed indication\n", key)
 			}
 		}
 
-		debug.Debug("MAP %v (%s)%s\n", env.Path(), val.KeyName(), key)
+		debug.Debug("MAP %v (%s)%s  -> %T\n", env.Path(), val.KeyName(), key, val.Value())
 		if !val.Undefined() {
 			newMap[key] = val
 		}
@@ -402,11 +405,12 @@ func flowString(root yaml.Node, env dynaml.Binding) yaml.Node {
 	if sub == nil {
 		return root
 	}
-	debug.Debug("dynaml: %v: %s\n", env.Path(), *sub)
 	expr, err := dynaml.Parse(*sub, env.Path(), env.StubPath())
 	if err != nil {
+		debug.Debug("parse dynaml: %v: %s failed: %s\n", env.Path(), *sub, err)
 		return root
 	}
+	debug.Debug("parse dynaml: %v: %s  -> %T\n", env.Path(), *sub, expr)
 
 	return yaml.SubstituteNode(expr, root)
 }

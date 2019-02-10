@@ -43,7 +43,7 @@ func (e ReferenceExpr) find(f func(int, []string) (node yaml.Node, x bool), bind
 		}
 
 		if !isLocallyResolved(step) {
-			debug.Debug("  locally unresolved\n")
+			debug.Debug("  locally unresolved %T\n", step.Value())
 			if _, ok := step.Value().(Expression); ok {
 				info.Issue = yaml.NewIssue("'%s' unresolved", strings.Join(e.Path[0:i+1], "."))
 			} else {
