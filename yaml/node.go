@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"strings"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
 )
@@ -413,7 +414,7 @@ func EmbeddedDynaml(root Node) *string {
 	if !ok {
 		return nil
 	}
-
+	rootString=strings.Replace(rootString,"\n"," ", -1)
 	sub := embeddedDynaml.FindStringSubmatch(rootString)
 	if sub == nil {
 		return nil

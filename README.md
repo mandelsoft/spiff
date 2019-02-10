@@ -224,8 +224,11 @@ Every dynaml node is guaranteed to resolve to a YAML node. It is *not*
 string interpolation. This keeps developers from having to think about how
 a value will render in the resulting template.
 
-A dynaml node appears in the .yml file as an expression surrounded by two
-parentheses. They can be used as the value of a map or an entry in a list.
+A dynaml node appears in the .yml file as a string denoting an expression
+surrounded by two parentheses `(( <dynaml> ))`. They can be used as the
+value of a map or an entry in a list. The expression might span multiple
+lines. In any case the yaml string value *must not* end with a newline
+(for example using `|-`)
 
 The following is a complete list of dynaml expressions:
 
