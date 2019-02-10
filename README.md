@@ -3826,8 +3826,121 @@ networks:
      lb: (( deployment.testservice.status.loadBalancer.ingress ))
   
   ```
+- Crazy Shit: Graph Analysis with _spiff_
 
+  It is easy to describe a simple graph with knots and edges (for example 
+  for a set of components and their dependencies):
+  
+  **graph.yaml**
+  ```yaml
+  graph:
+    a:
+    - b
+    - c
+    b: []
+    c:
+    - b
+    - a
+    d:
+    - b
+    e:
+    - d
+    - b
+  ```
+  
+  Now it would be useful to figure out whether there are dependency cycles or
+  to determine ordered transitive dependencies for a component.
+  
+  Let's say something like this:
+  
+  **closures.yaml***
+  ```yaml
+  graph:
+  utilities:
 
+  closures: (( utilities.graph.evaluate(graph) ))
+  cycles: (( utilities.graph.cycles(closures) ))
+  ```
+
+  Indeed, this can be done with spiff. The only thing required is
+  a _"small utilities stub"_:
+  
+  **utilities.yaml**
+  ```yaml
+  utilities:
+    <<: (( &temporary ))
+    graph:
+      _dep: (( |model,comp,closure|->contains(closure,comp) ? { $deps=[], $err=closure [comp]} :($deps=_._deps(model,comp,closure [comp]))($err=sum[deps|[]|s,e|-> length(s) >= length(e.err) ? s :e.err]) { $deps=_.join(map[deps|e|->e.deps]), $err=err} ))
+      _deps: (( |model,comp,closure|->map[model.[comp]|dep|->($deps=_._dep(model,dep,closure)) { $deps=[dep] deps.deps, $err=deps.err }] ))
+      join: (( |lists|->sum[lists|[]|s,e|-> s e] ))
+      min: (( |list|->sum[list|~|s,e|-> s ? e < s ? e :s :e] ))
+  
+      normcycle: (( |cycle|->($min=_.min(cycle)) min ? sum[cycle|cycle|s,e|->s.[0] == min ? s :(s.[1..] [s.[1]])] :cycle  ))
+      cycle: (( |list|->list ? ($elem=list.[length(list) - 1]) _.normcycle(sum[list|[]|s,e|->s ? s [e] :e == elem ? [e] :s]) :list ))
+      norm: (( |deps|->{ $deps=_.reverse(uniq(_.reverse(deps.deps))), $err=_.cycle(deps.err) } ))
+      reverse: (( |list|->sum[list|[]|s,e|->[e] s] ))
+  
+      evaluate: (( |model|->sum[model|{}|s,k,v|->s { k=_.norm(_._dep(model,k,[]))}] ))
+      cycles: (( |result|->uniq(sum[result|[]|s,k,v|-> v.err ? s [v.err] :s]) ))
+  ```
+  
+  And magically _spiff_ does the work just by calling
+  ```bash
+  spiff merge closure.yaml graph.yaml utilities.yaml
+  ```
+  
+  And the result is
+  ```yaml
+     closures:
+       a:
+         deps:
+         - c
+         - b
+         - a
+         err:
+         - a
+         - c
+         - a
+       b:
+         deps: []
+         err: []
+       c:
+         deps:
+         - a
+         - b
+         - c
+         err:
+         - a
+         - c
+         - a
+       d:
+         deps:
+         - b
+         err: []
+       e:
+         deps:
+         - d
+         - b
+         err: []
+     cycles:
+     - - a
+       - c
+       - a
+     graph:
+       a:
+       - b
+       - c
+       b: []
+       c:
+       - b
+       - a
+       d:
+       - b
+       e:
+       - d
+       - b
+  ```
+  
 # Error Reporting
 
 The evaluation of dynaml expressions may fail because of several reasons:

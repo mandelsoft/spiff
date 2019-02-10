@@ -1,0 +1,9 @@
+
+utilities:
+graph:
+
+
+closures: (( utilities.graph.evaluate(graph) ))
+cycles: (( utilities.graph.cycles(closures) ))
+
+  
