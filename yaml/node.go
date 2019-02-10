@@ -397,6 +397,8 @@ func (n AnnotatedNode) EquivalentToNode(o Node) bool {
 		}
 
 		return true
+	case ComparableValue:
+		return nv.EquivalentTo(o.Value())
 	}
 
 	b := reflect.DeepEqual(n.Value(), o.Value())

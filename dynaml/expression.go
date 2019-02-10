@@ -63,6 +63,11 @@ type Expression interface {
 	Evaluate(Binding, bool) (interface{}, EvaluationInfo, bool)
 }
 
+type StaticallyScopedValue interface {
+	StaticResolver() Binding
+	SetStaticResolver(binding Binding) StaticallyScopedValue
+}
+
 func (i *EvaluationInfo) Error(msgfmt interface{}, args ...interface{}) (interface{}, EvaluationInfo, bool) {
 	i.SetError(msgfmt, args...)
 	return nil, *i, false

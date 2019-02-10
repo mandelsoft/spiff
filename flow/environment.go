@@ -221,9 +221,9 @@ type Updateable interface {
 func updateBinding(root yaml.Node) func(yaml.Node) yaml.Node {
 	return func(node yaml.Node) yaml.Node {
 		if v := node.Value(); v != nil {
-			if lambda, ok := v.(dynaml.LambdaValue); ok {
-				debug.Debug("update found lambda %q\n", lambda)
-				if env := lambda.Binding().(Updateable); env.Active() {
+			if static, ok := v.(dynaml.StaticallyScopedValue); ok {
+				debug.Debug("update found static scoped %q\n", static)
+				if env := static.StaticResolver().(Updateable); env.Active() {
 					for scope := env.GetScope(); scope != nil; scope = scope.next {
 						debug.Debug("update scope %v\n", scope.path)
 						if scope.path != nil {
@@ -246,11 +246,10 @@ func updateBinding(root yaml.Node) func(yaml.Node) yaml.Node {
 
 func deactivateScopes(node yaml.Node) yaml.Node {
 	if v := node.Value(); v != nil {
-		if lambda, ok := v.(dynaml.LambdaValue); ok {
-			debug.Debug("deactivate lambda %q\n", lambda)
-			if env := lambda.Binding().(Updateable); env.Active() {
-				lambda = lambda.SetBinding(env.Deactivate())
-				return yaml.ReplaceValue(lambda, node)
+		if lambda, ok := v.(dynaml.StaticallyScopedValue); ok {
+			debug.Debug("deactivate statically scoped node %q\n", lambda)
+			if env := lambda.StaticResolver().(Updateable); env.Active() {
+				return yaml.ReplaceValue(lambda.SetStaticResolver(env.Deactivate()), node)
 			}
 		}
 	}

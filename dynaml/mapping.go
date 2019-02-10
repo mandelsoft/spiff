@@ -21,7 +21,7 @@ func (e MapExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluatio
 	if !ok {
 		return nil, info, false
 	}
-	debug.Debug("MAP EXPR with binding %+v\n", binding)
+	debug.Debug("MAP EXPR with resolver %+v\n", binding)
 	lvalue, infoe, ok := ResolveExpressionOrPushEvaluation(&e.Lambda, &resolved, nil, binding, false)
 	if !ok {
 		return nil, info, false

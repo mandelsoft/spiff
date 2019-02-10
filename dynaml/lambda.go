@@ -2,45 +2,11 @@ package dynaml
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/yaml"
 )
-
-type Resolver struct {
-	binding Binding
-	next    yaml.RefResolver
-}
-
-var _ yaml.RefResolver = &Resolver{}
-
-func (r *Resolver) String() string {
-	s := fmt.Sprintf("%s", r.binding)
-	if r.next != nil {
-		s = fmt.Sprintf("%s -> %s", s, r.next)
-	}
-	return s
-}
-
-func (r *Resolver) FindReference(path []string) (yaml.Node, bool) {
-	n, ok := r.binding.FindReference(path)
-	if ok {
-		return n, ok
-	}
-	if r.next != nil {
-		return r.next.FindReference(path)
-	}
-	return nil, false
-}
-
-func newResolver(binding Binding) *Resolver {
-	var next yaml.RefResolver
-	self, _ := binding.FindReference([]string{yaml.SELF})
-	if self != nil {
-		next = self.Resolver()
-	}
-	return &Resolver{binding, next}
-}
 
 func staticScope(binding Binding) Binding {
 	self, _ := binding.FindReference([]string{yaml.SELF})
@@ -57,7 +23,7 @@ type LambdaExpr struct {
 
 func (e LambdaExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
-	debug.Debug("LAMBDA VALUE with binding %+v\n", binding)
+	debug.Debug("LAMBDA VALUE with resolver %+v\n", binding)
 
 	return LambdaValue{e, binding.GetLocalBinding(), staticScope(binding)}, info, true
 }
@@ -122,13 +88,21 @@ type LambdaValue struct {
 	resolver Binding
 }
 
-func (e LambdaValue) Binding() Binding {
+var _ StaticallyScopedValue = LambdaValue{}
+var _ yaml.ComparableValue = TemplateValue{}
+
+func (e LambdaValue) StaticResolver() Binding {
 	return e.resolver
 }
 
-func (e LambdaValue) SetBinding(binding Binding) LambdaValue {
+func (e LambdaValue) SetStaticResolver(binding Binding) StaticallyScopedValue {
 	e.resolver = binding
 	return e
+}
+
+func (e LambdaValue) EquivalentTo(val interface{}) bool {
+	o, ok := val.(LambdaValue)
+	return ok && reflect.DeepEqual(e.lambda, o.lambda)
 }
 
 func (e LambdaValue) String() string {

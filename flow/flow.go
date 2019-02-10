@@ -80,7 +80,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 					}
 				}
 				debug.Debug("  value template %s", val)
-				eval = dynaml.TemplateValue{env.Path(), val, root}
+				eval = dynaml.NewTemplateValue(env.Path(), val, root, env)
 			} else {
 				eval, info, ok = val.Evaluate(env, false)
 			}
@@ -319,7 +319,7 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 	var result interface{}
 	if template {
 		debug.Debug(" as template\n")
-		result = dynaml.TemplateValue{env.Path(), yaml.NewNode(newMap, root.SourceName()), root}
+		result = dynaml.NewTemplateValue(env.Path(), yaml.NewNode(newMap, root.SourceName()), root, env)
 	} else {
 		result = newMap
 	}
@@ -529,7 +529,7 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 	var result interface{}
 	if template {
 		debug.Debug(" as template\n")
-		result = dynaml.TemplateValue{env.Path(), yaml.NewNode(spliced, orig.SourceName()), orig}
+		result = dynaml.NewTemplateValue(env.Path(), yaml.NewNode(spliced, orig.SourceName()), orig, env)
 	} else {
 		result = spliced
 	}
