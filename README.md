@@ -340,7 +340,7 @@ properties:
   foo: (( values.[name].bar ))
   values:
     alice:
-	   bar: 42
+      bar: 42
 ```
 
 This will resolve `foo` to the value `42`. The dynamic index may also be at
@@ -362,7 +362,7 @@ properties:
   foo: (( values.[name] ))
   values:
     foo:
-	   bar: 42
+      bar: 42
 ```
 
 resolves `foo` again to the value `42`.
