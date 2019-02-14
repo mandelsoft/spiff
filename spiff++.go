@@ -22,7 +22,7 @@ import (
 func main() {
 	app := cli.NewApp()
 	app.Name = "spiff"
-	app.Usage = "BOSH deployment manifest toolkit"
+	app.Usage = "YAML in-domain templating processor"
 	app.Version = "1.3.0-dev"
 
 	app.Commands = []cli.Command{
@@ -79,6 +79,28 @@ func main() {
 				}
 
 				diff(c.Args()[0], c.Args()[1], c.String("separator"))
+			},
+		},
+		{
+			Name:  "version",
+			Usage: "show verson info",
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "q",
+					Usage: "print version only",
+				},
+			},
+			Action: func(c *cli.Context) {
+				if len(c.Args()) > 0 {
+					cli.ShowCommandHelp(c, "version")
+					os.Exit(1)
+				}
+
+				if c.Bool("q") {
+					fmt.Printf("%s\n", app.Version)
+				} else {
+					fmt.Printf("%s version %s\n", app.Name, app.Version)
+				}
 			},
 		},
 	}
