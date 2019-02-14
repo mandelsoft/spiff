@@ -33,10 +33,10 @@ func (e ScopeExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluat
 
 func (e ScopeExpr) String() string {
 	result := "("
-	sep := " "
+	sep := ""
 	for _, a := range e.Assignments {
 		result += sep + a.String()
 		sep = ", "
 	}
-	return fmt.Sprintf("%s )%s", result, e.E)
+	return fmt.Sprintf("%s ) %s", result, e.E)
 }

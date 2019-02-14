@@ -119,7 +119,9 @@ Contents:
 		- [(( map[list|elem|->dynaml-expr] ))](#-maplistelem-dynaml-expr-)
 		- [(( map[list|idx,elem|->dynaml-expr] ))](#-maplistidxelem-dynaml-expr-)
 		- [(( map[map|key,value|->dynaml-expr] ))](#-mapmapkeyvalue-dynaml-expr-)
+		- [(( map{map|elem|->dynaml-expr} ))](#-mapmapelem-dynaml-expr-)
 		- [(( select[expr|elem|->dynaml-expr] ))](#-selectexprelem-dynaml-expr-)
+		- [(( select{map|elem|->dynaml-expr} ))](#-selectmapelem-dynaml-expr-)
 	- [Aggregations](#aggregations)
 		- [(( sum[list|initial|sum,elem|->dynaml-expr] ))](#-sumlistinitialsumelem-dynaml-expr-)
 		- [(( sum[list|initial|sum,idx,elem|->dynaml-expr] ))](#-sumlistinitialsumidxelem-dynaml-expr-)
@@ -321,6 +323,35 @@ list:
 
 can be referenced by using the path `list.alice.age`, instead of `list[0].age`.
 
+By default a field with name `name` is used as key field. If another field
+should be used as key field, it can be marked in one list entry as key by
+prefixing the field name with the keyword `key:`. This keyword is removed
+from by the processing and will not be part of the final processing result.
+
+e.g.:
+
+```yaml
+list:
+ - key:person: alice
+   age: 25
+
+alice: (( list.alice ))
+```
+
+will be resolved to
+
+```yaml
+list:
+ - person: alice
+   age: 25
+
+alice:
+  person: alice
+  age: 25
+```
+
+This new key field will also be observed during the merging of lists.
+
 ## `(( foo.[bar].baz ))`
 
 Look for the nearest 'foo' key, and from there follow through to the
@@ -450,12 +481,15 @@ Another way to compose lists based on expressions are the functions
 
 ## `(( ( "alice" = 25 ) alice ))`
 
-Any expression may be preluded by an explicit scope literal. It describes a map
-whose values are available for relative reference resolution of the expression.
+Any expression may be preluded by any number of explicit _scope literals_. A
+scope literal describes a map whose values are available for relative reference 
+resolution of the expression (static scope). 
 
 A scope literal might consist of any number of field assignments separated by a
 comma `,`. The key as well as the value are given by expressions, whereas the
-key expression must evaluate to a string.
+key expression must evaluate to a string. All expressions are evaluated in the
+next outer scope, this means later settings in a scope _cannot_ use earlier
+settings in the same scope literal. 
 
 e.g.:
 
@@ -2480,9 +2514,19 @@ value: (( .fibonacci(5) ))
 yields the value `8` for the `value` property.
 
 By default reference expressions in a lambda expression are evaluated in the
-context of the caller. The name `_` can also be used as an anchor to refer to
-the definition scope of the lambda expression. Those references are always
-interpreted as relative references related to the definition scope.
+static scope of the lambda dedinition followed by the static yaml scope of the
+caller. Absolute references are always evalated in the document scope of the
+caller.
+
+The name `_` can also be used as an anchor to refer to the static dfinition
+scope of the lambda expression in the yaml document that was used to define
+the lambda function. Those references are always interpreted as relative
+references related to the this static yaml document scope. There is no
+denotation for accessing the root element of this definition scope.
+
+Relative names can be used to access the static 
+definition scope given inside the dynaml expression (outer scope literals and
+parameters of outer lambda parameters)
 
 e.g.:
 
@@ -2510,9 +2554,11 @@ call:
 This also works across multiple stubs. The definition context is the stub the
 lambda expression is defined in, even if it is used in stubs down the chain.
 Therefore it is possible to use references in the lambda expression, not visible
-at the caller location. 
+at the caller location, they carry the static yaml document scope of their 
+definition with them.
 
-Inner lambda expressions remember the local binding of outer lambda expressions. This can be used to return functions based on arguments of the outer function.
+Inner lambda expressions remember the local binding of outer lambda expressions.
+This can be used to return functions based on arguments of the outer function.
 
 e.g.:
 
@@ -2618,8 +2664,27 @@ bob:
 
 ## Mappings
 
-Mappings are used to produce a new list from the entries of a _list_ or _map_ containing the entries processed by a dynaml expression. The expression is given by a [lambda function](#-lambda-x-x--port-). There are two basic forms of the mapping function: It can be inlined as in `(( map[list|x|->x ":" port] ))`, or it can be determined by a regular dynaml expression evaluating to a lambda function as in `(( map[list|mapping.expression))` (here the mapping is taken from the property `mapping.expression`, which should hold an approriate lambda function).
+Mappings are used to produce a new list from the entries of a _list_ or _map_,
+or a new map from entries of a new _map_.
 
+containing the entries processed by a dynaml expression. The expression is
+given by a [lambda function](#-lambda-x-x--port-). There are two basic forms of
+the mapping function: It can be inlined as in `(( map[list|x|->x ":" port] ))`, 
+or it can be determined by a regular dynaml expression evaluating to a lambda
+function as in `(( map[list|mapping.expression))` (here the mapping is taken
+from the property `mapping.expression`, which should hold an approriate lambda
+function).
+
+The mapping comes in two target flavors: with `[]` or `{}` in the syntax. The first
+flavor always produces a _list_ from the entries of the given source. The
+second one takes only a map source and produces a filtered or transformed _map_.
+
+Additionally the mapping uses two basic mapping behaviours:
+- _transforming the values using the keyword `map`_. Here the result of the lambda
+  function is used as new value to replace the original one. Or
+- _filtering using the keywork `select`_. Here the result of the lambda
+  function is used as a boolean to decide whether the entry should be kept
+  (`true`) or omitted (`false`).
 
 ### `(( map[list|elem|->dynaml-expr] ))`
 
@@ -2726,6 +2791,30 @@ keys:
 - bob
 ```
 
+### `(( map{map|elem|->dynaml-expr} ))`
+
+Using `{}` instead of `[]` in the mapping syntax, the result is again a map
+with the old keys and the new entry values.
+
+```yaml
+persons:
+  alice: 27
+  bob: 26
+older: (( map{persons|x|->x + 1} ) ))
+```
+
+just increments the value of all entries by one in the field `older`:
+
+```yaml
+older:
+  alice: 28
+  bob: 27
+```
+
+**Remark**
+
+An alternate way to express the same is to use `sum[persons|{}|s,k,v|->s { k = v + 1 }]`.
+
 ### `(( select[expr|elem|->dynaml-expr] ))`
 
 With `select` a map or list can be filtered by evaluating a boolean expression
@@ -2758,6 +2847,32 @@ selected:
 **Remark**
 
 An alternate way to express the same is to use `map[list|v|->v.age > 25 ? v :~]`.
+
+### `(( select{map|elem|->dynaml-expr} ))`
+
+Using `{}` instead of `[]` in the mapping syntax, the result is again a map
+with the old keys filtered by the given expression.
+
+```yaml
+persons:
+  alice: 25
+  bob: 26
+older: (( select{persons|x|->x > 25} ))
+```
+
+just keeps all entries with a value greater than 25 and omits all others:
+
+```yaml
+selected:
+  bob: 26
+```
+
+This flavor only works on _maps_.
+
+**Remark**
+
+An alternate way to express the same is to use `sum[persons|{}|s,k,v|->v > 25 ? s {k = v} :s]`.
+
 
 ## Aggregations
 

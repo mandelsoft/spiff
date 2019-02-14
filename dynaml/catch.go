@@ -50,5 +50,5 @@ func (e CallExpr) catch(binding Binding) (interface{}, EvaluationInfo, bool) {
 	if len(e.Arguments) != 1 {
 		return info.Error("catch requires a single argument")
 	}
-	return &CatchExpr{e.Arguments[0]}, info, true
+	return CatchExpr{e.Arguments[0]}, info, true
 }

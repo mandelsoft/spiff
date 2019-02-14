@@ -4224,6 +4224,187 @@ mapped:
 				Expect(source).To(FlowAs(resolved))
 			})
 		})
+
+		Context("for a map to a map", func() {
+			It("maps simple expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+mapped: (( map{map|x|->x} ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+mapped:
+  alice: 25
+  bob: 24
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("filters empty expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: ~
+mapped: (( map{map|x|->x} ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: ~
+mapped:
+  alice: 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("maps value expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+mapped: (( map{map|y,x|->x + length(y)} ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+mapped:
+  alice: 30
+  bob: 27
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("for a selection of map entries", func() {
+			It("maps simple expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+mapped: (( select{map|x|->x > 24} ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+mapped:
+  alice: 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("filters empty expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: ~
+mapped: (( select{map|x|->x} ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: ~
+mapped:
+  alice: 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("for a list selection of map entries", func() {
+			It("maps simple expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+mapped: (( select[map|x|->x > 24] ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+mapped:
+  - 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("filters empty expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: ~
+mapped: (( select[map|x|->x] ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: ~
+mapped:
+  - 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("for a list selection of list entries", func() {
+			It("maps simple expression", func() {
+				source := parseYAML(`
+---
+list:
+  - 25
+  - 24
+mapped: (( select[list|x|->x > 24] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - 25
+  - 24
+mapped:
+  - 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("filters empty expression", func() {
+				source := parseYAML(`
+---
+list:
+  - 25
+  - ~
+mapped: (( select[list|x|->x] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - 25
+  - ~
+mapped:
+  - 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
 	})
 
 	Describe("when doing a sum", func() {
