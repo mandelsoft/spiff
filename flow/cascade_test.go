@@ -500,6 +500,51 @@ values: 3
 				Expect(template).To(CascadeAs(resolved, source, stub))
 			})
 		})
+
+		Context("lambda scopes", func() {
+			Context("in lambdas", func() {
+				It("are passed to nested lambdas", func() {
+					source := parseYAML(`
+---
+func: (( |x|->($a=100) |y|->($b=101) |z|->[x,y,z,a,b] ))
+
+values: (( .func(1)(2)(3) ))
+
+`)
+					resolved := parseYAML(`
+---
+values:
+  - 1
+  - 2
+  - 3
+  - 100
+  - 101
+`)
+					Expect(template).To(CascadeAs(resolved, source))
+				})
+			})
+			Context("in templates", func() {
+				It("are passed to nested lambdas", func() {
+					source := parseYAML(`
+---
+template:
+  <<: (( &template ))
+  func: (( |y|->{$x=x, $y=y} ))
+func: (( |x|->*template ))
+inst: (( .func("instx") ))
+
+values: (( .inst.func("insty") ))
+`)
+					resolved := parseYAML(`
+---
+values:
+  x: instx
+  "y": insty
+`)
+					Expect(template).To(CascadeAs(resolved, source))
+				})
+			})
+		})
 	})
 
 	Describe("using local nodes", func() {

@@ -414,7 +414,7 @@ func EmbeddedDynaml(root Node) *string {
 	if !ok {
 		return nil
 	}
-	rootString=strings.Replace(rootString,"\n"," ", -1)
+	rootString = strings.Replace(rootString, "\n", " ", -1)
 	sub := embeddedDynaml.FindStringSubmatch(rootString)
 	if sub == nil {
 		return nil

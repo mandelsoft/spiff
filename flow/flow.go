@@ -243,7 +243,7 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 						debug.Debug("found temporary declaration\n")
 					}
 					if flags.Local() {
-						debug.Debug("found local declaration\n")
+						debug.Debug("found static declaration\n")
 					}
 				}
 				if ok && m.Has(dynaml.TEMPLATE) {

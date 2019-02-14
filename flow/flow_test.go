@@ -6374,6 +6374,7 @@ result:
 			})
 		})
 	})
+
 	Describe("scoped expressions", func() {
 		Context("in normal expressions", func() {
 			It("accepts empty scopes", func() {

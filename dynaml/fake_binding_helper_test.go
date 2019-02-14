@@ -58,7 +58,7 @@ func (c FakeBinding) WithSource(source string) Binding {
 	return c
 }
 
-func (c FakeBinding) GetLocalBinding() map[string]yaml.Node {
+func (c FakeBinding) GetStaticBinding() map[string]yaml.Node {
 	return map[string]yaml.Node{}
 }
 

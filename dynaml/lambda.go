@@ -21,11 +21,18 @@ type LambdaExpr struct {
 	E     Expression
 }
 
+func keys(m map[string]yaml.Node) []string {
+	s := []string{}
+	for k := range m {
+		s = append(s, k)
+	}
+	return s
+}
+
 func (e LambdaExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 	debug.Debug("LAMBDA VALUE with resolver %+v\n", binding)
-
-	return LambdaValue{e, binding.GetLocalBinding(), staticScope(binding)}, info, true
+	return LambdaValue{e, binding.GetStaticBinding(), staticScope(binding)}, info, true
 }
 
 func (e LambdaExpr) String() string {
@@ -69,7 +76,7 @@ func (e LambdaRefExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 			debug.Debug("no lambda expression: %T\n", expr)
 			return info.Error("'%s' is no lambda expression", v)
 		}
-		lambda = LambdaValue{lexpr, binding.GetLocalBinding(), staticScope(binding)}
+		lambda = LambdaValue{lexpr, binding.GetStaticBinding(), staticScope(binding)}
 
 	default:
 		return info.Error("lambda reference must resolve to lambda value or string")
@@ -84,7 +91,7 @@ func (e LambdaRefExpr) String() string {
 
 type LambdaValue struct {
 	lambda   LambdaExpr
-	local    map[string]yaml.Node
+	static   map[string]yaml.Node
 	resolver Binding
 }
 
@@ -105,18 +112,35 @@ func (e LambdaValue) EquivalentTo(val interface{}) bool {
 	return ok && reflect.DeepEqual(e.lambda, o.lambda)
 }
 
-func (e LambdaValue) String() string {
-	binding := ""
-	if len(e.local) > 0 {
-		binding = "{"
+func short(val interface{}, all bool) string {
+	switch v := val.(type) {
+	case []yaml.Node:
+		s := "["
 		sep := ""
-		for n, v := range e.local {
-			if n != "_" {
-				binding += fmt.Sprintf("%s%s: %v", sep, n, v.Value())
+		for _, e := range v {
+			s = fmt.Sprintf("%s%s%s", s, sep, short(e.Value(), all))
+			sep = ", "
+		}
+		return s + "]"
+	case map[string]yaml.Node:
+		s := "{"
+		sep := ""
+		for k, e := range v {
+			if all || k != "_" {
+				s = fmt.Sprintf("%s%s%s: %s", s, sep, k, short(e.Value(), all))
 				sep = ", "
 			}
 		}
-		binding += "}"
+		return s + "}"
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+func (e LambdaValue) String() string {
+	binding := ""
+	if len(e.static) > 0 {
+		binding = short(e.static, false)
 	}
 	return fmt.Sprintf("%s%s", binding, e.lambda)
 }
@@ -133,7 +157,7 @@ func (e LambdaValue) Evaluate(args []interface{}, binding Binding, locally bool)
 		return false, nil, info, false
 	}
 	inp := map[string]yaml.Node{}
-	for n, v := range e.local {
+	for n, v := range e.static {
 		inp[n] = v
 	}
 	debug.Debug("LAMBDA CALL: inherit local %+v\n", inp)

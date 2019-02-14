@@ -12,14 +12,19 @@ import (
 )
 
 type Scope struct {
-	local map[string]yaml.Node
-	path  []string
-	next  *Scope
-	root  *Scope
+	local  map[string]yaml.Node
+	static map[string]yaml.Node
+	path   []string
+	next   *Scope
+	root   *Scope
 }
 
-func newScope(outer *Scope, path []string, local map[string]yaml.Node) *Scope {
-	scope := &Scope{local, path, outer, nil}
+func newFakeScope(outer *Scope, path []string, local map[string]yaml.Node) *Scope {
+	return newScope(outer, path, local, nil)
+}
+
+func newScope(outer *Scope, path []string, local, static map[string]yaml.Node) *Scope {
+	scope := &Scope{local, static, path, outer, nil}
 	if outer == nil {
 		scope.root = scope
 	} else {
@@ -38,8 +43,8 @@ type DefaultEnvironment struct {
 
 	currentSourceName string
 
-	local map[string]yaml.Node
-	outer dynaml.Binding
+	static map[string]yaml.Node
+	outer  dynaml.Binding
 
 	active bool
 }
@@ -55,10 +60,10 @@ func keys(s map[string]yaml.Node) string {
 }
 
 func (e DefaultEnvironment) String() string {
-	result := fmt.Sprintf("ENV: %s local: %s", strings.Join(e.path, ", "), keys(e.local))
+	result := fmt.Sprintf("SCOPES: <%s> static: %s", strings.Join(e.path, ", "), keys(e.static))
 	s := e.scope
 	for s != nil {
-		result = result + "\n  " + keys(s.local)
+		result = result + "\n  <" + strings.Join(s.path, ", ") + ">" + keys(s.local) + keys(s.static)
 		s = s.next
 	}
 	return result
@@ -101,8 +106,8 @@ func (e DefaultEnvironment) GetScope() *Scope {
 	return e.scope
 }
 
-func (e DefaultEnvironment) GetLocalBinding() map[string]yaml.Node {
-	return e.local
+func (e DefaultEnvironment) GetStaticBinding() map[string]yaml.Node {
+	return e.static
 }
 
 func (e DefaultEnvironment) FindFromRoot(path []string) (yaml.Node, bool) {
@@ -146,14 +151,20 @@ func (e DefaultEnvironment) WithSource(source string) dynaml.Binding {
 }
 
 func (e DefaultEnvironment) WithScope(step map[string]yaml.Node) dynaml.Binding {
-	e.scope = newScope(e.scope, e.path, step)
-	e.local = map[string]yaml.Node{}
+	e.scope = newScope(e.scope, e.path, step, e.static)
 	return e
 }
 
 func (e DefaultEnvironment) WithLocalScope(step map[string]yaml.Node) dynaml.Binding {
-	e.scope = newScope(e.scope, nil, step)
-	e.local = step
+	static := map[string]yaml.Node{}
+	for k, v := range e.static {
+		static[k] = v
+	}
+	for k, v := range step {
+		static[k] = v
+	}
+	e.static = static
+	e.scope = newScope(e.scope, nil, step, static)
 	return e
 }
 
@@ -166,7 +177,6 @@ func (e DefaultEnvironment) WithPath(step string) dynaml.Binding {
 	copy(newPath, e.stubPath)
 	e.stubPath = append(newPath, step)
 
-	e.local = map[string]yaml.Node{}
 	return e
 }
 

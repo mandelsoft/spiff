@@ -16,7 +16,7 @@ type SourceProvider interface {
 
 type Binding interface {
 	SourceProvider
-	GetLocalBinding() map[string]yaml.Node
+	GetStaticBinding() map[string]yaml.Node
 	GetRootBinding() map[string]yaml.Node
 
 	FindFromRoot([]string) (yaml.Node, bool)
