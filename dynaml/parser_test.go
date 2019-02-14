@@ -382,12 +382,13 @@ var _ = Describe("parsing", func() {
 		It("parses simple mapping", func() {
 			parsesAs(
 				`map[list|x|->x]`,
-				MapExpr{
+				MappingExpr{
 					ReferenceExpr{[]string{"list"}},
 					LambdaExpr{
 						[]string{"x"},
 						ReferenceExpr{[]string{"x"}},
 					},
+					MapToListContext,
 				},
 			)
 		})
@@ -395,12 +396,13 @@ var _ = Describe("parsing", func() {
 		It("parses key/value mapping", func() {
 			parsesAs(
 				`map[list|x,y|->x]`,
-				MapExpr{
+				MappingExpr{
 					ReferenceExpr{[]string{"list"}},
 					LambdaExpr{
 						[]string{"x", "y"},
 						ReferenceExpr{[]string{"x"}},
 					},
+					MapToListContext,
 				},
 			)
 		})
@@ -408,7 +410,7 @@ var _ = Describe("parsing", func() {
 		It("parses complex mapping", func() {
 			parsesAs(
 				`map[list|x|->x ".*"]`,
-				MapExpr{
+				MappingExpr{
 					ReferenceExpr{[]string{"list"}},
 					LambdaExpr{
 						[]string{"x"},
@@ -417,6 +419,7 @@ var _ = Describe("parsing", func() {
 							StringExpr{".*"},
 						},
 					},
+					MapToListContext,
 				},
 			)
 		})
@@ -424,11 +427,12 @@ var _ = Describe("parsing", func() {
 		It("parses mapping expression", func() {
 			parsesAs(
 				`map[list|mappings.a]`,
-				MapExpr{
+				MappingExpr{
 					ReferenceExpr{[]string{"list"}},
 					ReferenceExpr{
 						[]string{"mappings", "a"},
 					},
+					MapToListContext,
 				},
 			)
 		})
@@ -436,7 +440,7 @@ var _ = Describe("parsing", func() {
 		It("parses complex mapping expression", func() {
 			parsesAs(
 				`map[list|lambda |x|->x ".*"]`,
-				MapExpr{
+				MappingExpr{
 					ReferenceExpr{[]string{"list"}},
 					LambdaExpr{
 						[]string{"x"},
@@ -445,12 +449,116 @@ var _ = Describe("parsing", func() {
 							StringExpr{".*"},
 						},
 					},
+					MapToListContext,
+				},
+			)
+		})
+
+		It("parses simple map mapping", func() {
+			parsesAs(
+				`map{list|x|->x}`,
+				MappingExpr{
+					ReferenceExpr{[]string{"list"}},
+					LambdaExpr{
+						[]string{"x"},
+						ReferenceExpr{[]string{"x"}},
+					},
+					MapToMapContext,
+				},
+			)
+		})
+
+		It("parses simple selection", func() {
+			parsesAs(
+				`select[list|x|->x]`,
+				MappingExpr{
+					ReferenceExpr{[]string{"list"}},
+					LambdaExpr{
+						[]string{"x"},
+						ReferenceExpr{[]string{"x"}},
+					},
+					SelectToListContext,
+				},
+			)
+		})
+		It("parses simple map selection", func() {
+			parsesAs(
+				`select{list|x|->x}`,
+				MappingExpr{
+					ReferenceExpr{[]string{"list"}},
+					LambdaExpr{
+						[]string{"x"},
+						ReferenceExpr{[]string{"x"}},
+					},
+					SelectToMapContext,
+				},
+			)
+		})
+	})
+
+	Describe("scopes", func() {
+		It("parses empty scope", func() {
+			parsesAs(
+				`() x`,
+				ScopeExpr{
+					CreateMapExpr{
+						nil,
+					},
+					ReferenceExpr{[]string{"x"}},
+				},
+			)
+		})
+
+		It("parses scope with one assigment", func() {
+			parsesAs(
+				`($x=5) x`,
+				ScopeExpr{
+					CreateMapExpr{
+						[]Assignment{
+							{
+								Key:   StringExpr{"x"},
+								Value: IntegerExpr{5},
+							},
+						},
+					},
+					ReferenceExpr{[]string{"x"}},
+				},
+			)
+		})
+
+		It("parses scope with two assigments", func() {
+			parsesAs(
+				`($x=5, $y="x") x`,
+				ScopeExpr{
+					CreateMapExpr{
+						[]Assignment{
+							{
+								Key:   StringExpr{"x"},
+								Value: IntegerExpr{5},
+							},
+							{
+								Key:   StringExpr{"y"},
+								Value: StringExpr{"x"},
+							},
+						},
+					},
+					ReferenceExpr{[]string{"x"}},
 				},
 			)
 		})
 	})
 
 	Describe("lambda expressions", func() {
+		It("parses expression with no parameter", func() {
+			parsesAs(
+				`lambda||->x`,
+				LambdaExpr{
+					nil,
+					ReferenceExpr{[]string{"x"}},
+				},
+			)
+		})
+
 		It("parses expression with one parameter", func() {
 			parsesAs(
 				`lambda|x|->x`,

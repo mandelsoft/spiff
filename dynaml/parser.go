@@ -125,6 +125,7 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			})
 
 		case ruleAction0:
+		case ruleAction1:
 		case ruleProjectionValue:
 			value := &ProjectionValue{}
 			tokens.Push(ProjectionValueExpr{value})
@@ -245,22 +246,32 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			name := tokens.Pop().(nameHelper)
 			tokens.Push(StringExpr{name.name})
 
+		case ruleStartParams:
+			tokens.Push(nameListHelper{})
 		case ruleName:
 			tokens.Push(nameHelper{name: contents})
 		case ruleNextName:
-			rhs := tokens.Pop()
-			list := tokens.PopNameList()
-			list.list = append(list.list, rhs.(nameHelper).name)
+			rhs := tokens.Pop().(nameHelper)
+			list := tokens.Pop().(nameListHelper)
+			list.list = append(list.list, rhs.name)
 			tokens.Push(list)
 
 		case ruleMapping:
 			rhs := tokens.Pop()
 			lhs := tokens.Pop()
-			tokens.Push(MapExpr{Lambda: rhs, A: lhs})
+			tokens.Push(MappingExpr{Lambda: rhs, A: lhs, Context: MapToListContext})
 		case ruleSelection:
 			rhs := tokens.Pop()
 			lhs := tokens.Pop()
-			tokens.Push(SelectExpr{Lambda: rhs, A: lhs})
+			tokens.Push(MappingExpr{Lambda: rhs, A: lhs, Context: SelectToListContext})
+		case ruleMapMapping:
+			rhs := tokens.Pop()
+			lhs := tokens.Pop()
+			tokens.Push(MappingExpr{Lambda: rhs, A: lhs, Context: MapToMapContext})
+		case ruleMapSelection:
+			rhs := tokens.Pop()
+			lhs := tokens.Pop()
+			tokens.Push(MappingExpr{Lambda: rhs, A: lhs, Context: SelectToMapContext})
 
 		case ruleSum:
 			rhs := tokens.Pop()
@@ -272,8 +283,8 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 
 		case ruleLambdaExpr:
 			rhs := tokens.Pop()
-			names := tokens.PopNameList().list
-			tokens.Push(LambdaExpr{Names: names, E: rhs})
+			names := tokens.Pop().(nameListHelper)
+			tokens.Push(LambdaExpr{Names: names.list, E: rhs})
 
 		case ruleLambdaRef:
 			rhs := tokens.Pop()
@@ -325,6 +336,8 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 		case ruleMap:
 		case ruleScope:
 		case ruleAssignments:
+		case ruleNames:
+		case ruleParams:
 		case rulews:
 		case rulereq_ws:
 		default:
@@ -383,13 +396,4 @@ func (s *tokenStack) Push(expr Expression) {
 
 func (s *tokenStack) PopExpressionList() []Expression {
 	return (s.Pop().(expressionListHelper)).list
-}
-
-func (s *tokenStack) PopNameList() nameListHelper {
-	lhs := s.Pop()
-	list, ok := lhs.(nameListHelper)
-	if !ok {
-		list = nameListHelper{list: []string{lhs.(nameHelper).name}}
-	}
-	return list
 }

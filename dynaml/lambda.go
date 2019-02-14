@@ -3,6 +3,7 @@ package dynaml
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/yaml"
@@ -36,11 +37,8 @@ func (e LambdaExpr) Evaluate(binding Binding, locally bool) (interface{}, Evalua
 }
 
 func (e LambdaExpr) String() string {
-	str := ""
-	for _, n := range e.Names {
-		str += "," + n
-	}
-	return fmt.Sprintf("lambda|%s|->%s", str[1:], e.E)
+	str := strings.Join(e.Names, ",")
+	return fmt.Sprintf("lambda|%s|->%s", str, e.E)
 }
 
 type LambdaRefExpr struct {
@@ -141,6 +139,9 @@ func (e LambdaValue) String() string {
 	binding := ""
 	if len(e.static) > 0 {
 		binding = short(e.static, false)
+	}
+	if len(binding) > 40 {
+		binding = binding[:17] + " ... " + binding[len(binding)-17:]
 	}
 	return fmt.Sprintf("%s%s", binding, e.lambda)
 }
