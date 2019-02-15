@@ -195,6 +195,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "substr":
 		result, sub, ok = func_substr(values, binding)
 
+	case "keys":
+		result, sub, ok = func_keys(values, binding)
+
 	case "type":
 		if info.Undefined {
 			info.Undefined = false

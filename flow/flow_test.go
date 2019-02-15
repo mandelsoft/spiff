@@ -6411,6 +6411,28 @@ value: s
 		})
 	})
 
+	Describe("when calling keys", func() {
+		It("it handles maps", func() {
+			source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 26
+value: (( keys(map) ))
+`)
+			resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 26
+value:
+  - alice
+  - bob
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
 	Describe("yaml and json", func() {
 		Context("parsing", func() {
 			It("it parses json", func() {

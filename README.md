@@ -80,6 +80,7 @@ Contents:
 		- [(( replace(string, "foo", "bar") ))](#-replacestring-foo-bar-)
 		- [(( substr(string, 1, 3) ))](#-substrstring-1-3-)
 		- [(( match("(f.*)(b.*)", "xxxfoobar") ))](#-matchfb-xxxfoobar-)
+		- [(( keys(map) ))](#-keysmap-)
 		- [(( length(list) ))](#-lengthlist-)
 		- [(( base64(string) ))](#-base64string-)
 		- [(( md5(string) ))](#-md5string-)
@@ -1384,6 +1385,30 @@ matches:
 - foobar
 - foo
 - bar
+```
+
+### `(( keys(map) ))`
+
+Determine the sorted list of keys used in a map.
+
+e.g.:
+
+```yaml
+map:
+  alice: 25
+  bob: 25
+keys: (( keys(map) ))
+```
+
+yields:
+
+```yaml
+map:
+  alice: 25
+  bob: 25
+keys:
+  - alice
+  - bob
 ```
 
 ### `(( length(list) ))`
@@ -3947,9 +3972,10 @@ networks:
 - Crazy Shit: Graph Analysis with _spiff_
 
   It is easy to describe a simple graph with knots and edges (for example 
-  for a set of components and their dependencies):
+  for a set of components and their dependencies) just by using a map of lists.
   
-  **graph.yaml**
+  <details><summary><b>graph.yaml</b></summary>
+  
   ```yaml
   graph:
     a:
@@ -3965,13 +3991,15 @@ networks:
     - d
     - b
   ```
+  </details>
   
   Now it would be useful to figure out whether there are dependency cycles or
   to determine ordered transitive dependencies for a component.
   
   Let's say something like this:
   
-  **closures.yaml***
+  <details><summary><b>closures.yaml</b></summary>
+
   ```yaml
   graph:
   utilities:
@@ -3979,11 +4007,13 @@ networks:
   closures: (( utilities.graph.evaluate(graph) ))
   cycles: (( utilities.graph.cycles(closures) ))
   ```
-
-  Indeed, this can be done with spiff. The only thing required is
-  a _"small utilities stub"_:
+  </details>
   
-  **utilities.yaml**
+  Indeed, this can be done with spiff. The only thing required is
+  a _"small utilities stub"_.
+  
+  <details><summary><b>utilities.yaml</b></summary>
+  
   ```yaml
   utilities:
     <<: (( &temporary ))
@@ -4001,13 +4031,15 @@ networks:
       evaluate: (( |model|->sum[model|{}|s,k,v|->s { k=_.norm(_._dep(model,k,[]))}] ))
       cycles: (( |result|->uniq(sum[result|[]|s,k,v|-> v.err ? s [v.err] :s]) ))
   ```
+  </details>
   
   And magically _spiff_ does the work just by calling
   ```bash
   spiff merge closure.yaml graph.yaml utilities.yaml
   ```
   
-  And the result is
+  <details><summary>And the result is</summary>
+  
   ```yaml
      closures:
        a:
@@ -4058,6 +4090,7 @@ networks:
        - d
        - b
   ```
+  </details>
   
 # Error Reporting
 
