@@ -2,6 +2,8 @@ package dynaml
 
 import (
 	"container/list"
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -34,13 +36,33 @@ type operationHelper struct {
 	op string
 }
 
+func (e *parseError) String() string {
+	tokens, error := []token32{e.max}, ""
+	positions, p := make([]int, 2*len(tokens)), 0
+	for _, token := range tokens {
+		positions[p], p = int(token.begin), p+1
+		positions[p], p = int(token.end), p+1
+	}
+	translations := translatePositions(e.p.buffer, positions)
+	format := "parse error near line %v symbol %v - line %v symbol %v: %v"
+	for _, token := range tokens {
+		begin, end := int(token.begin), int(token.end)
+		error += fmt.Sprintf(format,
+			translations[begin].line, translations[begin].symbol,
+			translations[end].line, translations[end].symbol,
+			strconv.Quote(string(e.p.buffer[begin:end])))
+	}
+
+	return error
+}
+
 func Parse(source string, path []string, stubPath []string) (Expression, error) {
 	grammar := &DynamlGrammar{Buffer: source}
 	grammar.Init()
 
 	err := grammar.Parse()
 	if err != nil {
-		return nil, err
+		return nil, errors.New(err.(*parseError).String())
 	}
 
 	return buildExpression(grammar, path, stubPath), nil
