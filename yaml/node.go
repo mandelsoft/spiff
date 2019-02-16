@@ -2,11 +2,9 @@ package yaml
 
 import (
 	"fmt"
-	"reflect"
-	"regexp"
-	"strings"
-
 	"github.com/cloudfoundry-incubator/candiedyaml"
+	"reflect"
+	"strings"
 )
 
 const SELF = "_"
@@ -407,17 +405,17 @@ func (n AnnotatedNode) EquivalentToNode(o Node) bool {
 	return b
 }
 
-var embeddedDynaml = regexp.MustCompile(`^\(\((([^!].*)?)\)\)$`)
-
 func EmbeddedDynaml(root Node) *string {
 	rootString, ok := root.Value().(string)
 	if !ok {
 		return nil
 	}
-	rootString = strings.Replace(rootString, "\n", " ", -1)
-	sub := embeddedDynaml.FindStringSubmatch(rootString)
-	if sub == nil {
-		return nil
+	if strings.HasPrefix(rootString,"((") &&
+		strings.HasSuffix(rootString,"))") {
+		sub:=rootString[2:len(rootString)-2]
+		if !strings.HasPrefix(sub,"!") {
+			return &sub
+		}
 	}
-	return &sub[1]
+	return nil
 }

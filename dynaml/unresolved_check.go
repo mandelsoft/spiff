@@ -42,9 +42,10 @@ func (e UnresolvedNodes) Issue(msgfmt string, args ...interface{}) (result yaml.
 		default:
 			format = "\t%s\tin %s\t%s\t(%s)%s"
 		}
+		val:=strings.Replace(fmt.Sprintf("%s", node.Value()),"\n\t", " ", -1 )
 		message := fmt.Sprintf(
 			format,
-			node.Value(),
+			val,
 			node.SourceName(),
 			strings.Join(node.Context, "."),
 			strings.Join(node.Path, "."),
@@ -83,10 +84,11 @@ func (e UnresolvedNodes) Error() string {
 		default:
 			format = "%s\n\t%s\tin %s\t%s\t(%s)%s"
 		}
+		val:=strings.Replace(fmt.Sprintf("%s", node.Value()),"\n", "\n\t", -1 )
 		message = fmt.Sprintf(
 			format,
 			message,
-			node.Value(),
+			val,
 			node.SourceName(),
 			strings.Join(node.Context, "."),
 			strings.Join(node.Path, "."),
@@ -115,11 +117,11 @@ func nestedIssues(gap string, issue yaml.Issue) string {
 	message := ""
 	if issue.Nested != nil {
 		for _, sub := range issue.Nested {
-			message = message + "\n" + gap + sub.Issue
-			message += nestedIssues(gap+"\t", sub)
+			message = message + "\n" + sub.Issue
+			message += nestedIssues("\t", sub)
 		}
 	}
-	return message
+	return strings.Replace(message,"\n", "\n"+gap, -1)
 }
 
 func FindUnresolvedNodes(root yaml.Node, context ...string) (result []UnresolvedNode) {
