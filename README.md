@@ -4108,11 +4108,12 @@ If a dynaml expression cannot be resolved to a value, it is reported by the
 	(( <failed expression> ))	in <file>	<path to node>	(<referred path>)	<tag><issue>
 ```
 
-e.g.:
+<details><summary><b>Example</b></summary>
 
 ```
 	(( min_ip("10") ))	in source.yml	node.a.[0]	()	*CIDR argument required
 ```
+</details>
 
 Cyclic dependencies are detected by iterative evaluation until the document is unchanged after a step.
 Nodes involved in a cycle are therefore typically reported just as unresolved node without a specific issue.
@@ -4129,4 +4130,32 @@ tag. The following tags are used (in reporting order):
 Problems occuring during inline template processing are reported as nested problems. The classification is
 propagated to the outer node.
 
+If a problem occurs in nested lamba calls the call stack together with the lamba function and is 
+local binding is listed.
+
+<details><summary><b>Example</b></summary>
+
+```text
+	(( 2 + .func(2) ))	in local/err.yaml	value	()	*evaluation of lambda expression failed: lambda|x|->x > 0 ? _(x - 1) : *(template): {x: 2}
+		... evaluation of lambda expression failed: lambda|x|->x > 0 ? _(x - 1) : *(template): {x: 1}
+		... evaluation of lambda expression failed: lambda|x|->x > 0 ? _(x - 1) : *(template): {x: 0}
+		... resolution of template 'template' failed
+			(( z ))	in local/err.yaml	val	()*'z' not found 
+
+```
+</details>
+
+In case of parsing errors in dynaml expressions, the error location is shown now.
+If it is a multi line expression the line a character/symbol number in that line
+is show, otherwise the line numer is omitted.
+
+<details><summary><b>Example</b></summary>
+
+```text
+	((
+	  2 ++ .func(2)
+	))	in local/err.yaml	faulty	()	*parse error near line 2 symbol 2 - line 2 symbol 3: " " 
+
+```
+</details>
 

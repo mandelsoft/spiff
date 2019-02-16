@@ -179,8 +179,9 @@ func (e LambdaValue) Evaluate(args []interface{}, binding Binding, locally bool)
 	if !ok {
 		debug.Debug("failed LAMBDA CALL: %s", info.Issue)
 		nested := info.Issue
-		info.SetError("evaluation of lambda expression failed: %s", e)
+		info.SetError("evaluation of lambda expression failed: %s: %s", e, short(inp, false))
 		info.Issue.Nested = append(info.Issue.Nested, nested)
+		info.Issue.Sequence = true
 		return false, nil, info, ok
 	}
 	if isExpression(value) {

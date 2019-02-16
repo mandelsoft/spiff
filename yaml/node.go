@@ -46,12 +46,13 @@ type AnnotatedNode struct {
 }
 
 type Issue struct {
-	Issue  string
-	Nested []Issue
+	Issue    string
+	Nested   []Issue
+	Sequence bool
 }
 
 func NewIssue(msg string, args ...interface{}) Issue {
-	return Issue{fmt.Sprintf(msg, args...), []Issue{}}
+	return Issue{fmt.Sprintf(msg, args...), []Issue{}, false}
 }
 
 const (
@@ -410,10 +411,10 @@ func EmbeddedDynaml(root Node) *string {
 	if !ok {
 		return nil
 	}
-	if strings.HasPrefix(rootString,"((") &&
-		strings.HasSuffix(rootString,"))") {
-		sub:=rootString[2:len(rootString)-2]
-		if !strings.HasPrefix(sub,"!") {
+	if strings.HasPrefix(rootString, "((") &&
+		strings.HasSuffix(rootString, "))") {
+		sub := rootString[2 : len(rootString)-2]
+		if !strings.HasPrefix(sub, "!") {
 			return &sub
 		}
 	}

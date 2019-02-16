@@ -14,7 +14,7 @@ func func_eval(arguments []interface{}, binding Binding, locally bool) (interfac
 
 	expr, err := Parse(str, binding.Path(), binding.StubPath())
 	if err != nil {
-		return info.Error("%s", err)
+		return info.Error("(%s)\t %s", str, err)
 	}
 	return expr.Evaluate(binding, locally)
 }
