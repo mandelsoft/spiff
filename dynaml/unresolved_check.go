@@ -177,7 +177,7 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (result []Unresolved
 			_, err := Parse(*s, dummy, dummy)
 			if err != nil {
 				nodes = append(nodes, UnresolvedNode{
-					Node:    yaml.IssueNode(root, true, false, yaml.Issue{Issue: fmt.Sprintf("unparseable expression")}),
+					Node:    yaml.IssueNode(root, true, false, yaml.Issue{Issue: err.Error()}),
 					Context: context,
 					Path:    []string{},
 				})

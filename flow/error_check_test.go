@@ -156,7 +156,7 @@ node: (( length( 5 ) ))
 node: (( a "." ) ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a "." ) ))	in test	node	()	*unparseable expression`,
+			`	(( a "." ) ))	in test	node	()	*parse error near line 1 symbol 7 - line 1 symbol 8: " "`,
 		))
 	})
 
@@ -167,7 +167,7 @@ node:
   - <<: (( a "." ) ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a "." ) ))	in test	node.[0].<<	()	*unparseable expression`,
+			`	(( a "." ) ))	in test	node.[0].<<	()	*parse error near line 1 symbol 7 - line 1 symbol 8: " "`,
 		))
 	})
 
@@ -178,7 +178,7 @@ node:
   <<: (( a "." ) ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a "." ) ))	in test	node.<<	()	*unparseable expression`,
+			`	(( a "." ) ))	in test	node.<<	()	*parse error near line 1 symbol 7 - line 1 symbol 8: " "`,
 		))
 	})
 })

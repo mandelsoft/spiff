@@ -67,7 +67,7 @@ func (e LambdaRefExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 		expr, err := Parse(v, e.Path, e.StubPath)
 		if err != nil {
 			debug.Debug("cannot parse: %s\n", err.Error())
-			return info.Error("cannot parse lamba expression '%s'")
+			return info.Error("cannot parse lamba expression '%s': %s", err)
 		}
 		lexpr, ok := expr.(LambdaExpr)
 		if !ok {
