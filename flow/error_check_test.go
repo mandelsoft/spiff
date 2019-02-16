@@ -150,13 +150,35 @@ node: (( length( 5 ) ))
 		))
 	})
 
+	It("reports list error in select{}", func() {
+		source := parseYAML(`
+---
+
+node: (( select{[5]|x|->x} ))
+`)
+		Expect(source).To(FlowToErr(
+			`	(( select{[5]|x|->x} ))	in test	node	()	*list value not supported for select mapping`,
+		))
+	})
+
+	It("reports list error in map{}", func() {
+		source := parseYAML(`
+---
+
+node: (( map{[5]|x|->x} ))
+`)
+		Expect(source).To(FlowToErr(
+			`	(( map{[5]|x|->x} ))	in test	node	()	*list value not supported for map mapping`,
+		))
+	})
+
 	It("reports unparseable", func() {
 		source := parseYAML(`
 ---
 node: (( a "." ) ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a "." ) ))	in test	node	()	*parse error near line 1 symbol 7 - line 1 symbol 8: " "`,
+			`	(( a "." ) ))	in test	node	()	*parse error near symbol 7 - symbol 8: " "`,
 		))
 	})
 
@@ -167,7 +189,7 @@ node:
   - <<: (( a "." ) ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a "." ) ))	in test	node.[0].<<	()	*parse error near line 1 symbol 7 - line 1 symbol 8: " "`,
+			`	(( a "." ) ))	in test	node.[0].<<	()	*parse error near symbol 7 - symbol 8: " "`,
 		))
 	})
 
@@ -178,7 +200,23 @@ node:
   <<: (( a "." ) ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a "." ) ))	in test	node.<<	()	*parse error near line 1 symbol 7 - line 1 symbol 8: " "`,
+			`	(( a "." ) ))	in test	node.<<	()	*parse error near symbol 7 - symbol 8: " "`,
+		))
+	})
+
+	It("reports unparseable map insert operator in multi line expression", func() {
+		source := parseYAML(`
+---
+node:
+  <<: |-
+    ((
+    a "." )
+    ))
+`)
+		Expect(source).To(FlowToErr(
+			`	((
+	a "." )
+	))	in test	node.<<	()	*parse error near line 2 symbol 6 - line 2 symbol 7: " "`,
 		))
 	})
 })

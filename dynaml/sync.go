@@ -60,6 +60,26 @@ func (e SyncExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		return info.AnnotateError(infoc, "condition evaluation failed)")
 	}
 
+	if lambda, ok := cond.(LambdaValue); ok {
+		args := []interface{}{}
+		if result[CATCH_VALUE] != nil {
+			args = append(args, result[CATCH_VALUE].Value())
+		} else {
+			args = append(args, nil)
+		}
+		switch len(lambda.lambda.Names) {
+		case 1:
+		case 2:
+			args = append(args, result[CATCH_ERROR].Value())
+		default:
+			return info.Error("lambda expression for catch must take one or two arguments")
+		}
+		resolved, result, sub, ok := lambda.Evaluate(args, binding, locally)
+		if !resolved {
+			return e, sub, ok
+		}
+		cond = result
+	}
 	switch v := cond.(type) {
 	case bool:
 		if !v {

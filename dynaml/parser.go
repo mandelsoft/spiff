@@ -36,6 +36,14 @@ type operationHelper struct {
 	op string
 }
 
+func lineError(lines, syms, linee, syme int, txt string) string {
+	return fmt.Sprintf("parse error near symbol %v - symbol %v: %v", syms, syme, txt)
+}
+
+func docError(lines, syms, linee, syme int, txt string) string {
+	return fmt.Sprintf("parse error near line %v symbol %v - line %v symbol %v: %v", lines, syms, linee, syme, txt)
+}
+
 func (e *parseError) String() string {
 	tokens, error := []token32{e.max}, ""
 	positions, p := make([]int, 2*len(tokens)), 0
@@ -44,10 +52,13 @@ func (e *parseError) String() string {
 		positions[p], p = int(token.end), p+1
 	}
 	translations := translatePositions(e.p.buffer, positions)
-	format := "parse error near line %v symbol %v - line %v symbol %v: %v"
+	errf := lineError
+	if strings.Index(e.p.Buffer, "\n") >= 0 {
+		errf = docError
+	}
 	for _, token := range tokens {
 		begin, end := int(token.begin), int(token.end)
-		error += fmt.Sprintf(format,
+		error += errf(
 			translations[begin].line, translations[begin].symbol,
 			translations[end].line, translations[end].symbol,
 			strconv.Quote(string(e.p.buffer[begin:end])))

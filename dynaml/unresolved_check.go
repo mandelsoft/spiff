@@ -28,7 +28,7 @@ func (e UnresolvedNodes) Issue(msgfmt string, args ...interface{}) (result yaml.
 		issue := node.Issue()
 		msg := issue.Issue
 		if msg != "" {
-			msg = "\t" + tag(node) + msg
+			msg = tag(node) + msg
 		}
 		if node.HasError() {
 			localError = true
@@ -38,9 +38,9 @@ func (e UnresolvedNodes) Issue(msgfmt string, args ...interface{}) (result yaml.
 		}
 		switch node.Value().(type) {
 		case Expression:
-			format = "\t(( %s ))\tin %s\t%s\t(%s)%s"
+			format = "(( %s ))\tin %s\t%s\t(%s)%s"
 		default:
-			format = "\t%s\tin %s\t%s\t(%s)%s"
+			format = "%s\tin %s\t%s\t(%s)%s"
 		}
 		message := fmt.Sprintf(
 			format,
@@ -83,16 +83,17 @@ func (e UnresolvedNodes) Error() string {
 		default:
 			format = "%s\n\t%s\tin %s\t%s\t(%s)%s"
 		}
+		val := strings.Replace(fmt.Sprintf("%s", node.Value()), "\n", "\n\t", -1)
 		message = fmt.Sprintf(
 			format,
 			message,
-			node.Value(),
+			val,
 			node.SourceName(),
 			strings.Join(node.Context, "."),
 			strings.Join(node.Path, "."),
 			msg,
 		)
-		message += nestedIssues("\t", issue)
+		message += nestedIssues(issue)
 	}
 
 	return message
@@ -111,15 +112,22 @@ func tag(node yaml.Node) string {
 	return tag
 }
 
-func nestedIssues(gap string, issue yaml.Issue) string {
+func nestedIssues(issue yaml.Issue) string {
+	prefix := "\n"
+	gap := ""
+	if issue.Sequence {
+		prefix = "\n\t\t... "
+	} else {
+		gap = "\t\t\t"
+	}
 	message := ""
 	if issue.Nested != nil {
 		for _, sub := range issue.Nested {
-			message = message + "\n" + gap + sub.Issue
-			message += nestedIssues(gap+"\t", sub)
+			message = message + prefix + sub.Issue
+			message += nestedIssues(sub)
 		}
 	}
-	return message
+	return strings.Replace(message, "\n", "\n"+gap, -1)
 }
 
 func FindUnresolvedNodes(root yaml.Node, context ...string) (result []UnresolvedNode) {
