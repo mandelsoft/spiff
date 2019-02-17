@@ -123,9 +123,10 @@ func short(val interface{}, all bool) string {
 	case map[string]yaml.Node:
 		s := "{"
 		sep := ""
-		for k, e := range v {
+		getSortedKeys(v)
+		for _, k := range getSortedKeys(v) {
 			if all || k != "_" {
-				s = fmt.Sprintf("%s%s%s: %s", s, sep, k, short(e.Value(), all))
+				s = fmt.Sprintf("%s%s%s: %s", s, sep, k, short(v[k].Value(), all))
 				sep = ", "
 			}
 		}
