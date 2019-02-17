@@ -52,6 +52,11 @@ func main() {
 					Name:  "path",
 					Usage: "output is taken from given path",
 				},
+				cli.StringSliceFlag{
+					Name:  "select",
+					Usage: "filter dedicated output fields",
+					Value: &cli.StringSlice{},
+				},
 			},
 			Action: func(c *cli.Context) {
 				if len(c.Args()) < 1 {
@@ -59,7 +64,10 @@ func main() {
 					os.Exit(1)
 				}
 				debug.DebugFlag = c.Bool("debug")
-				merge(c.Args()[0], c.Bool("partial"), c.Bool("json"), c.Bool("split"), c.String("path"), c.Args()[1:])
+				merge(c.Args()[0], c.Bool("partial"),
+					c.Bool("json"), c.Bool("split"),
+					c.String("path"), c.StringSlice("select"),
+					c.Args()[1:])
 			},
 		},
 		{
@@ -108,7 +116,7 @@ func main() {
 	app.Run(os.Args)
 }
 
-func merge(templateFilePath string, partial bool, json, split bool, subpath string, stubFilePaths []string) {
+func merge(templateFilePath string, partial bool, json, split bool, subpath string, selection []string, stubFilePaths []string) {
 	var templateFile []byte
 	var err error
 	var stdin = false
@@ -189,6 +197,19 @@ func merge(templateFilePath string, partial bool, json, split bool, subpath stri
 					log.Fatalln(fmt.Sprintf("path %q not found%s", subpath, doc))
 				}
 				flowed = node
+			}
+			if len(selection) > 0 {
+				new := map[string]yaml.Node{}
+				for _, p := range selection {
+					comps := strings.Split(p, ".")
+					node, ok := yaml.FindR(true, flowed, comps...)
+					if !ok {
+						log.Fatalln(fmt.Sprintf("path %q not found%s", subpath, doc))
+					}
+					new[comps[len(comps)-1]] = node
+
+				}
+				flowed = yaml.NewNode(new, "")
 			}
 			if split {
 				if list, ok := flowed.Value().([]yaml.Node); ok {

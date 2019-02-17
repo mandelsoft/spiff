@@ -194,10 +194,12 @@ func (e DefaultEnvironment) Flow(source yaml.Node, shouldOverride bool) (yaml.No
 		debug.Debug("@@} --->   %+v\n", next)
 
 		next = Cleanup(next, updateBinding(next))
-		if reflect.DeepEqual(result, next) {
+		b := reflect.DeepEqual(result, next)
+		//b,r:=yaml.Equals(result, next,[]string{})
+		if b {
 			break
 		}
-
+		//fmt.Printf("****** found diff: %s\n", r)
 		result = next
 	}
 	debug.Debug("@@@ Done\n")
