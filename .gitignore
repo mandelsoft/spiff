@@ -6,4 +6,15 @@ tags
 *.coverprofile
 spiff_darwin_amd64.zip
 spiff_linux_amd64.zip
-
+vendor/gopkg.in/
+vendor/golang.org/
+vendor/github.com/fsnotify/
+vendor/github.com/hashicorp/
+vendor/github.com/hpcloud/
+vendor/github.com/inconshreveable/
+vendor/github.com/magiconair/
+vendor/github.com/mitchellh/
+vendor/github.com/onsi/
+vendor/github.com/pelletier/
+vendor/github.com/pointlander/
+vendor/github.com/spf13/

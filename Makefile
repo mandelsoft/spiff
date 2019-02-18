@@ -1,8 +1,6 @@
-GODEPS := $(shell godep path)
-GOPATH := $(GODEPS):$(GOPATH)
-
 grammar:
 	go get github.com/pointlander/peg
+	(cd $(GOPATH)/src/github.com/pointlander/peg; git checkout 1d0268dfff9bca9748dc9105a214ace2f5c594a8; go install .)
 	peg dynaml/dynaml.peg
 
 release: spiff_linux_amd64.zip spiff_darwin_amd64.zip	
