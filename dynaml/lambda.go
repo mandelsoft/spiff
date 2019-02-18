@@ -148,7 +148,6 @@ func (e LambdaValue) String() string {
 }
 
 func (e LambdaValue) MarshalYAML() (tag string, value interface{}, err error) {
-	fmt.Printf("MARSHAL: %s\n", e.lambda.String())
 	return "", "(( " + e.lambda.String() + " ))", nil
 }
 
