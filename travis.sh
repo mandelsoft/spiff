@@ -5,15 +5,7 @@ if [ ! -d "../../$O" ]; then
   echo "preparing original path"
   cd ../..
   mkdir -p "$(dirname "$O")"
-  ln -s "$P" "$O"
+  mv "$P" "$O"
   cd "$O"
   echo "now in $(pwd)"
 fi
-echo faking missing projects from vendor
-cp -Rf vendor/* ../../..
-echo getting dependencies
-godep get -v
-echo getting test dependencies
-godep get -v -t
-godep go test -i ./...
-
