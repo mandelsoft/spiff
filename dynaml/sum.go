@@ -98,7 +98,7 @@ func sumList(inline bool, source []yaml.Node, e LambdaValue, initial interface{}
 		}
 		_, ok = mapped.(Expression)
 		if ok {
-			debug.Debug("map:  %d unresolved  -> KEEP\n")
+			debug.Debug("map:  %d unresolved  -> KEEP\n", i)
 			return nil, info, true
 		}
 		debug.Debug("map:  %d --> %+v\n", i, mapped)
@@ -129,7 +129,7 @@ func sumMap(inline bool, source map[string]yaml.Node, e LambdaValue, initial int
 		}
 		_, ok = mapped.(Expression)
 		if ok {
-			debug.Debug("map:  %d unresolved  -> KEEP\n")
+			debug.Debug("map:  %s unresolved  -> KEEP\n", k)
 			return nil, info, true
 		}
 		debug.Debug("map:  %s --> %+v\n", k, mapped)

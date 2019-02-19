@@ -206,7 +206,7 @@ func mapList(inline bool, source []yaml.Node, e LambdaValue, binding Binding, ag
 		}
 		_, ok = mapped.(Expression)
 		if ok {
-			debug.Debug("map:  %d unresolved  -> KEEP\n")
+			debug.Debug("map:  %d unresolved  -> KEEP\n", i)
 			return nil, info, true
 		}
 		debug.Debug("map:  %d --> %+v\n", i, mapped)
@@ -235,7 +235,7 @@ func mapMap(inline bool, source map[string]yaml.Node, e LambdaValue, binding Bin
 		}
 		_, ok = mapped.(Expression)
 		if ok {
-			debug.Debug("map:  %d unresolved  -> KEEP\n")
+			debug.Debug("map:  %s unresolved  -> KEEP\n", k)
 			return nil, info, true
 		}
 		debug.Debug("map:  %s --> %+v\n", k, mapped)
