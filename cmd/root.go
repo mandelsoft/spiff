@@ -31,7 +31,7 @@ var cfgFile string
 var rootCmd = &cobra.Command{
 	Use:     "spiff++",
 	Short:   "deployment manifest toolkit",
-	Version: "1.2.1",
+	Version: "1.2.1.1",
 	Long: `spiff++ is a fork of spiff that provides a compatible extension to spiff based
 on the latest version offering a rich set of new features not yet available in spiff.
 

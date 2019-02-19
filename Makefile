@@ -5,12 +5,17 @@ grammar:
 
 release: spiff_linux_amd64.zip spiff_darwin_amd64.zip	
 
-spiff_linux_amd64.zip:
-	GOPATH=$(GOPATH) GOOS=linux GOARCH=amd64 go build -o spiff++/spiff++ .
+spiff_linux_amd64.zip: ensure
+	GOOS=linux GOARCH=amd64 go build -o spiff++/spiff++ .
 	(cd spiff++; zip spiff_linux_amd64.zip spiff++)
 	rm spiff++/spiff++
 
-spiff_darwin_amd64.zip:
-	GOPATH=$(GOPATH) GOOS=darwin GOARCH=amd64 go build -o spiff++/spiff++ .
+ensure:
+	dep ensure
+	# restore patched version of candiedyaml/decode.go
+	git checkout -- vendor/github.com/cloudfoundry-incubator/candiedyaml/decode.go
+
+spiff_darwin_amd64.zip: ensure
+	GOOS=darwin GOARCH=amd64 go build -o spiff++/spiff++ .
 	(cd spiff++; zip spiff_darwin_amd64.zip spiff++)
 	rm spiff++/spiff++
