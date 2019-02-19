@@ -26,8 +26,8 @@
 
 
 [[constraint]]
-  branch = "master"
   name = "github.com/cloudfoundry-incubator/candiedyaml"
+  revision = "a41693b7b7afb422c7ecb1028458ab27da047bbb"
 
 [[constraint]]
   name = "github.com/spf13/cobra"

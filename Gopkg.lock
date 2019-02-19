@@ -2,7 +2,6 @@
 
 
 [[projects]]
-  branch = "master"
   digest = "1:02d18b868bb9a855f688f36818440170d0e375a7a618942d7fad084f6416e2b0"
   name = "github.com/cloudfoundry-incubator/candiedyaml"
   packages = ["."]
@@ -201,7 +200,7 @@
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "d0b11bdaac8adb652bff00e49bcacf992835621a"
+  revision = "153ac476189d567564fda94622d7a8c0fb338f6b"
 
 [[projects]]
   digest = "1:4392fcf42d5cf0e3ff78c96b2acf8223d49e4fdc53eb77c99d2f8dfe4680e006"
