@@ -62,7 +62,7 @@ func func_exec(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 		}
 		int64YML, err := strconv.ParseInt(str, 10, 64)
 		if err == nil {
-			debug.Debug("exec: found integer result: %s\n", int64YML)
+			debug.Debug("exec: found integer result: %d\n", int64YML)
 			return int64YML, info, true
 		}
 		debug.Debug("exec: found string result: %s\n", string(result))
