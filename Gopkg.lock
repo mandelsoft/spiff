@@ -184,6 +184,17 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:1ecf2a49df33be51e757d0033d5d51d5f784f35f68e5a38f797b2d3f03357d71"
+  name = "golang.org/x/crypto"
+  packages = [
+    "bcrypt",
+    "blowfish",
+  ]
+  pruneopts = "UT"
+  revision = "a4c6cb3142f211c99e4bf4cd769535b29a9b616f"
+
+[[projects]]
+  branch = "master"
   digest = "1:03a8ff54c1a62710fe21a08ad9ccd554ac90232c4fd34c2731f65dd47e1f2077"
   name = "golang.org/x/net"
   packages = [
@@ -267,6 +278,7 @@
     "github.com/onsi/gomega/gexec",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
+    "golang.org/x/crypto/bcrypt",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
