@@ -6764,4 +6764,20 @@ zzz:
 			})
 		})
 	})
+
+	Describe("temp_file and read", func() {
+		It("cleans temp marker", func() {
+			source := parseYAML(`
+---
+data: alice
+read: (( read(tempfile(data)) ))
+`)
+			resolved := parseYAML(`
+---
+data: alice
+read: alice
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
 })

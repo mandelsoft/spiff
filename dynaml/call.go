@@ -40,10 +40,13 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		}
 	}
 
+	info.Cleanup()
 	if !okf {
 		debug.Debug("failed to resolve function: %s\n", info.Issue)
 		return nil, info, false
 	}
+
+	cleaned := false
 
 	switch funcName {
 	case "defined":
@@ -123,13 +126,16 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "exec":
 		result, sub, ok = func_exec(true, values, binding)
+		cleaned = true
 	case "exec_uncached":
 		result, sub, ok = func_exec(false, values, binding)
-
+		cleaned = true
 	case "pipe":
 		result, sub, ok = func_pipe(true, values, binding)
+		cleaned = true
 	case "pipe_uncached":
 		result, sub, ok = func_pipe(false, values, binding)
+		cleaned = true
 
 	case "eval":
 		result, sub, ok = func_eval(values, binding, locally)
@@ -139,10 +145,19 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "read":
 		result, sub, ok = func_read(true, values, binding)
+		cleaned = true
 	case "read_uncached":
 		result, sub, ok = func_read(false, values, binding)
+		cleaned = true
 	case "write":
 		result, sub, ok = func_write(values, binding)
+		cleaned = true
+	case "lookup_file":
+		result, sub, ok = func_lookup(false, values, binding)
+	case "lookup_dir":
+		result, sub, ok = func_lookup(true, values, binding)
+	case "tempfile":
+		result, sub, ok = func_tempfile(values, binding)
 
 	case "format":
 		result, sub, ok = func_format(values, binding)
@@ -214,6 +229,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		result, sub, ok = f(values, binding)
 	}
 
+	if cleaned {
+		info.Cleanup()
+	}
 	if ok && (result == nil || isExpression(result)) {
 		return e, sub.Join(info), true
 	}

@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -30,7 +31,7 @@ func func_exec(cached bool, arguments []interface{}, binding Binding) (interface
 			if len(arguments) == 1 && len(list) > 0 {
 				// handle single list argument to gain command and argument
 				for j, arg := range list {
-					v, ok := getArg(j, arg.Value())
+					v, ok := getArg(j, arg.Value(), j != 0)
 					if !ok {
 						return info.Error("command argument must be string")
 					}
@@ -40,7 +41,7 @@ func func_exec(cached bool, arguments []interface{}, binding Binding) (interface
 				return info.Error("list not allowed for command argument")
 			}
 		} else {
-			v, ok := getArg(i, arg)
+			v, ok := getArg(i, arg, i != 0)
 			if !ok {
 				return info.Error("command argument must be string")
 			}
@@ -76,15 +77,17 @@ func convertOutput(data []byte) (interface{}, EvaluationInfo, bool) {
 	}
 }
 
-func getArg(i int, value interface{}) (string, bool) {
+func getArg(i int, value interface{}, yaml bool) (string, bool) {
 	debug.Debug("arg %d: %+v\n", i, value)
-	switch value.(type) {
+	switch v := value.(type) {
 	case string:
-		return value.(string), true
+		return v, true
 	case int64:
-		return strconv.FormatInt(value.(int64), 10), true
+		return strconv.FormatInt(v, 10), true
+	case bool:
+		return strconv.FormatBool(v), true
 	default:
-		if i == 0 || value == nil {
+		if !yaml || value == nil {
 			return "", false
 		}
 		yaml, err := candiedyaml.Marshal(node(value, nil))
@@ -96,6 +99,10 @@ func getArg(i int, value interface{}) (string, bool) {
 }
 
 var cache = make(map[string][]byte)
+
+type Bytes interface {
+	Bytes() []byte
+}
 
 func cachedExecute(cached bool, content *string, args []string) ([]byte, error) {
 	h := md5.New()
@@ -119,6 +126,11 @@ func cachedExecute(cached bool, content *string, args []string) ([]byte, error) 
 		cmd.Stdin = bytes.NewReader([]byte(*content))
 	}
 	result, err := cmd.Output()
+	stderr := string(cmd.Stderr.(Bytes).Bytes())
+	if stderr != "" {
+		fmt.Fprintf(os.Stderr, "exec: calling %v\n", args)
+		fmt.Fprintf(os.Stderr, "  error: %v\n", stderr)
+	}
 	cache[hash] = result
 	return result, err
 }

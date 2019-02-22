@@ -33,8 +33,14 @@ type Binding interface {
 	Path() []string
 	StubPath() []string
 
+	GetTempName(data []byte) (string, error)
+
 	Flow(source yaml.Node, shouldOverride bool) (yaml.Node, Status)
 	Cascade(outer Binding, template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error)
+}
+
+type Cleanup interface {
+	Cleanup() error
 }
 
 type EvaluationInfo struct {
@@ -48,6 +54,7 @@ type EvaluationInfo struct {
 	Failed       bool
 	Undefined    bool
 	Issue        yaml.Issue
+	Cleanups     []Cleanup
 	yaml.NodeFlags
 }
 
@@ -56,7 +63,7 @@ func (e EvaluationInfo) SourceName() string {
 }
 
 func DefaultInfo() EvaluationInfo {
-	return EvaluationInfo{nil, false, false, false, "", "", false, false, false, yaml.Issue{}, 0}
+	return EvaluationInfo{nil, false, false, false, "", "", false, false, false, yaml.Issue{}, nil, 0}
 }
 
 type Expression interface {
@@ -66,6 +73,18 @@ type Expression interface {
 type StaticallyScopedValue interface {
 	StaticResolver() Binding
 	SetStaticResolver(binding Binding) StaticallyScopedValue
+}
+
+func (i *EvaluationInfo) Cleanup() error {
+	var err error
+	for _, c := range i.Cleanups {
+		e := c.Cleanup()
+		if e != nil {
+			err = e
+		}
+	}
+	i.Cleanups = nil
+	return err
 }
 
 func (i *EvaluationInfo) Error(msgfmt interface{}, args ...interface{}) (interface{}, EvaluationInfo, bool) {
@@ -122,6 +141,8 @@ func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {
 		i.Undefined = true
 	}
 	i.NodeFlags |= o.NodeFlags
+
+	i.Cleanups = append(i.Cleanups, o.Cleanups...)
 	return i
 }
 

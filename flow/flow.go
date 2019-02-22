@@ -17,7 +17,9 @@ func Flow(source yaml.Node, stubs ...yaml.Node) (yaml.Node, error) {
 }
 
 func NestedFlow(outer dynaml.Binding, source yaml.Node, stubs ...yaml.Node) (yaml.Node, error) {
-	return NewNestedEnvironment(stubs, source.SourceName(), outer).Flow(source, true)
+	env := NewNestedEnvironment(stubs, source.SourceName(), outer)
+	defer CleanupEnvironment(env)
+	return env.Flow(source, true)
 }
 
 func get_inherited_flags(env dynaml.Binding) (yaml.NodeFlags, yaml.Node) {
@@ -83,6 +85,11 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 				eval = dynaml.NewTemplateValue(env.Path(), val, root, env)
 			} else {
 				eval, info, ok = val.Evaluate(env, false)
+				if err := info.Cleanup(); err != nil {
+					info.SetError("%s", err)
+					eval = nil
+					ok = false
+				}
 			}
 			replace = replace || info.Replace
 			flags |= info.NodeFlags

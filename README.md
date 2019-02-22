@@ -109,6 +109,8 @@ Contents:
 		    - [(( exec("command", arg1, arg2) ))](#-execcommand-arg1-arg2-)
             - [(( pipe(data, "command", arg1, arg2) ))](#-pipedata-command-arg1-arg2-)
 		    - [(( write("file.yml", data) ))](#-writefileyml-data-)
+		    - [(( tempfile("file.yml", data) ))](#-tempfilefileyml-data-)
+		    - [(( lookup_file("file.yml", data) ))](#-lookup_filefileyml-list-)
 		- [X509 Functions](#x509-functions)
 		    - [(( x509genkey(spec) ))](#-x509genkeyspec-)
 		    - [(( x509publickey(key) ))](#-x509publickeykey-)
@@ -2292,6 +2294,28 @@ The same command will be executed once, only, even if it is used in multiple exp
 Write a file and return its content. If the result can be parsed as yaml document,
 the document is returned. An optional 3rd argument can be used to pass the
 file permissions (default is `0644`).
+
+#### `(( tempfile("file.yml", data) ))`
+
+Write a a temporary file and return its path name. An optional 3rd argument can
+be used to pass the file permissions (default is `0644`). It basically behavies
+like [`write`](#-writefileyml-data-) 
+
+_Attention_: A temporary file only exists during the merge processing. It will
+be deleted afterwards. 
+
+It can be used, for example, to provide a temporary file argument for the
+[`exec`](#-execcommand-arg1-arg2-) function.
+
+#### `(( lookup_file("file.yml", list) ))`
+
+Lookup a file is a list of directories. The result is a list of existing
+files. With `lookup_dir` it is possible to lookup a directory, instead.
+
+If no existing files can be found the empty list is returned.
+
+It is possible to pass multiple list or string arguments to compose the
+search path.
 
 
 ### X509 Functions

@@ -1,6 +1,7 @@
 package dynaml
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/mandelsoft/spiff/yaml"
@@ -13,6 +14,10 @@ type FakeBinding struct {
 
 	path     []string
 	stubPath []string
+}
+
+func (c FakeBinding) GetTempName([]byte) (string, error) {
+	return "", fmt.Errorf("no temp names")
 }
 
 func (c FakeBinding) Outer() Binding {

@@ -34,6 +34,7 @@ func newScope(outer *Scope, path []string, local, static map[string]yaml.Node) *
 }
 
 type DefaultEnvironment struct {
+	state *State
 	scope *Scope
 	path  []string
 
@@ -67,6 +68,13 @@ func (e DefaultEnvironment) String() string {
 		s = s.next
 	}
 	return result
+}
+
+func (e DefaultEnvironment) GetTempName(data []byte) (string, error) {
+	if e.outer != nil {
+		return e.outer.GetTempName(data)
+	}
+	return e.state.GetTempName(data)
 }
 
 func (e DefaultEnvironment) Outer() dynaml.Binding {
@@ -216,12 +224,23 @@ func (e DefaultEnvironment) Cascade(outer dynaml.Binding, template yaml.Node, pa
 	return Cascade(outer, template, partial, templates...)
 }
 
-func NewEnvironment(stubs []yaml.Node, source string) dynaml.Binding {
+func NewEnvironmentX(stubs []yaml.Node, source string) dynaml.Binding {
 	return NewNestedEnvironment(stubs, source, nil)
 }
 
+func CleanupEnvironment(binding dynaml.Binding) {
+	env, ok := binding.(DefaultEnvironment)
+	if ok && env.state != nil {
+		env.state.Cleanup()
+	}
+}
+
 func NewNestedEnvironment(stubs []yaml.Node, source string, outer dynaml.Binding) dynaml.Binding {
-	return DefaultEnvironment{stubs: stubs, sourceName: source, currentSourceName: source, outer: outer, active: true}
+	var state *State
+	if outer == nil {
+		state = NewState()
+	}
+	return DefaultEnvironment{state: state, stubs: stubs, sourceName: source, currentSourceName: source, outer: outer, active: true}
 }
 
 type Updateable interface {

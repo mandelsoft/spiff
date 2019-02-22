@@ -15,6 +15,7 @@ type CondExpr struct {
 func (e CondExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 	info := DefaultInfo()
+	var infoc EvaluationInfo
 	var result interface{}
 
 	a, info, ok := ResolveExpressionOrPushEvaluation(&e.C, &resolved, &info, binding, false)
@@ -25,11 +26,11 @@ func (e CondExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		return e, info, true
 	}
 	if toBool(a) {
-		result, info, ok = e.T.Evaluate(binding, false)
+		result, infoc, ok = e.T.Evaluate(binding, false)
 	} else {
-		result, info, ok = e.F.Evaluate(binding, false)
+		result, infoc, ok = e.F.Evaluate(binding, false)
 	}
-	return result, info, ok
+	return result, infoc.Join(info), ok
 }
 
 func (e CondExpr) String() string {
