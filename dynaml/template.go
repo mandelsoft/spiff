@@ -54,14 +54,24 @@ type TemplateValue struct {
 	resolver Binding
 }
 
+var _ StaticallyScopedValue = TemplateValue{}
 var _ yaml.ComparableValue = TemplateValue{}
 
 func NewTemplateValue(path []string, prepared yaml.Node, orig yaml.Node, binding Binding) TemplateValue {
-	return TemplateValue{path, prepared, orig, staticScope(binding)}
+	return TemplateValue{path, prepared, orig, binding}
 }
 
 func (e TemplateValue) MarshalYAML() (tag string, value interface{}, err error) {
 	return e.Orig.MarshalYAML()
+}
+
+func (e TemplateValue) StaticResolver() Binding {
+	return e.resolver
+}
+
+func (e TemplateValue) SetStaticResolver(binding Binding) StaticallyScopedValue {
+	e.resolver = binding
+	return e
 }
 
 func (e TemplateValue) EquivalentTo(val interface{}) bool {

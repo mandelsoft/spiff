@@ -214,6 +214,7 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 	merged := false
 	rootMap := root.Value().(map[string]yaml.Node)
 
+	rootEnv := env
 	env = env.WithScope(rootMap)
 
 	redirect := root.RedirectPath()
@@ -319,7 +320,7 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 	var result interface{}
 	if template {
 		debug.Debug(" as template\n")
-		result = dynaml.NewTemplateValue(env.Path(), yaml.NewNode(newMap, root.SourceName()), root, env)
+		result = dynaml.NewTemplateValue(env.Path(), yaml.NewNode(newMap, root.SourceName()), root, rootEnv)
 	} else {
 		result = newMap
 	}

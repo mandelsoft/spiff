@@ -6668,6 +6668,100 @@ scoped:
 `))
 				Expect(source).To(FlowAs(resolved))
 			})
+
+			It("resolve flowed scope fields in map templates", func() {
+				source := parseYAML(`
+---
+spec:
+  local: (( zzz.value ))
+  templ:
+    <<: (( &template ))
+    value: (( _.local ))
+
+inst:
+  inst: (( *spec.templ ))
+
+zzz:
+  value: "alice"
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+spec:
+  local: (( zzz.value ))
+  templ:
+    <<: (( &template ))
+    value: (( _.local ))
+
+inst:
+  inst:
+    value: alice
+
+zzz:
+  value: "alice"
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("resolve flowed scope fields in map templates", func() {
+				source := parseYAML(`
+---
+spec:
+  local: (( zzz.value ))
+  templ:
+    - <<: (( &template ))
+    - value: (( _.local ))
+
+inst:
+  inst: (( *spec.templ ))
+
+zzz:
+  value: "alice"
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+spec:
+  local: (( zzz.value ))
+  templ:
+    - <<: (( &template ))
+    - value: (( _.local ))
+
+inst:
+  inst:
+    - value: alice
+
+zzz:
+  value: "alice"
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("resolve flowed scope fields in map templates", func() {
+				source := parseYAML(`
+---
+spec:
+  local: (( zzz.value ))
+  templ: (( &template(_.local) ))
+
+inst:
+  inst: (( *spec.templ ))
+
+zzz:
+  value: "alice"
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+spec:
+  local: (( zzz.value ))
+  templ: (( &template(_.local) ))
+
+inst:
+  inst: alice
+
+zzz:
+  value: "alice"
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
 	})
 })
