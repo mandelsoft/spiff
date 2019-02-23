@@ -6357,6 +6357,27 @@ value: not merged
 `)
 			Expect(source).To(FlowAs(resolved, stub))
 		})
+
+		It("is aggregatable", func() {
+			source := parseYAML(`
+---
+map:
+  <<: (( merge none ))
+  value: (( "alice and " stub() ))
+`)
+			stub := parseYAML(`
+---
+map:
+  value: bob
+`)
+
+			resolved := parseYAML(`
+---
+map:
+  value: alice and bob
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
 	})
 
 	Describe("regression test for fixed errors", func() {

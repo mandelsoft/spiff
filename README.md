@@ -60,6 +60,7 @@ Contents:
 		- [<<: (( merge foo ))](#--merge-foo-)
 			- [merging maps](#merging-maps-3)
 			- [merging lists](#merging-lists-3)
+		- [<<: (( merge none ))](#--merge-none-)
 	- [(( a || b ))](#-a--b-)
 	- [(( 1 + 2 * foo ))](#-1--2--foo-)
 	- [(( "10.10.10.10" - 11 ))](#-10101010---11-)
@@ -958,7 +959,7 @@ foo:
 ### `<<: (( merge none ))`
 
 If the reference of an redirecting merge is set to the constant `none`,
-no merge is done at all.
+no merge is done at all. This expressions always yields the nil value.
 
 e.g.: for
 
@@ -1012,7 +1013,7 @@ This also works for dedicated fields:
 **template.yml**
 ```yaml
 map:
-  value: ((  merge none // "alice"  "+" stub(map.value) ))
+  value: ((  merge none // "alice"  "+" stub() ))
 ```
 
 **values.yml**
