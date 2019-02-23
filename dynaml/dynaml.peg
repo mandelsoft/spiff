@@ -81,10 +81,11 @@ Assignments <- Assignment (',' Assignment)*
 Assignment <- Expression '=' Expression
  
 Merge <- RefMerge / SimpleMerge
-RefMerge <- 'merge' !( req_ws Required ) ( req_ws (Replace / On ))? req_ws Reference
-SimpleMerge <- 'merge' !'(' ( req_ws (Replace/Required/On) )?
+RefMerge <- 'merge' !( req_ws (Required / None )) ( req_ws (Replace / On ))? req_ws Reference
+SimpleMerge <- 'merge' !'(' ( req_ws (Replace/Required/On/None) )?
 Replace <- 'replace'
 Required <- 'required'
+None <- 'none'
 On <- 'on' req_ws Name
 
 Auto <- 'auto'

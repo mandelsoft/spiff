@@ -90,6 +90,9 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 					eval = nil
 					ok = false
 				}
+				if info.RedirectPath != nil {
+					fmt.Printf("eval found redirect %v, %v\n", info.RedirectPath, ok)
+				}
 			}
 			replace = replace || info.Replace
 			flags |= info.NodeFlags
@@ -129,10 +132,11 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 					keyName = info.KeyName
 					result = yaml.KeyNameNode(result, keyName)
 				}
-				if len(info.RedirectPath) > 0 {
+				if info.RedirectPath != nil {
 					redirect = info.RedirectPath
+					fmt.Printf("found redirect %v\n", redirect)
 				}
-				if len(redirect) > 0 {
+				if redirect != nil {
 					debug.Debug("   REDIRECT -> %v\n", redirect)
 					result = yaml.RedirectNode(result.Value(), result, redirect)
 				}
@@ -272,27 +276,33 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 				processed = false
 			} else {
 				baseMap, ok := base.Value().(map[string]yaml.Node)
-				if base != nil && base.RedirectPath() != nil {
-					redirect = base.RedirectPath()
-					env = env.RedirectOverwrite(redirect)
+				if base == nil {
+					fmt.Printf("base is nil\n")
+				} else {
+					if base.RedirectPath() != nil {
+						debug.Debug("redirected: %v, merged %v", base.RedirectPath(), base.Merged())
+						fmt.Printf("redirected: %v, merged %v\n", base.RedirectPath(), base.Merged())
+						redirect = base.RedirectPath()
+						env = env.RedirectOverwrite(redirect)
+					}
 				}
 				if ok {
 					for k, v := range baseMap {
 						newMap[k] = v
 					}
 				}
+				if base.Merged() {
+					merged = true
+				}
+				// still ignore non dynaml value (might be strange but compatible)
 				replace = base.ReplaceFlag()
 				if ok || base.Value() == nil || yaml.EmbeddedDynaml(base) == nil {
-					// still ignore non dynaml value (might be strange but compatible)
 					if replace {
 						break
 					}
 					continue
 				} else {
 					val = base
-				}
-				if base.Merged() {
-					merged = true
 				}
 			}
 		} else {
@@ -353,7 +363,7 @@ func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
 	if process {
 		debug.Debug("process list (key: %s) %v\n", keyName, env.Path())
 		newList := []yaml.Node{}
-		if len(redirectPath) > 0 {
+		if redirectPath != nil {
 			env = env.RedirectOverwrite(redirectPath)
 		}
 		for idx, val := range merged.([]yaml.Node) {
@@ -394,7 +404,7 @@ func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
 	if replaced {
 		root = yaml.ReplaceNode(merged, root, redirectPath)
 	} else {
-		if len(redirectPath) > 0 {
+		if redirectPath != nil {
 			root = yaml.RedirectNode(merged, root, redirectPath)
 		} else {
 			root = yaml.SubstituteNode(merged, root)
@@ -522,6 +532,10 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 				}
 				if ok || result.Value() == nil || yaml.EmbeddedDynaml(result) == nil {
 					// still ignore non dynaml value (might be strange but compatible)
+					redirectPath = result.RedirectPath()
+					if result.Merged() {
+						merged = true
+					}
 					continue
 				}
 			}

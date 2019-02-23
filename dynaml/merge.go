@@ -1,6 +1,7 @@
 package dynaml
 
 import (
+	"fmt"
 	"github.com/mandelsoft/spiff/debug"
 	"strings"
 )
@@ -20,6 +21,11 @@ func (e MergeExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluat
 	}
 	info.KeyName = e.KeyName
 	debug.Debug("/// lookup %v\n", e.Path)
+	if len(e.Path) == 0 {
+		fmt.Printf("NONE REDIRECT\n")
+		info.Merged = true
+		return nil, info, true
+	}
 	node, ok := binding.FindInStubs(e.Path)
 	if ok {
 		info.Replace = e.Replace
