@@ -86,7 +86,6 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 	// this expression is NOT recursive, therefore single flag variables are sufficient
 	replace := false
 	required := false
-	none := false
 	keyName := ""
 
 	for token := range grammar.Tokens() {
@@ -120,22 +119,19 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 		case ruleSimpleMerge:
 			debug.Debug("*** rule simple merge\n")
 			redirect := !equals(path, stubPath)
-			mergePath := stubPath
-			if none {
-				redirect = true
-				mergePath = []string{}
-			}
-			tokens.Push(MergeExpr{mergePath, redirect, replace, replace || required || redirect, keyName})
+			tokens.Push(MergeExpr{stubPath, redirect, replace, replace || required || redirect, keyName})
 		case ruleRefMerge:
 			debug.Debug("*** rule ref merge\n")
 			rhs := tokens.Pop()
-			tokens.Push(MergeExpr{rhs.(ReferenceExpr).Path, true, replace, true, keyName})
+			merge := rhs.(ReferenceExpr).Path
+			if len(merge) == 1 && merge[0] == "none" {
+				merge = []string{}
+			}
+			tokens.Push(MergeExpr{merge, true, replace, len(merge) > 0, keyName})
 		case ruleReplace:
 			replace = true
 		case ruleRequired:
 			required = true
-		case ruleNone:
-			none = true
 		case ruleOn:
 			keyName = tokens.Pop().(nameHelper).name
 		case ruleFollowUpRef:
@@ -235,9 +231,17 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 
 		case ruleOr:
 			rhs := tokens.Pop()
+			op := tokens.Pop()
 			lhs := tokens.Pop()
 
-			tokens.Push(OrExpr{A: lhs, B: rhs})
+			if op.(operationHelper).op == "||" {
+				tokens.Push(OrExpr{A: lhs, B: rhs})
+			} else {
+				tokens.Push(ValidOrExpr{A: lhs, B: rhs})
+			}
+
+		case ruleOrOp:
+			tokens.Push(operationHelper{op: contents})
 
 		case ruleNot:
 			tokens.Push(NotExpr{tokens.Pop()})

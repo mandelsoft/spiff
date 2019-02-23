@@ -5,21 +5,23 @@ import (
 	"reflect"
 )
 
-type OrExpr struct {
+type ValidOrExpr struct {
 	A Expression
 	B Expression
 }
 
-func (e OrExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
+func (e ValidOrExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	a, infoa, ok := e.A.Evaluate(binding, false)
-	if ok && !infoa.Undefined {
+	if ok {
 		if reflect.DeepEqual(a, e.A) {
 			return nil, infoa, false
 		}
 		if isExpression(a) {
 			return e, infoa, true
 		}
-		return a, infoa, true
+		if a != nil {
+			return a, infoa, true
+		}
 	}
 
 	b, infob, ok := e.B.Evaluate(binding, false)
@@ -28,6 +30,6 @@ func (e OrExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluation
 	return b, info, ok
 }
 
-func (e OrExpr) String() string {
-	return fmt.Sprintf("%s || %s", e.A, e.B)
+func (e ValidOrExpr) String() string {
+	return fmt.Sprintf("%s // %s", e.A, e.B)
 }

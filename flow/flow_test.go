@@ -5517,6 +5517,20 @@ foo:
 			Expect(source).To(FlowAs(resolved))
 		})
 
+		It("checks for ~~ value", func() {
+			source := parseYAML(`
+---
+foo: (( ~~ || "not set" ))
+`)
+
+			resolved := parseYAML(`
+---
+foo: not set
+`)
+
+			Expect(source).To(FlowAs(resolved))
+		})
+
 		It("meets docu", func() {
 			source := parseYAML(`
 ---
@@ -6260,6 +6274,70 @@ next: 10.1.2.32/28
 `)
 				Expect(source).To(FlowAs(resolved))
 			})
+		})
+	})
+
+	Describe("when requesting no merge", func() {
+		It("keeps map", func() {
+			source := parseYAML(`
+---
+map:
+  <<: (( merge none ))
+  value: not merged
+`)
+			stub := parseYAML(`
+---
+map:
+  value: merged
+`)
+
+			resolved := parseYAML(`
+---
+map:
+  value: not merged
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("keeps lists", func() {
+			source := parseYAML(`
+---
+list:
+  - <<: (( merge none ))
+  - name: alice
+    value: not merged
+`)
+			stub := parseYAML(`
+---
+list:
+  - name: alice
+    value: merged
+`)
+
+			resolved := parseYAML(`
+---
+list:
+  - name: alice
+    value: not merged
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("keeps values", func() {
+			source := parseYAML(`
+---
+value: (( merge none // "not merged" ))
+`)
+			stub := parseYAML(`
+---
+value: merged
+`)
+
+			resolved := parseYAML(`
+---
+value: not merged
+`)
+			Expect(source).To(FlowAs(resolved, stub))
 		})
 	})
 

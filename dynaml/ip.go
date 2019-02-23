@@ -1,7 +1,6 @@
 package dynaml
 
 import (
-	"fmt"
 	"net"
 
 	"github.com/mandelsoft/spiff/yaml"
@@ -52,7 +51,6 @@ func func_numIP(arguments []interface{}, binding Binding) (interface{}, Evaluati
 
 func SubIP(ip net.IP, mask net.IPMask) net.IP {
 	m := ip.Mask(mask)
-	fmt.Printf("%d\n", len(m))
 	out := make(net.IP, len(ip))
 	for i, v := range ip {
 		j := len(ip) - i

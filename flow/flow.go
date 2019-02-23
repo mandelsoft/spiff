@@ -91,7 +91,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 					ok = false
 				}
 				if info.RedirectPath != nil {
-					fmt.Printf("eval found redirect %v, %v\n", info.RedirectPath, ok)
+					debug.Debug("eval found redirect %v, %v", info.RedirectPath, ok)
 				}
 			}
 			replace = replace || info.Replace
@@ -134,7 +134,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 				}
 				if info.RedirectPath != nil {
 					redirect = info.RedirectPath
-					fmt.Printf("found redirect %v\n", redirect)
+					debug.Debug("found redirect %v", redirect)
 				}
 				if redirect != nil {
 					debug.Debug("   REDIRECT -> %v\n", redirect)
@@ -277,11 +277,10 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 			} else {
 				baseMap, ok := base.Value().(map[string]yaml.Node)
 				if base == nil {
-					fmt.Printf("base is nil\n")
+					debug.Debug("base is nil\n")
 				} else {
 					if base.RedirectPath() != nil {
 						debug.Debug("redirected: %v, merged %v", base.RedirectPath(), base.Merged())
-						fmt.Printf("redirected: %v, merged %v\n", base.RedirectPath(), base.Merged())
 						redirect = base.RedirectPath()
 						env = env.RedirectOverwrite(redirect)
 					}

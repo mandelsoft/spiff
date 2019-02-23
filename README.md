@@ -285,7 +285,7 @@ maps, or digits surrounded by brackets for list indexing.
 If the path cannot be resolved, this evaluates to nil. A reference node at the
 top level cannot evaluate to nil; the template will be considered not fully
 resolved. If a reference is expected to sometimes not be provided, it should be
-used in combination with '||' (see below) to guarantee resolution.
+used in combination with '||' (see [below](#-a--b-)) to guarantee resolution.
 
 Note that references are always within the template, and order does not matter.
 You can refer to another dynamic node and presume it's resolved, and the
@@ -629,7 +629,7 @@ returning the value from the first stub that provides it.
 
 If the corresponding value is not defined, it will return nil. This then has the
 same semantics as reference expressions; a nil merge is an unresolved template.
-See `||`.
+See [`||`](#-a--b-).
 
 ### `<<: (( merge ))`
 
@@ -974,6 +974,9 @@ mything:
 
 This will try to merge in `mything.complicated_structure`, or, if it cannot be
 merged in, use the default specified in `foo.bar`.
+
+The operator `//` additionally checks, whether `a` can be solved to a valid 
+value (not equal `~`).
 
 ## `(( 1 + 2 * foo ))`
 
@@ -3228,7 +3231,7 @@ Dynaml expressions are evaluated obeying certain priority levels. This means ope
 
 The following levels are supported (from low priority to high priority)
 
-1. `||`
+1. `||`, `//`
 2. White-space separated sequence as concatenation operation (`foo bar`)
 3. `-or`, `-and`
 4. `==`, `!=`, `<=`, `<`, `>`, `>=`
