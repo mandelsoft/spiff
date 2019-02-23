@@ -955,6 +955,79 @@ foo:
   - 4
 ```
 
+### `<<: (( merge none ))`
+
+If the reference of an redirecting merge is set to the constant `none`,
+no merge is done at all.
+
+e.g.: for
+
+**template.yml**
+```yaml
+map:
+  <<: (( merge none ))
+  value: notmerged
+```
+
+**values.yml**
+```yaml
+map:
+  value: merged
+```
+
+`spiff merge template.yml values.yml` yields:
+
+```yaml
+map:
+  value: notmerged
+```
+
+This can be used for explicit field merging using the `stub` function
+to access dedicated parts of upstream stubs.
+
+e.g.:
+
+**template.yml**
+```yaml
+map:
+  <<: (( merge none ))
+  value: ((  "alice"  "+" stub(map.value) ))
+```
+
+**values.yml**
+```yaml
+map:
+  value: bob
+```
+
+`spiff merge template.yml values.yml` yields:
+
+```yaml
+test:
+  value: alice+bob
+```
+
+This also works for dedicated fields:
+
+**template.yml**
+```yaml
+map:
+  value: ((  merge none // "alice"  "+" stub(map.value) ))
+```
+
+**values.yml**
+```yaml
+map:
+  value: bob
+```
+
+`spiff merge template.yml values.yml` yields:
+
+```yaml
+test:
+  value: alice+bob
+```
+
 ## `(( a || b ))`
 
 Uses a, or b if a cannot be resolved.
@@ -1622,7 +1695,8 @@ alice: default
 
 ### `(( stub(foo.bar) ))`
 
-The function `stub` yields the value of a dedicated field found in the first upstream stub defining it.
+The function `stub` yields the value of a dedicated field found in the first
+upstream stub defining it.
 
 e.g.:
 
@@ -1644,7 +1718,10 @@ evaluates to
 value: foobar
 ```
 
-The argument passed to this function must either be a reference literal or an expression evaluating to a string denoting a reference. If no argument is given, the actual field path is used.
+The argument passed to this function must either be a reference literal or
+an expression evaluating to either a string denoting a reference or a string
+list denoting the list of path elements for the reference.
+If no argument is given, the actual field path is used.
 
 Alternatively the `merge` operation could be used, for example `merge foo.bar`. The difference is that `stub` does not merge, therefore the field will still be merged (with the original path in the document).
 

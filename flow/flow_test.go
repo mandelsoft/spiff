@@ -3010,6 +3010,24 @@ age: 24
 			Expect(source).To(FlowAs(resolved, stub))
 		})
 
+		It("handles string list arg", func() {
+			source := parseYAML(`
+---
+age: (( stub(["data","alice"]) ))
+`)
+			stub := parseYAML(`
+---
+data:
+  alice: "24"
+`)
+
+			resolved := parseYAML(`
+---
+age: "24"
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
 		It("fails on missing stub", func() {
 			source := parseYAML(`
 ---
