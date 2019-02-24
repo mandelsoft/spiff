@@ -3,6 +3,7 @@ package dynaml
 import (
 	"github.com/mandelsoft/spiff/yaml"
 	"os"
+	"path/filepath"
 )
 
 func func_lookup(directory bool, arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
@@ -46,18 +47,28 @@ func func_lookup(directory bool, arguments []interface{}, binding Binding) (inte
 	}
 
 	result := []yaml.Node{}
+	if filepath.IsAbs(name) {
+		if checkExistence(name, directory) {
+			result = append(result, node(name, binding))
+		}
+		return result, info, true
+	}
 
 	for _, d := range paths {
 		if d != "" {
 			p := d + "/" + name
-			s, err := os.Stat(p)
-			if os.IsNotExist(err) || err != nil {
-				continue
-			}
-			if s.IsDir() == directory {
+			if checkExistence(p, directory) {
 				result = append(result, node(p, binding))
 			}
 		}
 	}
 	return result, info, true
+}
+
+func checkExistence(path string, directory bool) bool {
+	s, err := os.Stat(path)
+	if os.IsNotExist(err) || err != nil {
+		return false
+	}
+	return s.IsDir() == directory
 }
