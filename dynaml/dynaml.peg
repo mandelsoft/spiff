@@ -10,13 +10,13 @@ SubsequentMarker <- Marker
 Marker <- '&' ( 'template' / 'temporary' / 'local' / 'inject' / 'state' )
 MarkerExpression <- Grouped
 
-Expression <- ws ( Scoped / LambdaExpr / Level7 ) ws
+Expression <- ( Scoped / LambdaExpr / Level7 ) ws
 
-Scoped <- Scope ws Expression
+Scoped <- ws Scope ws Expression
 Scope <- CreateScope ws Assignments? ')'
 CreateScope <- '('
 
-Level7 <- Level6 ( req_ws Or )*
+Level7 <- ws Level6 ( req_ws Or )*
 Or <- OrOp req_ws Level6
 OrOp <- '||' / '//'
 

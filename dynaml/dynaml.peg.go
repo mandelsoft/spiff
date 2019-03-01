@@ -1010,15 +1010,12 @@ func (p *DynamlGrammar) Init() {
 			position, tokenIndex, depth = position23, tokenIndex23, depth23
 			return false
 		},
-		/* 6 Expression <- <(ws (Scoped / LambdaExpr / Level7) ws)> */
+		/* 6 Expression <- <((Scoped / LambdaExpr / Level7) ws)> */
 		func() bool {
 			position25, tokenIndex25, depth25 := position, tokenIndex, depth
 			{
 				position26 := position
 				depth++
-				if !_rules[rulews]() {
-					goto l25
-				}
 				{
 					position27, tokenIndex27, depth27 := position, tokenIndex, depth
 					if !_rules[ruleScoped]() {
@@ -1049,12 +1046,15 @@ func (p *DynamlGrammar) Init() {
 			position, tokenIndex, depth = position25, tokenIndex25, depth25
 			return false
 		},
-		/* 7 Scoped <- <(Scope ws Expression)> */
+		/* 7 Scoped <- <(ws Scope ws Expression)> */
 		func() bool {
 			position30, tokenIndex30, depth30 := position, tokenIndex, depth
 			{
 				position31 := position
 				depth++
+				if !_rules[rulews]() {
+					goto l30
+				}
 				if !_rules[ruleScope]() {
 					goto l30
 				}
@@ -1124,12 +1124,15 @@ func (p *DynamlGrammar) Init() {
 			position, tokenIndex, depth = position36, tokenIndex36, depth36
 			return false
 		},
-		/* 10 Level7 <- <(Level6 (req_ws Or)*)> */
+		/* 10 Level7 <- <(ws Level6 (req_ws Or)*)> */
 		func() bool {
 			position38, tokenIndex38, depth38 := position, tokenIndex, depth
 			{
 				position39 := position
 				depth++
+				if !_rules[rulews]() {
+					goto l38
+				}
 				if !_rules[ruleLevel6]() {
 					goto l38
 				}
