@@ -2,6 +2,7 @@ package dynaml
 
 import (
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/mandelsoft/spiff/debug"
@@ -59,6 +60,10 @@ var _ yaml.ComparableValue = TemplateValue{}
 
 func NewTemplateValue(path []string, prepared yaml.Node, orig yaml.Node, binding Binding) TemplateValue {
 	return TemplateValue{path, prepared, orig, binding}
+}
+
+func (e TemplateValue) String() string {
+	return fmt.Sprintf("<template %s: %s>", path.Join(e.Path...), shorten(short(e.Prepared, false)))
 }
 
 func (e TemplateValue) MarshalYAML() (tag string, value interface{}, err error) {

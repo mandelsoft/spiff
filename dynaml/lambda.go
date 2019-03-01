@@ -123,7 +123,6 @@ func short(val interface{}, all bool) string {
 	case map[string]yaml.Node:
 		s := "{"
 		sep := ""
-		getSortedKeys(v)
 		for _, k := range getSortedKeys(v) {
 			if all || k != "_" {
 				s = fmt.Sprintf("%s%s%s: %s", s, sep, k, short(v[k].Value(), all))
@@ -141,10 +140,14 @@ func (e LambdaValue) String() string {
 	if len(e.static) > 0 {
 		binding = short(e.static, false)
 	}
-	if len(binding) > 40 {
-		binding = binding[:17] + " ... " + binding[len(binding)-17:]
+	return fmt.Sprintf("%s%s", shorten(binding), e.lambda)
+}
+
+func shorten(s string) string {
+	if len(s) > 40 {
+		s = s[:17] + " ... " + s[len(s)-17:]
 	}
-	return fmt.Sprintf("%s%s", binding, e.lambda)
+	return s
 }
 
 func (e LambdaValue) MarshalYAML() (tag string, value interface{}, err error) {
@@ -179,7 +182,7 @@ func (e LambdaValue) Evaluate(args []interface{}, binding Binding, locally bool)
 	if !ok {
 		debug.Debug("failed LAMBDA CALL: %s", info.Issue)
 		nested := info.Issue
-		info.SetError("evaluation of lambda expression failed: %s: %s", e, short(inp, false))
+		info.SetError("evaluation of lambda expression failed: %s: %s", e, shorten(short(inp, false)))
 		info.Issue.Nested = append(info.Issue.Nested, nested)
 		info.Issue.Sequence = true
 		return false, nil, info, ok
