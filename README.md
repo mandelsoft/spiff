@@ -119,6 +119,8 @@ Contents:
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
 	- [(( &temporary ))](#-temporary-)
 	- [(( &inject ))](#-inject-)
+	- [(( catch[expr|v,e|->v] ))](#-catchexprve-v-)
+	- [(( sync[expr|v,e|->defined(v.field),v.field|10] ))](#-syncexprve-definedvfieldvfield10-)
 	- [Mappings](#mappings)
 		- [(( map[list|elem|->dynaml-expr] ))](#-maplistelem-dynaml-expr-)
 		- [(( map[list|idx,elem|->dynaml-expr] ))](#-maplistidxelem-dynaml-expr-)
@@ -1807,7 +1809,7 @@ mapped:
 ### `(( catch(expr) ))`
 
 This function executes an expression and yields some evaluation info map.
-If always succeeds, even if the expression fails. The map includes the 
+It always succeeds, even if the expression fails. The map includes the 
 following fields:
 
 | name  | type   | meaning |
@@ -1840,7 +1842,7 @@ data:
 
 ### `(( sync(expr, condition, value, 10) ))`
 
-If an expression `expr` may return a different result for different evaluations,
+If an expression `expr` may return a different results for different evaluations,
 it is possible to synchronize the final output with a dedicated condition
 on the expression value. Such an expression could, for example, be an
 uncached `read`, `exec` or `pipe` call.
@@ -2791,6 +2793,94 @@ alice:
 bob:
   foobar: yep
 ```
+## `(( catch[expr|v,e|->v] ))`
+
+This expression evaluates an expression (`expr`) and then
+executes a lambda function with the evaluation state of the expression.
+It always succeeds, even if the expression fails.
+The lambda function may take one or two arguments, the first
+is always the evaluated value (or `nil` in case of an error).
+The optional second argument gets the error message the evaluation of
+the expression failed (or `nil` otherwise)
+
+The result of the function is the result of the whole
+expression. If the function fails, the complete expression fails.
+
+e.g.:
+
+```yaml
+data:
+  fail: (( catch[1 / 0|v,e|->{$value=v, $error=e}] ))
+  valid: (( catch[5 * 5|v,e|->{$value=v, $error=e}] ))
+```
+
+resolves to 
+
+```yaml
+data:
+  fail:
+    error: division by zero
+    value: null
+  valid:
+    error: null
+    value: 25
+```
+
+## `(( sync[expr|v,e|->defined(v.field),v.field|10] ))`
+
+If an expression `expr` may return different results for different evaluations,
+it is possible to synchronize the final output with a dedicated condition
+on the expression value. Such an expression could, for example, be an
+uncached `read`, `exec` or `pipe` call.
+
+The second element must evaluate to a lambda value, given by either a
+regular expression or by a lambda literal as shown in the title.
+It may take one or two arguments, the actual value of the value expression
+and optionally an error message in case of a failing evaluation.
+The result of the evaluation of the lamda expression decides whether 
+the state of the evaluation of the value expression is acceptable (`true`)
+or not (`false`).
+
+If the value is accepted, an optional third expression is used to determine
+the final result of the `sync[]` expression. It might be given as an expression
+evaluating to a lambda value, or by a comma separated expression using the
+same binding as the preceeding lambda literal.
+If not given, the value of the synched expression is returned. 
+
+If the value is not acceptable, the evaluation is repeated until a timeout
+applies. The timeout in seconds is given by an optional fourth expression
+(default is 5 min). Either the fourth, or the both, the
+third and the fourth elements may be omitted.
+
+The lambda values might be given as literal, or by expression, leading to the
+following flavors:
+
+- `sync[expr|v,e|->cond,value|10]`
+- `sync[expr|v,e|->cond|valuelambda|10]`
+- `sync[expr|v,e|->cond|v|->value|10]`
+- `sync[expr|condlambda|valuelambda|10]`
+- `sync[expr|condlambda|v|->value|10]`
+
+with or without the timeout expression.
+
+e.g.:
+
+```yaml
+data:
+  alice: 25
+result: (( sync[data|v|->defined(v.alice),v.alice] ))
+```
+
+resolves to 
+
+```yaml
+data:
+  alice: 25
+result: 25
+```
+
+This example is quite useless, because the sync expression is a constant. It
+just demonstrates the usage.
 
 ## Mappings
 

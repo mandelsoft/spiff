@@ -6639,7 +6639,7 @@ fail:
 		})
 	})
 
-	Describe("sync", func() {
+	Describe("sync function", func() {
 		Context("succeeded", func() {
 			It("yields value", func() {
 				source := parseYAML(`
@@ -6689,6 +6689,58 @@ data:
 result:
   error: "'data.bob' not found"
   valid: false
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
+	Describe("sync expr", func() {
+		Context("succeeded", func() {
+			It("yields value", func() {
+				source := parseYAML(`
+---
+data:
+  alice: 25
+result: (( sync[data|v|->defined(v.alice), v.alice] ))
+`)
+				resolved := parseYAML(`
+---
+data:
+  alice: 25
+result: 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+		Context("timeout", func() {
+			It("stops for succeeded evaluation", func() {
+				source := parseYAML(`
+---
+data:
+  alice: 25
+result: (( catch[sync[ data|v,e|-> defined(v.bob), v.bob| 1]|v,e|->e] ))
+`)
+				resolved := parseYAML(`
+---
+data:
+  alice: 25
+result: sync timeout reached
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("stops for failed evaluation", func() {
+				source := parseYAML(`
+---
+data:
+  alice: 25
+result: (( catch[sync[data.bob|v|->defined(v.bob)|v|->v.bob| 1]|v,e|->e] ))
+`)
+				resolved := parseYAML(`
+---
+data:
+  alice: 25
+result: "'data.bob' not found"
 `)
 				Expect(source).To(FlowAs(resolved))
 			})

@@ -46,7 +46,7 @@ Modulo <-  '%' req_ws Level0
 Level0 <- IP / String / Integer / Boolean / Undefined / Nil / Symbol / Not /
           Substitution / Merge / Auto / Lambda / Chained 
 
-Chained <- ( MapMapping / Mapping / MapSelection / Selection / Sum / List / Map / Range / Grouped / Reference ) ChainedQualifiedExpression*
+Chained <- ( MapMapping / Sync / Catch / Mapping / MapSelection / Selection / Sum / List / Map / Range / Grouped / Reference ) ChainedQualifiedExpression*
 ChainedQualifiedExpression <- ChainedCall / ( '.' ( ChainedRef / ChainedDynRef / Projection) )
 ChainedRef <- ( Key / Index ) FollowUpRef
 ChainedDynRef <- '[' Expression ']'
@@ -89,12 +89,19 @@ Required <- 'required'
 On <- 'on' req_ws Name
 
 Auto <- 'auto'
+Default <- {}
 
-MapMapping <- 'map{' Level7 ( LambdaExpr / ( '|' Expression )) '}'
-Mapping <- 'map[' Level7 ( LambdaExpr / ( '|' Expression )) ']'
-MapSelection <- 'select{' Level7 ( LambdaExpr / ( '|' Expression )) '}'
-Selection <- 'select[' Level7 ( LambdaExpr / ( '|' Expression )) ']'
-Sum <- 'sum[' Level7 '|' Level7 ( LambdaExpr / ( '|' Expression )) ']'
+Sync <- 'sync[' Level7  (( (LambdaExpr LambdaExt) / (LambdaOrExpr LambdaOrExpr))  (( '|' Expression) / Default ) / (LambdaOrExpr Default Default))  ']'
+LambdaExt <- ',' Expression
+LambdaOrExpr <- LambdaExpr / ( '|' Expression )
+
+Catch <- 'catch[' Level7 LambdaOrExpr  ']'
+MapMapping <- 'map{' Level7 LambdaOrExpr '}'
+Mapping <- 'map[' Level7 LambdaOrExpr ']'
+MapSelection <- 'select{' Level7 LambdaOrExpr '}'
+Selection <- 'select[' Level7 LambdaOrExpr ']'
+Sum <- 'sum[' Level7 '|' Level7 LambdaOrExpr ']'
+
 Lambda <- 'lambda' ( LambdaRef / LambdaExpr )
 LambdaRef <- req_ws Expression
 LambdaExpr <- ws Params ws '->' Expression

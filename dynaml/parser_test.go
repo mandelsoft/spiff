@@ -393,6 +393,156 @@ var _ = Describe("parsing", func() {
 			)
 		})
 
+		Describe("sync", func() {
+			It("parses simple lambda", func() {
+				parsesAs(
+					`sync[data|x|->x]`,
+					SyncExpr{
+						A: ReferenceExpr{[]string{"data"}},
+						Cond: LambdaExpr{
+							[]string{"x"},
+							ReferenceExpr{[]string{"x"}},
+						},
+						Value:   DefaultExpr{},
+						Timeout: DefaultExpr{},
+					},
+				)
+			})
+			It("parses double lambda", func() {
+				parsesAs(
+					`sync[data|x|->x,y]`,
+					SyncExpr{
+						A: ReferenceExpr{[]string{"data"}},
+						Cond: LambdaExpr{
+							[]string{"x"},
+							ReferenceExpr{[]string{"x"}},
+						},
+						Value: LambdaExpr{
+							[]string{"x"},
+							ReferenceExpr{[]string{"y"}},
+						},
+						Timeout: DefaultExpr{},
+					},
+				)
+			})
+			It("parses shared lambda, timeout", func() {
+				parsesAs(
+					`sync[data|x|->x,y|10]`,
+					SyncExpr{
+						A: ReferenceExpr{[]string{"data"}},
+						Cond: LambdaExpr{
+							[]string{"x"},
+							ReferenceExpr{[]string{"x"}},
+						},
+						Value: LambdaExpr{
+							[]string{"x"},
+							ReferenceExpr{[]string{"y"}},
+						},
+						Timeout: IntegerExpr{10},
+					},
+				)
+			})
+			It("parses double lambda, timeout", func() {
+				parsesAs(
+					`sync[data|x|->x|y|->y|10]`,
+					SyncExpr{
+						A: ReferenceExpr{[]string{"data"}},
+						Cond: LambdaExpr{
+							[]string{"x"},
+							ReferenceExpr{[]string{"x"}},
+						},
+						Value: LambdaExpr{
+							[]string{"y"},
+							ReferenceExpr{[]string{"y"}},
+						},
+						Timeout: IntegerExpr{10},
+					},
+				)
+			})
+
+			It("parses lambda cond, expression", func() {
+				parsesAs(
+					`sync[data|x|->x|value]`,
+					SyncExpr{
+						A: ReferenceExpr{[]string{"data"}},
+						Cond: LambdaExpr{
+							[]string{"x"},
+							ReferenceExpr{[]string{"x"}},
+						},
+						Value:   ReferenceExpr{[]string{"value"}},
+						Timeout: DefaultExpr{},
+					},
+				)
+			})
+
+			It("parses simple cond", func() {
+				parsesAs(
+					`sync[data|cond]`,
+					SyncExpr{
+						A:       ReferenceExpr{[]string{"data"}},
+						Cond:    ReferenceExpr{[]string{"cond"}},
+						Value:   DefaultExpr{},
+						Timeout: DefaultExpr{},
+					},
+				)
+			})
+
+			It("parses double expr", func() {
+				parsesAs(
+					`sync[data|cond|value]`,
+					SyncExpr{
+						A:       ReferenceExpr{[]string{"data"}},
+						Cond:    ReferenceExpr{[]string{"cond"}},
+						Value:   ReferenceExpr{[]string{"value"}},
+						Timeout: DefaultExpr{},
+					},
+				)
+			})
+
+			It("parses expr lambda", func() {
+				parsesAs(
+					`sync[data|cond|v|->v]`,
+					SyncExpr{
+						A:    ReferenceExpr{[]string{"data"}},
+						Cond: ReferenceExpr{[]string{"cond"}},
+						Value: LambdaExpr{
+							[]string{"v"},
+							ReferenceExpr{[]string{"v"}},
+						},
+						Timeout: DefaultExpr{},
+					},
+				)
+			})
+
+			It("parses double expr, timeout", func() {
+				parsesAs(
+					`sync[data|cond|value|10]`,
+					SyncExpr{
+						A:       ReferenceExpr{[]string{"data"}},
+						Cond:    ReferenceExpr{[]string{"cond"}},
+						Value:   ReferenceExpr{[]string{"value"}},
+						Timeout: IntegerExpr{10},
+					},
+				)
+			})
+
+			It("parses expr lambda, timeout", func() {
+				parsesAs(
+					`sync[data|cond|v|->v|10]`,
+					SyncExpr{
+						A:    ReferenceExpr{[]string{"data"}},
+						Cond: ReferenceExpr{[]string{"cond"}},
+						Value: LambdaExpr{
+							[]string{"v"},
+							ReferenceExpr{[]string{"v"}},
+						},
+						Timeout: IntegerExpr{10},
+					},
+				)
+			})
+
+		})
+
 		It("parses key/value mapping", func() {
 			parsesAs(
 				`map[list|x,y|->x]`,

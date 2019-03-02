@@ -10,10 +10,16 @@ import (
 	"github.com/mandelsoft/spiff/debug"
 )
 
-type helperNode struct{}
+type helperNode struct {
+}
 
 func (e helperNode) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	panic("not intended to be evaluated")
+}
+
+type expressionHelper struct {
+	helperNode
+	expression Expression
 }
 
 type expressionListHelper struct {
@@ -165,6 +171,8 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 
 		case ruleAction0:
 		case ruleAction1:
+		case ruleAction2:
+
 		case ruleProjectionValue:
 			value := &ProjectionValue{}
 			tokens.Push(ProjectionValueExpr{value})
@@ -303,6 +311,25 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			list.list = append(list.list, rhs.name)
 			tokens.Push(list)
 
+		case ruleDefault:
+			tokens.Push(DefaultExpr{})
+
+		case ruleLambdaOrExpr:
+		case ruleLambdaExt:
+			tokens.Push(expressionHelper{expression: tokens.Pop()})
+		case ruleSync:
+			timeout := tokens.Pop()
+			value := tokens.Pop()
+			cond := tokens.Pop()
+			expr := tokens.Pop()
+			if h, ok := value.(expressionHelper); ok {
+				value = LambdaExpr{E: h.expression, Names: cond.(LambdaExpr).Names}
+			}
+			tokens.Push(SyncExpr{A: expr, Cond: cond, Value: value, Timeout: timeout})
+		case ruleCatch:
+			rhs := tokens.Pop()
+			lhs := tokens.Pop()
+			tokens.Push(CatchExpr{Lambda: rhs, A: lhs})
 		case ruleMapping:
 			rhs := tokens.Pop()
 			lhs := tokens.Pop()

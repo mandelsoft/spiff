@@ -189,7 +189,7 @@ func mapList(source []yaml.Node, e LambdaValue, binding Binding, aggr MappingAgg
 	info := DefaultInfo()
 
 	if len(e.lambda.Names) > 2 {
-		info.Error("mapping expression take a maximum of 2 arguments")
+		info.Error("mapping expression takes a maximum of 2 arguments")
 		return nil, info, false
 	}
 	for i, n := range source {

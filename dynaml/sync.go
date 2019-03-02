@@ -8,12 +8,13 @@ import (
 )
 
 type SyncExpr struct {
-	Sub     Expression
-	Cond    Expression
-	Value   Expression
-	Timeout Expression
-	first   time.Time
-	last    time.Time
+	A        Expression
+	Cond     Expression
+	Value    Expression
+	Timeout  Expression
+	function bool
+	first    time.Time
+	last     time.Time
 }
 
 func (e SyncExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
@@ -21,41 +22,52 @@ func (e SyncExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	var value interface{}
 	var info EvaluationInfo
 
+	if e.first.IsZero() {
+		e.first = time.Now()
+	}
+
 	errmsg := ""
 	timeout := 5 * time.Minute
 	if e.Timeout != nil {
-		t, infot, ok := ResolveIntegerExpressionOrPushEvaluation(&e.Timeout, &resolved, nil, binding, false)
-		if !ok {
-			return nil, infot, ok
+		if _, ok := e.Timeout.(DefaultExpr); !ok {
+			t, infot, ok := ResolveIntegerExpressionOrPushEvaluation(&e.Timeout, &resolved, nil, binding, false)
+			if !ok {
+				return nil, infot, ok
+			}
+			if !resolved {
+				return e, info, true
+			}
+			timeout = time.Second * time.Duration(t)
 		}
-		if !resolved {
-			return e, info, true
-		}
-		timeout = time.Second * time.Duration(t)
 	}
 
 	result := map[string]yaml.Node{}
 
-	expr := e.Sub
+	expr := e.A
+	debug.Debug("sync value: %s\n", expr)
 	value, infoe, ok := ResolveExpressionOrPushEvaluation(&expr, &resolved, nil, binding, false)
 
 	if !ok {
-		debug.Debug("sync arg failed\n")
-		result[CATCH_VALID] = node(false, binding)
-		result[CATCH_ERROR] = node(infoe.Issue.Issue, binding)
 		errmsg = infoe.Issue.Issue
+		debug.Debug("sync arg failed: %s\n", errmsg)
+		result[CATCH_VALID] = node(false, binding)
+		result[CATCH_ERROR] = node(errmsg, binding)
 	} else {
 		if !resolved {
 			return e, info, true
 		}
+		debug.Debug("sync arg succeeded\n")
 		result[CATCH_VALID] = node(true, binding)
 		result[CATCH_ERROR] = node("", binding)
 		result[CATCH_VALUE] = node(value, binding)
 	}
 
-	debug.Debug("sync arg succeeded\n")
+	condbinding := binding
+	if e.function {
+		condbinding = binding.WithLocalScope(result)
+	}
 
-	cond, infoc, ok := e.Cond.Evaluate(binding.WithLocalScope(result), false)
+	cond, infoc, ok := e.Cond.Evaluate(condbinding, false)
 	if !ok {
 		return info.AnnotateError(infoc, "condition evaluation failed)")
 	}
@@ -70,30 +82,41 @@ func (e SyncExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		switch len(lambda.lambda.Names) {
 		case 1:
 		case 2:
+			debug.Debug("setting 2nd condition arg to error: %s\n", result[CATCH_ERROR].Value())
 			args = append(args, result[CATCH_ERROR].Value())
 		default:
-			return info.Error("lambda expression for catch must take one or two arguments")
+			return info.Error("lambda expression for sync condition must take one or two arguments, found %d", len(lambda.lambda.Names))
 		}
 		resolved, result, sub, ok := lambda.Evaluate(args, binding, locally)
 		if !resolved {
 			return e, sub, ok
 		}
 		cond = result
+	} else {
+		if !e.function {
+			return info.Error("sync condition must evaluate to a lambda value")
+		}
 	}
+
 	switch v := cond.(type) {
 	case bool:
 		if !v {
-			debug.Debug("sync condition is false\n")
 			e.last = time.Now()
 
 			if e.last.Before(e.first.Add(timeout)) {
-				return e, infoe, ok
+				debug.Debug("sync failed but timeout not reached -> try again\n")
+				return e, infoe, true
 			}
 			if errmsg != "" {
+				debug.Debug("sync condition is finally false, err: %s\n", infoe.Issue.Issue)
 				return nil, infoe, false
 			} else {
+				debug.Debug("sync condition is finally false\n")
 				return info.Error("sync timeout reached")
 			}
+		} else {
+			debug.Debug("sync condition is true\n")
+
 		}
 	case Expression:
 		return e, info, true
@@ -101,7 +124,7 @@ func (e SyncExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		return info.Error("condition must evaluate to bool")
 	}
 
-	if e.Value != nil {
+	if !isDefaulted(e.Value) {
 		debug.Debug("evaluating sync value\n")
 		value, infov, ok := e.Value.Evaluate(binding.WithLocalScope(result), false)
 		if !ok {
@@ -110,29 +133,54 @@ func (e SyncExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		if isExpression(value) {
 			return e, infov, true
 		}
-		return value, infov, ok
-	} else {
-		if errmsg != "" {
-			return errmsg, info, true
+
+		if lambda, ok := value.(LambdaValue); ok && !e.function {
+			args := []interface{}{}
+			if result[CATCH_VALUE] != nil {
+				debug.Debug("setting first value arg to value: %v\n", result[CATCH_VALUE].Value())
+				args = append(args, result[CATCH_VALUE].Value())
+			} else {
+				debug.Debug("setting first value arg to nil\n")
+				args = append(args, nil)
+			}
+
+			switch len(lambda.lambda.Names) {
+			case 1:
+			case 2:
+				debug.Debug("setting 2nd value arg to error: %s\n", result[CATCH_ERROR].Value())
+				args = append(args, result[CATCH_ERROR].Value())
+			default:
+				return info.Error("lambda expression for sync value must take one or two arguments, found %d", len(lambda.lambda.Names))
+			}
+			resolved, result, sub, ok := lambda.Evaluate(args, binding, locally)
+			if !resolved {
+				return e, sub, ok
+			}
+			return result, sub, ok
+		} else {
+			if !e.function {
+				return info.Error("sync value expression must evaluate to lambda expression")
+			}
 		}
+		return value, infov, ok
 	}
 	debug.Debug("returning sync value\n")
 	return value, infoe, ok
 }
 
 func (e SyncExpr) String() string {
-	return fmt.Sprintf("sync(%s)", e.Sub)
+	return fmt.Sprintf("sync(%s)", e.A)
 }
 
 func (e CallExpr) sync(binding Binding) (interface{}, EvaluationInfo, bool) {
 	var info EvaluationInfo
 	switch len(e.Arguments) {
 	case 2:
-		return &SyncExpr{e.Arguments[0], e.Arguments[1], nil, nil, time.Now(), time.Time{}}, info, true
+		return &SyncExpr{A: e.Arguments[0], Cond: e.Arguments[1], function: true}, info, true
 	case 3:
-		return &SyncExpr{e.Arguments[0], e.Arguments[1], e.Arguments[2], nil, time.Now(), time.Time{}}, info, true
+		return &SyncExpr{A: e.Arguments[0], Cond: e.Arguments[1], Value: e.Arguments[2], function: true}, info, true
 	case 4:
-		return &SyncExpr{e.Arguments[0], e.Arguments[1], e.Arguments[2], e.Arguments[3], time.Now(), time.Time{}}, info, true
+		return &SyncExpr{A: e.Arguments[0], Cond: e.Arguments[1], Value: e.Arguments[2], Timeout: e.Arguments[3], function: true}, info, true
 	default:
 		return info.Error("2 or 3 arguments required for sync")
 	}
