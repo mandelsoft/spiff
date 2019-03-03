@@ -8,6 +8,7 @@ import (
 )
 
 const SELF = "_"
+const DOCNODE = "__"
 
 type RefResolver interface {
 	FindReference([]string) (Node, bool)

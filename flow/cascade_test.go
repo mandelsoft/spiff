@@ -346,6 +346,37 @@ values:
 				Expect(template).To(CascadeAs(resolved, source))
 			})
 
+			It("supports relative names in definition scope access", func() {
+				source := parseYAML(`
+---
+node:
+  data:
+    scope: data
+  funcs:
+    a: (( |x|->scope ))
+    b: (( |x|->_.scope ))
+    c: (( |x|->_.data.scope ))
+    scope: funcs
+
+values:
+  scope: values
+
+  a: (( node.funcs.a(1) ))
+  b: (( node.funcs.b(1) ))
+  c: (( node.funcs.c(1) ))
+`)
+
+				resolved := parseYAML(`
+---
+values:
+  a: values
+  b: funcs
+  c: data
+  scope: values
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
 			It("supports nested calls in definition scope", func() {
 				source := parseYAML(`
 ---

@@ -61,10 +61,10 @@ func keys(s map[string]yaml.Node) string {
 }
 
 func (e DefaultEnvironment) String() string {
-	result := fmt.Sprintf("SCOPES: <%s> static: %s", strings.Join(e.path, ", "), keys(e.static))
+	result := fmt.Sprintf("SCOPES: <%s> static: %s", strings.Join(e.path, "."), keys(e.static))
 	s := e.scope
 	for s != nil {
-		result = result + "\n  <" + strings.Join(s.path, ", ") + ">" + keys(s.local) + keys(s.static)
+		result = result + "\n  <" + strings.Join(s.path, ".") + ">" + keys(s.local) + keys(s.static)
 		s = s.next
 	}
 	return result
@@ -127,8 +127,24 @@ func (e DefaultEnvironment) FindFromRoot(path []string) (yaml.Node, bool) {
 }
 
 func (e DefaultEnvironment) FindReference(path []string) (yaml.Node, bool) {
-	root, found := resolveSymbol(&e, path[0], e.scope)
+	root, found, nodescope := resolveSymbol(&e, path[0], e.scope)
 	if !found {
+		//fmt.Printf("FIND %s: %s\n", strings.Join(path,"."), e)
+		//fmt.Printf("FOUND %s: %v\n", strings.Join(path,"."),  keys(nodescope))
+		if path[0] == yaml.DOCNODE && nodescope != nil {
+			if len(path) > 1 {
+				scope := nodescope
+				for scope != nil {
+					val := scope.local[path[1]]
+					if val != nil {
+						return yaml.FindR(true, val, path[2:]...)
+					}
+					scope = scope.next
+				}
+				return nil, false
+			}
+			return yaml.FindR(true, node(nodescope.local), path[1:]...)
+		}
 		if e.outer != nil {
 			return e.outer.FindReference(path)
 		}
@@ -287,19 +303,24 @@ func deactivateScopes(node yaml.Node) yaml.Node {
 	return node
 }
 
-func resolveSymbol(env *DefaultEnvironment, name string, scope *Scope) (yaml.Node, bool) {
+func resolveSymbol(env *DefaultEnvironment, name string, scope *Scope) (yaml.Node, bool, *Scope) {
+	var nodescope *Scope
 	if name == "__ctx" {
-		return createContext(env), true
+		return createContext(env), true, nil
 	}
 	for scope != nil {
+		if nodescope == nil && scope.path != nil && scope.local != nil {
+			//fmt.Printf("SCOPE NODE: <%s> %v %v\n", strings.Join(scope.path,"."), keys(scope.local), keys(scope.nodescope))
+			nodescope = scope
+		}
 		val := scope.local[name]
 		if val != nil {
-			return val, true
+			return val, true, nil
 		}
 		scope = scope.next
 	}
 
-	return nil, false
+	return nil, false, nodescope
 }
 
 func createContext(env *DefaultEnvironment) yaml.Node {

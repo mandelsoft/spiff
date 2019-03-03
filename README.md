@@ -138,6 +138,10 @@ Contents:
 	- [Templates](#templates)
 		- [<<: (( &template ))](#--template-)
 		- [(( *foo.bar ))](#-foobar-)
+	- [Scope References](#scope-references)
+	    - [_](#_)
+	    - [__](#__)
+	    - [__ctx.OUTER](#__ctxouter)
 	- [Special Literals](#special-literals)
 	- [Access to evaluation context](#access-to-evaluation-context)
 	- [Operation Priorities](#operation-priorities)
@@ -3316,6 +3320,138 @@ use:
 
 verb: hates
 ```
+
+## Scope References
+
+### `_`
+
+The special reference `_` (_self_) can be used inside of _lambda functions_
+and _templates_. They refer to the containing element (the lambda function or
+template).
+
+Additionally it can be used to lookup relative reference expressions
+starting with the defining document scope of the element skipping intermediate
+scopes.
+
+e.g.:
+
+```yaml
+node:
+  data:
+    scope: data
+  funcs:
+    a: (( |x|->scope ))
+    b: (( |x|->_.scope ))
+    c: (( |x|->_.data.scope ))
+    scope: funcs
+
+call:
+  scope: call
+
+  a: (( node.funcs.a(1) ))
+  b: (( node.funcs.b(1) ))
+  c: (( node.funcs.c(1) ))
+
+```
+
+evaluates `call` to
+
+```yaml
+call:
+  a: call
+  b: funcs
+  c: data
+  scope: call
+```
+
+### `__`
+
+The special reference `__` can be used to lookup references as relative
+references starting with the document node hosting the actually evaluated
+_dynaml_ expression skipping intermediate scopes.
+ 
+This can, for example be
+used to relatively access a lambda value field besides the actual field in
+a map. The usage of plain function names is reserved for builtin functions
+and are not used as relative references.
+
+This special reference is also available in expressions in _templates_ and
+refer to the map node in the template hosting the actually evaluated expression.
+
+e.g.:
+
+```yaml
+templates:
+  templ:
+    <<: (( &template ))
+    self: (( _ ))
+    value: (( ($self="value") __.self ))
+    result: (( scope ))
+    templ: (( _.scope ))
+
+  scope: templates
+
+
+result:
+  inst: (( *templates.templ ))
+  scope: result
+```
+
+evaluates `result` to
+
+```yaml
+result:
+  inst:
+    result: result
+    templ: templates
+    
+    self:
+      <<: (( &template ))
+      result: (( scope ))
+      self: (( _ ))
+      templ: (( _.scope ))
+      value: (( ($self="value") __.self ))
+    value:
+      <<: (( &template ))
+      result: (( scope ))
+      self: (( _ ))
+      templ: (( _.scope ))
+      value: (( ($self="value") __.self ))
+  scope: result
+```
+
+or with referencing upper nodes:
+
+```yaml
+templates:
+  templ:
+    <<: (( &template ))
+    alice: root
+    data:
+      foo: (( ($bob="local") __.bob ))
+      bar: (( ($alice="local") __.alice ))
+      bob: static
+
+
+result: (( *templates.templ ))
+```
+
+evaluates `result`  to
+
+```yaml
+result:
+  alice: root
+  data:
+    bar: root
+    foo: static
+    
+    bob: static
+```
+
+### `__ctx.OUTER`
+
+The context field `OUTER` is used for nested [merges](#-mergemap1-map2-). 
+It is a list of documents, index 0 is the next outer document, and so on.
 
 ## Special Literals
 

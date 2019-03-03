@@ -6949,4 +6949,90 @@ read: alice
 			Expect(source).To(FlowAs(resolved))
 		})
 	})
+
+	Describe("node scope", func() {
+		Context("in expressions", func() {
+			It("finds node local direct entry", func() {
+				source := parseYAML(`
+---
+bob: root
+data:
+  foo: (( ($bob="local") __.bob ))
+  bob: static
+`)
+				resolved := parseYAML(`
+---
+bob: root
+data:
+  foo: static
+  bob: static
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("finds node local upper entry", func() {
+				source := parseYAML(`
+---
+bob: root
+data:
+  foo: (( ($bob="local") __.bob ))
+`)
+				resolved := parseYAML(`
+---
+bob: root
+data:
+  foo: root
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("in templates", func() {
+			It("finds node local direct entry", func() {
+				source := parseYAML(`
+---
+templates:
+  <<: (( &temporary ))
+  templ:
+    <<: (( &template ))
+    bob: root
+    data:
+      foo: (( ($bob="local") __.bob ))
+      bob: static
+result: (( *templates.templ ))
+`)
+				resolved := parseYAML(`
+---
+result:
+  bob: root
+  data:
+    foo: static
+    bob: static
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("finds node local upper entry", func() {
+				source := parseYAML(`
+---
+templates:
+  <<: (( &temporary ))
+  templ:
+    <<: (( &template ))
+    bob: root
+    data:
+      foo: (( ($bob="local") __.bob ))
+result: (( *templates.templ ))
+`)
+				resolved := parseYAML(`
+---
+result:
+  bob: root
+  data:
+    foo: root
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
 })
