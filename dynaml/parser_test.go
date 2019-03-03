@@ -778,6 +778,21 @@ var _ = Describe("parsing", func() {
 				ReferenceExpr{[]string{"foo", "[0]"}},
 			)
 		})
+
+		It("parses projection expression", func() {
+			val := ProjectionValue{}
+			parsesAs(
+				`foo.[0].[*].bar`,
+				ProjectionExpr{
+					ReferenceExpr{[]string{"foo", "[0]"}},
+					&val,
+					QualifiedExpr{
+						ProjectionValueExpr{&val},
+						ReferenceExpr{[]string{"bar"}},
+					},
+				},
+			)
+		})
 	})
 
 	Describe("chained calls and references", func() {
@@ -875,6 +890,85 @@ var _ = Describe("parsing", func() {
 			)
 		})
 	})
+
+	Describe("simplified indexing", func() {
+		It("parses qualified dynamic expression", func() {
+			parsesAs(
+				`foo[alice].bar`,
+				QualifiedExpr{
+					DynamicExpr{
+						ReferenceExpr{[]string{"foo"}},
+						ReferenceExpr{[]string{"alice"}},
+					},
+					ReferenceExpr{[]string{"bar"}},
+				},
+			)
+		})
+
+		It("parses indexed expression", func() {
+			parsesAs(
+				`foo[ 0 ]`,
+				DynamicExpr{
+					ReferenceExpr{[]string{"foo"}},
+					IntegerExpr{0},
+				},
+			)
+		})
+
+		It("parses regular reference expression", func() {
+			parsesAs(
+				`foo[0]`,
+				ReferenceExpr{[]string{"foo", "[0]"}},
+			)
+		})
+
+		It("parses multi level index", func() {
+			parsesAs(
+				`foo[0][1]`,
+				ReferenceExpr{[]string{"foo", "[0]", "[1]"}},
+			)
+		})
+
+		It("parses chained call and index", func() {
+			parsesAs(
+				`foo(0)[1](2)`,
+				CallExpr{
+					QualifiedExpr{
+						CallExpr{
+							ReferenceExpr{
+								[]string{"foo"},
+							},
+							[]Expression{
+								IntegerExpr{0},
+							},
+						},
+						ReferenceExpr{
+							[]string{"[1]"},
+						},
+					},
+					[]Expression{
+						IntegerExpr{2},
+					},
+				},
+			)
+		})
+
+		It("parses projection expression", func() {
+			val := ProjectionValue{}
+			parsesAs(
+				`foo[0][*].bar`,
+				ProjectionExpr{
+					ReferenceExpr{[]string{"foo", "[0]"}},
+					&val,
+					QualifiedExpr{
+						ProjectionValueExpr{&val},
+						ReferenceExpr{[]string{"bar"}},
+					},
+				},
+			)
+		})
+	})
+
 })
 
 func parsesAs(source string, expr Expression, path ...string) {

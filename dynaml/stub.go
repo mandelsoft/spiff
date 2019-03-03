@@ -27,7 +27,7 @@ func (e CallExpr) stub(binding Binding) (interface{}, EvaluationInfo, bool) {
 			} else {
 				switch v := val.(type) {
 				case string:
-					arg = strings.Split(v, ".")
+					arg = PathComponents(v, true)
 				case []yaml.Node:
 					for _, n := range v {
 						str, ok := n.Value().(string)

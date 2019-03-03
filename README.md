@@ -283,17 +283,19 @@ hi:
 
 ## `(( foo.bar.[1].baz ))`
 
-Look for the nearest 'foo' key, and from there follow through to .bar.baz.
+Look for the nearest 'foo' key, and from there follow through to `.bar.[1].baz`.
 
 A path is a sequence of steps separated by dots. A step is either a word for
 maps, or digits surrounded by brackets for list indexing.
 
-If the path cannot be resolved, this evaluates to nil. A reference node at the
-top level cannot evaluate to nil; the template will be considered not fully
-resolved. If a reference is expected to sometimes not be provided, it should be
+A path that cannot be resolved lead to an evaluation error. If a reference is
+expected to sometimes not be provided, it should be
 used in combination with '||' (see [below](#-a--b-)) to guarantee resolution.
 
-Note that references are always within the template, and order does not matter.
+_Note:_ The dynaml grammer has been reworked to enable the usual index syntax,
+now. Instead of `foo.bar.[1]` it is possible now to use `foo.bar[1]`.
+
+_Note:_ References are always within the template, and order does not matter.
 You can refer to another dynamic node and presume it's resolved, and the
 reference node will just eventually resolve once the dependent node resolves.
 
@@ -318,7 +320,7 @@ If the path starts with a dot (`.`) the path is always evaluated from the root
 of the document.
 
 List entries consisting of a map with `name` field can directly be addressed
-by their name value.
+by their name value as path component.
 
 e.g.:
 

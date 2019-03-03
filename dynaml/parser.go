@@ -85,7 +85,7 @@ func Parse(source string, path []string, stubPath []string) (Expression, error) 
 	return buildExpression(grammar, path, stubPath), nil
 }
 
-func pathComponents(ref string, leading bool) []string {
+func PathComponents(ref string, leading bool) []string {
 	path := []string{}
 	comp := ""
 	for _, c := range ref {
@@ -172,13 +172,13 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			keyName = tokens.Pop().(nameHelper).name
 		case ruleFollowUpRef:
 		case ruleReference:
-			tokens.Push(ReferenceExpr{pathComponents(contents, true)})
+			tokens.Push(ReferenceExpr{PathComponents(contents, true)})
 
 		case ruleChained:
 		case ruleChainedQualifiedExpression:
 		case rulePathComponent:
 		case ruleChainedRef:
-			ref := ReferenceExpr{pathComponents(contents, false)}
+			ref := ReferenceExpr{PathComponents(contents, false)}
 			expr := tokens.Pop()
 			tokens.Push(QualifiedExpr{expr, ref})
 		case ruleChainedDynRef:

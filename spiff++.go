@@ -191,7 +191,7 @@ func merge(templateFilePath string, partial bool, json, split bool, subpath stri
 				flowed = dynaml.ResetUnresolvedNodes(flowed)
 			}
 			if subpath != "" {
-				comps := strings.Split(subpath, ".")
+				comps := dynaml.PathComponents(subpath, false)
 				node, ok := yaml.FindR(true, flowed, comps...)
 				if !ok {
 					log.Fatalln(fmt.Sprintf("path %q not found%s", subpath, doc))
@@ -201,7 +201,7 @@ func merge(templateFilePath string, partial bool, json, split bool, subpath stri
 			if len(selection) > 0 {
 				new := map[string]yaml.Node{}
 				for _, p := range selection {
-					comps := strings.Split(p, ".")
+					comps := dynaml.PathComponents(p, false)
 					node, ok := yaml.FindR(true, flowed, comps...)
 					if !ok {
 						log.Fatalln(fmt.Sprintf("path %q not found%s", subpath, doc))
