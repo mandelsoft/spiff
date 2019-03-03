@@ -85,6 +85,34 @@ func Parse(source string, path []string, stubPath []string) (Expression, error) 
 	return buildExpression(grammar, path, stubPath), nil
 }
 
+func pathComponents(ref string, leading bool) []string {
+	path := []string{}
+	comp := ""
+	for _, c := range ref {
+		switch c {
+		case '.':
+			if comp != "" || leading {
+				path = append(path, comp)
+			}
+			comp = ""
+		case '[':
+			if comp != "" {
+				path = append(path, comp)
+				comp = ""
+			}
+			fallthrough
+		default:
+			comp += string(c)
+		}
+	}
+	if comp != "" {
+		path = append(path, comp)
+	}
+	//fmt.Printf("REF '%s' -> %v\n", ref, path)
+	return path
+	//return strings.Split(contents, ".")
+}
+
 func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) Expression {
 	tokens := &tokenStack{}
 
@@ -144,12 +172,13 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			keyName = tokens.Pop().(nameHelper).name
 		case ruleFollowUpRef:
 		case ruleReference:
-			tokens.Push(ReferenceExpr{strings.Split(contents, ".")})
+			tokens.Push(ReferenceExpr{pathComponents(contents, true)})
 
 		case ruleChained:
 		case ruleChainedQualifiedExpression:
+		case rulePathComponent:
 		case ruleChainedRef:
-			ref := ReferenceExpr{strings.Split(contents, ".")}
+			ref := ReferenceExpr{pathComponents(contents, false)}
 			expr := tokens.Pop()
 			tokens.Push(QualifiedExpr{expr, ref})
 		case ruleChainedDynRef:

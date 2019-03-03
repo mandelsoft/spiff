@@ -47,16 +47,16 @@ Level0 <- IP / String / Integer / Boolean / Undefined / Nil / Symbol / Not /
           Substitution / Merge / Auto / Lambda / Chained 
 
 Chained <- ( MapMapping / Sync / Catch / Mapping / MapSelection / Selection / Sum / List / Map / Range / Grouped / Reference ) ChainedQualifiedExpression*
-ChainedQualifiedExpression <- ChainedCall / ( '.' ( ChainedRef / ChainedDynRef / Projection) )
-ChainedRef <- ( Key / Index ) FollowUpRef
-ChainedDynRef <- '[' Expression ']'
+ChainedQualifiedExpression <- ChainedCall / ChainedRef / ChainedDynRef / Projection
+ChainedRef <-  PathComponent FollowUpRef
+ChainedDynRef <- '.'? '[' Expression ']'
 Slice <- Range
 ChainedCall <- StartArguments ExpressionList? ')'
 StartArguments <- '(' ws
 ExpressionList <- NextExpression ( ',' NextExpression)*
 NextExpression <- Expression
 
-Projection <- ( '[*]' / Slice ) ProjectionValue ChainedQualifiedExpression*
+Projection <-  '.'? ( '[*]' / Slice ) ProjectionValue ChainedQualifiedExpression*
 ProjectionValue <- {}
 
 Substitution <- '*' Level0
@@ -112,7 +112,8 @@ NextName <- ws Name ws
 Name <- [a-zA-Z0-9_]+
 
 Reference <- '.'? Key FollowUpRef
-FollowUpRef <- ( '.' ( Key / Index) )*
+FollowUpRef <- PathComponent*
+PathComponent <- ( '.' Key ) / ( '.'? Index )
 
 Key <- [a-zA-Z0-9_] [a-zA-Z0-9_\-]* ( ':' [a-zA-Z0-9_] [a-zA-Z0-9_\-]* )?
 Index <- '[' [0-9]+ ']'

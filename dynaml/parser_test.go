@@ -816,6 +816,20 @@ var _ = Describe("parsing", func() {
 				},
 			)
 		})
+		It("parses function chain", func() {
+			parsesAs(
+				`a(1).b`,
+				QualifiedExpr{
+					CallExpr{
+						ReferenceExpr{[]string{"a"}},
+						[]Expression{
+							IntegerExpr{1},
+						},
+					},
+					ReferenceExpr{[]string{"b"}},
+				},
+			)
+		})
 
 		It("parses list based chains", func() {
 			parsesAs(
