@@ -19,6 +19,8 @@ func (e DynamicExpr) Evaluate(binding Binding, locally bool) (interface{}, Evalu
 		return nil, info, false
 	}
 
+	locally = locally || info.Raw
+
 	if !isLocallyResolvedValue(root) {
 		return e, info, true
 	}

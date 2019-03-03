@@ -25,7 +25,7 @@ func func_read(cached bool, arguments []interface{}, binding Binding) (interface
 	}
 
 	t := "text"
-	if strings.HasSuffix(file, ".yml") || strings.HasSuffix(file, ".yaml") {
+	if strings.HasSuffix(file, ".yml") || strings.HasSuffix(file, ".yaml") || strings.HasSuffix(file, ".json") {
 		t = "yaml"
 	}
 	if len(arguments) > 1 {
@@ -77,12 +77,31 @@ func func_read(cached bool, arguments []interface{}, binding Binding) (interface
 		debug.Debug("resolving yaml file succeeded")
 		info.Source = file
 		return result.Value(), info, true
+	case "multiyaml":
+		nodes, err := yaml.ParseMulti(file, data)
+		if err != nil {
+			return info.Error("error parsing stub [%s]: %s", path.Clean(file), err)
+		}
+		for len(nodes) > 1 && nodes[len(nodes)-1].Value() == nil {
+			nodes = nodes[:len(nodes)-1]
+		}
+		debug.Debug("resolving yaml list from file\n")
+		info.Source = file
+		result, state := binding.Flow(node(nodes, info), false)
+		if state != nil {
+			debug.Debug("resolving yaml file failed: " + state.Error())
+			return info.PropagateError(nil, state, "resolution of yaml file '%s' failed", file)
+		}
+		debug.Debug("resolving yaml file succeeded")
+		return result.Value(), info, true
 	case "import":
 		node, err := yaml.Parse(file, data)
 		if err != nil {
 			return info.Error("error parsing stub [%s]: %s", path.Clean(file), err)
 		}
 		info.Source = file
+		info.Raw = true
+		debug.Debug("import yaml file succeeded")
 		return node.Value(), info, true
 	case "importmulti":
 		nodes, err := yaml.ParseMulti(file, data)
@@ -90,6 +109,7 @@ func func_read(cached bool, arguments []interface{}, binding Binding) (interface
 			return info.Error("error parsing stub [%s]: %s", path.Clean(file), err)
 		}
 		info.Source = file
+		info.Raw = true
 		for len(nodes) > 1 && nodes[len(nodes)-1].Value() == nil {
 			nodes = nodes[:len(nodes)-1]
 		}

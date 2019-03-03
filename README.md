@@ -104,7 +104,6 @@ Contents:
 		- [(( asjson(expr) ))](#-asjsonexpr-)
 		- [(( asyaml(expr) ))](#-asjsonexpr-)
 		- [(( catch(expr) ))](#-catchexpr-)
-		- [(( sync(expr, condition, value, 10) ))](#-syncexpr-condition-value-10-)
 		- [Accessing External Content](#accessing-external-content)
 		    - [(( read("file.yml") ))](#-readfileyml-)
 		    - [(( exec("command", arg1, arg2) ))](#-execcommand-arg1-arg2-)
@@ -1844,41 +1843,6 @@ data:
     value: 25
 ```
 
-### `(( sync(expr, condition, value, 10) ))`
-
-If an expression `expr` may return a different results for different evaluations,
-it is possible to synchronize the final output with a dedicated condition
-on the expression value. Such an expression could, for example, be an
-uncached `read`, `exec` or `pipe` call.
-
-The evaluation of the condition expression gets a local binding according to the
-[`catch`](#-catchexpr-) function. Therefore it can access the actual value
-of the expression with the reference `value`. When the condition evaluates to
-`true`, the synchronization finishes and the result of the `value` expression is
-returned. This expression is optional. If not given, the value of the synched
-expression is returned. If given, it gets the same binding as the condition
-expression. The optional fourth argument is a timeout in seconds
-(default is 5 min).
-
-e.g.:
-
-```yaml
-data:
-  alice: 25
-result: (( sync(data,defined(value.alice),value.alice) ))
-```
-
-resolves to 
-
-```yaml
-data:
-  alice: 25
-result: 25
-```
-
-This example is quite useless, because the sync expression is a constant. It
-just demonstrates the usage.
-
 ### `(( static_ips(0, 1, 3) ))`
 
 Generate a list of static IPs for a job.
@@ -2282,20 +2246,67 @@ in two flavors.
 
 #### `(( read("file.yml") ))`
 
-Read a file and return its content. There is support for two content types: `yaml` files and `text` files.
-If the file suffix is `.yml`, by default the yaml type is used. An optional second parameter can be used
-to explicitly specifiy the desired return type: `yaml` or `text`.
+Read a file and return its content. There is support for two content types:
+`yaml` files and `text` files. If the file suffix is `.yml`, `.yaml` or `.json`,
+by default the yaml type is used. If the file should be read as `text`, this
+ type must be explicitly specified.
+  
+An optional second parameter can be used to explicitly specifiy the desired
+return type: `yaml` or `text`. For _yaml_ document some addtional 
+types are supported: `multiyaml`, `import` and `importmulti`.
 
 ##### yaml documents
 
-A yaml document will be parsed and the tree is returned. The  elements of the tree can be accessed by regular dynaml expressions.
+A yaml document will be parsed and the tree is returned. The  elements of the
+tree can be accessed by regular dynaml expressions.
 
-Additionally the yaml file may again contain dynaml expressions. All included dynaml expressions will be evaluated in the context of the reading expression. This means that the same file included at different places in a yaml document may result in different sub trees, depending on the used dynaml expressions.
+Additionally the yaml file may again contain dynaml expressions. All included
+dynaml expressions will be evaluated in the context of the reading expression.
+This means that the same file included at different places in a yaml document
+may result in different sub trees, depending on the used dynaml expressions.
+
+If is poassible to read a multi-document yaml, also. If the type `multiyaml`
+is given, a list node with the yaml document root nodes is returned.
 
 If the read type is set to `import`, the file content is read as yaml document
 and the root node is used to substitute the expression. Potential dynaml
 expressions contained in the document will not be evaluated with the actual
-binding of the expression but as it would have been part of the original file.
+binding of the expression together with the read call,
+but as it would have been part of the original file.
+Therefore this mode can only be used, if there is no further processing
+of the read result or the delivered values are unprocessed.
+
+This can be used together with a chained reference
+ (for examle `(( read(...).selection ))`) to delect a dedicated fragment of
+the imported document. Then, the evaluatio will be done for the selected
+portion, only. Expressions and references in the other parts are not
+evalauted and at all and cannot lead to error.
+
+e.g.: 
+
+**template.yaml**
+
+```yaml
+ages:
+  alice: 25
+
+data: (( read("import.yaml", "import").first ))
+``` 
+
+**import.yaml**
+
+```yaml
+first:
+  age: (( ages.alice ))
+
+second:
+  age: (( ages.bob ))
+```
+
+will not fail, because the `second` section is never evaluated.
+
+This mode should be taken with caution, because it often leads to unexpected
+results.
 
 The read type `importmulti` can be used to import multi document yaml files as a 
 list of nodes.
@@ -4293,7 +4304,7 @@ networks:
       type: LoadBalancer
   
   deployment:
-     testservice: (( sync(pipe_uncached(service, "kubectl", "apply", "-f", "-", "-o", "yaml"), defined(value.status.loadBalancer.ingress)) ))
+     testservice: (( sync[pipe_uncached(service, "kubectl", "apply", "-f", "-", "-o", "yaml")|value|->defined(value.status.loadBalancer.ingress)] ))
   
   
   otherconfig:

@@ -53,6 +53,7 @@ type EvaluationInfo struct {
 	LocalError   bool
 	Failed       bool
 	Undefined    bool
+	Raw          bool
 	Issue        yaml.Issue
 	Cleanups     []Cleanup
 	yaml.NodeFlags
@@ -63,7 +64,10 @@ func (e EvaluationInfo) SourceName() string {
 }
 
 func DefaultInfo() EvaluationInfo {
-	return EvaluationInfo{nil, false, false, false, "", "", false, false, false, yaml.Issue{}, nil, 0}
+	return EvaluationInfo{nil, false, false,
+		false, "", "",
+		false, false, false, false,
+		yaml.Issue{}, nil, 0}
 }
 
 type Expression interface {
