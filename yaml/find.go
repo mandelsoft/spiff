@@ -8,7 +8,7 @@ import (
 	"github.com/mandelsoft/spiff/debug"
 )
 
-var listIndex = regexp.MustCompile(`^\[(\d+)\]$`)
+var listIndex = regexp.MustCompile(`^\[(-?\d+)\]$`)
 
 func Find(root Node, path ...string) (Node, bool) {
 	return FindR(false, root, path...)
@@ -90,6 +90,9 @@ func stepThroughList(raw bool, here []Node, step string, key string) (Node, bool
 			panic(err)
 		}
 
+		if index < 0 {
+			index = len(here) + index
+		}
 		if len(here) <= index {
 			return nil, false
 		}

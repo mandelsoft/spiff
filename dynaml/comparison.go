@@ -93,6 +93,9 @@ func compareEquals(a, b interface{}) (bool, EvaluationInfo, bool) {
 
 	debug.Debug("compare a '%#v'\n", a)
 	debug.Debug("compare b '%#v' \n", b)
+	if a == nil && b == nil {
+		return true, info, true
+	}
 	switch va := a.(type) {
 	case string:
 		var vb string

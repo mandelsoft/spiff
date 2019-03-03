@@ -286,7 +286,8 @@ hi:
 Look for the nearest 'foo' key, and from there follow through to `.bar.[1].baz`.
 
 A path is a sequence of steps separated by dots. A step is either a word for
-maps, or digits surrounded by brackets for list indexing.
+maps, or digits surrounded by brackets for list indexing. The index might be negative (a minus followed by digits). Negative indices are taken from then end
+of the list (effective index = index + length(list)).
 
 A path that cannot be resolved lead to an evaluation error. If a reference is
 expected to sometimes not be provided, it should be

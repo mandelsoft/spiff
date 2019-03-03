@@ -5719,6 +5719,52 @@ value:
 			})
 		})
 
+		Context("for direct index", func() {
+			It("it extracts a non-negative index", func() {
+				source := parseYAML(`
+---
+value: (( data.[1] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value: b
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it extracts a negative index", func() {
+				source := parseYAML(`
+---
+value: (( data.[-1] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value: c
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
 		Context("for range index", func() {
 			It("it extracts a slice for non-negative range", func() {
 				source := parseYAML(`
