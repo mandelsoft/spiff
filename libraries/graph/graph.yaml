@@ -1,0 +1,23 @@
+
+utilities:
+  <<: (( &temporary(merge || ~) ))
+
+  graph:
+    <<: (( &temporary ))
+    _dep: (( |model,comp,closure|->contains(closure,comp) ? { $deps=[], $err=closure [comp]} :($deps=_._deps(model,comp,closure [comp]))($err=sum[deps|[]|s,e|-> length(s) >= length(e.err) ? s :e.err]) { $deps=_.join(map[deps|e|->e.deps]), $err=err} ))
+    _deps: (( |model,comp,closure|->map[model.[comp]|dep|->($deps=_._dep(model,dep,closure)) { $deps=[dep] deps.deps, $err=deps.err }] || [{$deps=[], $err=[]}] ))
+    missing: (( |model,comp|->sum[model.[comp]|[]|s,v|-> defined(model.[v]) ? s :s v] ))
+    join: (( |lists|->sum[lists|[]|s,e|-> s e] ))
+    min: (( |list|->sum[list|~|s,e|-> s ? e < s ? e :s :e] ))
+
+    normcycle: (( |cycle|->($min=_.min(cycle)) min ? sum[cycle|cycle|s,e|->s.[0] == min ? s :(s.[1..] [s.[1]])] :cycle  ))
+    cycle: (( |list|->list ? ($elem=list.[length(list) - 1]) _.normcycle(sum[list|[]|s,e|->s ? s [e] :e == elem ? [e] :s]) :list ))
+    norm: (( |model,comp,deps|->($d= _.reverse(uniq(_.reverse(deps.deps)))) { $deps=d, $err=_.cycle(deps.err), $order=_.reverse([comp] d), $missing=_.missing(model,comp) } ))
+    reverse: (( |list|->sum[list|[]|s,e|->[e] s] ))
+
+    invert: (( |graph|->map{graph|c,l|->sum[graph|[]|s,k,v|->contains(v,c) ? s k :s ]} ))
+
+    evaluate: (( |model|->sum[model|{}|s,k,v|->s { k=_.norm(model,k,_._dep(model,k,[]))}] ))
+    cycles: (( |result|->uniq(sum[result|[]|s,k,v|-> v.err ? s [v.err] :s]) ))
+    order: (( |result|->uniq(_.reverse(sum[result|[]|s,k,v|->s [k] v.deps])) ))
+

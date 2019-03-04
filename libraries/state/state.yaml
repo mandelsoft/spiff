@@ -1,0 +1,51 @@
+
+#
+# maintain a state field depending on some input
+# and a template for a new value
+# if the input has changed or there is no stub value the template is
+# instantiated with the input as binding (reference input). 
+# Alternatively the new value can be given as direct value.
+# If a template is given, the template must provide a field
+# `state` which is used as new state value.
+#
+# The result is a state structure with two fields
+# - input: the input used to generate the actual value
+# - value: the effectice value
+#
+# A state field should be put into a non-merging field.
+# The actual state should be derived from this field
+# and used as stub for successive merge calls.
+#
+#
+# lambdas:
+#
+#  - utilities.state.data(input,new,forceupdate)
+#
+#    input:       any:             the input data used to generate the state
+#                                  value
+#    new:         template or and: the new value based on the input or
+#                                  a template using the `input` binding to
+#                                  generate the state value
+#    forceupdate: bool:            setting to true encorces a value update
+#
+#  - utilities.state.standard(spec,forceupdate)
+#
+#    spec:        map:             structure containing the specification
+#                                  for this state value
+#    forceupdate: bool:            setting to true encorces a value update
+#
+#    the _spec_ map must contain two fields:
+#         input: any               the input data used to generate the state
+#                                  value
+#         value: template or any   the new value based on the input or 
+#                                  a template using the `input` binding to
+#                                  generate the state value
+#
+
+utilities:
+  <<: (( &temporary(merge || ~) ))
+
+  state:
+    data: (( |input,new,update|-> { $input=input, $value= ( stub().input == input ? stub().value :~) // type(new) == "template" ? (*new).state :new } ))
+    standard: (( |data,update|-> _.data(data.input, data.value,update) ))
+

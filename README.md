@@ -193,6 +193,10 @@ the complete processed document.
 If the output is a list, the option `--split` outputs every list element as
 deparate document.
 
+The folder [libraries](libraries/README.md) offers some useful
+utility libraries. They can also be used as an example for the power
+of this templating engine.
+
 
 ### `spiff diff manifest.yml other-manifest.yml`
 
