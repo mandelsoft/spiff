@@ -293,11 +293,11 @@ A path that cannot be resolved lead to an evaluation error. If a reference is
 expected to sometimes not be provided, it should be
 used in combination with '||' (see [below](#-a--b-)) to guarantee resolution.
 
-_Note:_ The dynaml grammer has been reworked to enable the usual index syntax,
+**Note**: The dynaml grammer has been reworked to enable the usual index syntax,
 now. Instead of `foo.bar.[1]` it is possible now to use `foo.bar[1]`.
 
-_Note:_ References are always within the template, and order does not matter.
-You can refer to another dynamic node and presume it's resolved, and the
+**Note**: References are always within the template or stub, and order does not
+matter. You can refer to another dynamic node and presume it's resolved, and the
 reference node will just eventually resolve once the dependent node resolves.
 
 e.g.:

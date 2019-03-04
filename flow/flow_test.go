@@ -2375,16 +2375,50 @@ bar: false
 			Expect(source).To(FlowAs(resolved))
 		})
 
-		It("evaluates ==", func() {
+		It("evaluates == of int", func() {
 			source := parseYAML(`
 ---
 foo: (( 5 ))
 bar: (( foo == 5))
+fail: (( foo == 6 ))
 `)
 			resolved := parseYAML(`
 ---
 foo: 5
 bar: true
+fail: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates == of bool", func() {
+			source := parseYAML(`
+---
+foo: (( false ))
+bar: (( foo == false))
+fail: (( foo == true ))
+`)
+			resolved := parseYAML(`
+---
+foo: false
+bar: true
+fail: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates == of strings", func() {
+			source := parseYAML(`
+---
+foo: alice
+bar: (( foo == "alice"))
+fail: (( foo == "bob" ))
+`)
+			resolved := parseYAML(`
+---
+foo: alice
+bar: true
+fail: false
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
@@ -2396,6 +2430,7 @@ foo:
   - alice
   - bob
 bar: (( foo == [ "alice","bob" ] ))
+fail: (( foo == [ "alice" ] ))
 `)
 			resolved := parseYAML(`
 ---
@@ -2403,6 +2438,7 @@ foo:
   - alice
   - bob
 bar: true
+fail: false
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
@@ -2437,6 +2473,7 @@ comp:
   b: 2
 
 bar: (( foo == comp ))
+fail: (( foo == { "a"=1, "c"=3 } ))
 `)
 			resolved := parseYAML(`
 ---
@@ -2449,6 +2486,7 @@ comp:
   b: 2
 
 bar: true
+fail: false
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
