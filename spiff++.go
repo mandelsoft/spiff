@@ -23,7 +23,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "spiff"
 	app.Usage = "YAML in-domain templating processor"
-	app.Version = "1.3.0-dev"
+	app.Version = "1.3.0-beta-5"
 
 	app.Commands = []cli.Command{
 		{
