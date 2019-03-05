@@ -240,7 +240,7 @@ func merge(templateFilePath string, partial bool, json, split bool, subpath stri
 	}
 
 	for _, bytes := range result {
-		if !json {
+		if !json && (len(result) > 1 || len(bytes) == 0) {
 			fmt.Println("---")
 		}
 		if bytes != nil {
