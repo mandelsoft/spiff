@@ -23,7 +23,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "spiff++"
 	app.Usage = "deployment manifest toolkit"
-	app.Version = "1.2.1"
+	app.Version = "1.2.2"
 
 	app.Commands = []cli.Command{
 		{
@@ -148,7 +148,9 @@ func merge(templateFilePath string, partial bool, stubFilePaths []string) {
 			if err != nil {
 				log.Fatalln(fmt.Sprintf("error marshalling manifest%s:", doc), err)
 			}
-			fmt.Println("---")
+			if no > 0 {
+				fmt.Println("---")
+			}
 			fmt.Println(string(yaml))
 		} else {
 			fmt.Println("---")
