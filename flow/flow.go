@@ -175,7 +175,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 		}
 	}
 
-	if !merged && root.StandardOverride() && shouldOverride {
+	if !merged && root.StandardOverride() && shouldOverride && !env.NoMerge() {
 		debug.Debug("/// lookup stub %v -> %v\n", env.Path(), env.StubPath())
 		overridden, found := env.FindInStubs(env.StubPath())
 		if found {

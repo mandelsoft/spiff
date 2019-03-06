@@ -6462,6 +6462,62 @@ map:
 `)
 			Expect(source).To(FlowAs(resolved, stub))
 		})
+
+		It("keeps deep map", func() {
+			source := parseYAML(`
+---
+map:
+  <<: (( merge none ))
+  nested:
+     foo: not merged
+`)
+			stub := parseYAML(`
+---
+map:
+  nested:
+    foo: merged
+`)
+
+			resolved := parseYAML(`
+---
+map:
+  nested:
+     foo: not merged
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("restarts deep map", func() {
+			source := parseYAML(`
+---
+map:
+  <<: (( merge none ))
+  nested:
+     foo: not merged
+     bar:
+      <<: (( merge map.nested.bar ))
+      bar: not merged
+`)
+			stub := parseYAML(`
+---
+map:
+  nested:
+    foo: merged
+    bar: 
+      bar: merged
+`)
+
+			resolved := parseYAML(`
+---
+map:
+  nested:
+     foo: not merged
+     bar:
+       bar: merged
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
 	})
 
 	Describe("regression test for fixed errors", func() {

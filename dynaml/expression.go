@@ -32,6 +32,7 @@ type Binding interface {
 	Outer() Binding
 	Path() []string
 	StubPath() []string
+	NoMerge() bool
 
 	GetTempName(data []byte) (string, error)
 

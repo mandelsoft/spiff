@@ -32,6 +32,10 @@ func (c FakeBinding) StubPath() []string {
 	return c.stubPath
 }
 
+func (c FakeBinding) NoMerge() bool {
+	return false
+}
+
 func (c FakeBinding) SourceName() string {
 	return "test"
 }

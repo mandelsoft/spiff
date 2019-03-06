@@ -40,6 +40,7 @@ type DefaultEnvironment struct {
 
 	stubs      []yaml.Node
 	stubPath   []string
+	nomerge    bool
 	sourceName string
 
 	currentSourceName string
@@ -96,6 +97,10 @@ func (e DefaultEnvironment) Path() []string {
 
 func (e DefaultEnvironment) StubPath() []string {
 	return e.stubPath
+}
+
+func (e DefaultEnvironment) NoMerge() bool {
+	return e.nomerge
 }
 
 func (e DefaultEnvironment) SourceName() string {
@@ -205,7 +210,12 @@ func (e DefaultEnvironment) WithPath(step string) dynaml.Binding {
 }
 
 func (e DefaultEnvironment) RedirectOverwrite(path []string) dynaml.Binding {
-	e.stubPath = path
+	if len(path) > 0 {
+		e.stubPath = path
+		e.nomerge = false
+	} else {
+		e.nomerge = true
+	}
 	return e
 }
 
@@ -342,6 +352,11 @@ func createContext(env *DefaultEnvironment) yaml.Node {
 		path[i] = node(v)
 	}
 	ctx["PATH"] = node(path)
+	path = make([]yaml.Node, len(env.StubPath()))
+	for i, v := range env.StubPath() {
+		path[i] = node(v)
+	}
+	ctx["STUBPATH"] = node(path)
 	if outer := env.Outer(); outer != nil {
 		list := []yaml.Node{}
 		for outer != nil {
