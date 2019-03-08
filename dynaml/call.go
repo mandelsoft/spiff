@@ -143,6 +143,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "env":
 		result, sub, ok = func_env(values, binding)
 
+	case "rand":
+		result, sub, ok = func_rand(values, binding)
+
 	case "read":
 		result, sub, ok = func_read(true, values, binding)
 		cleaned = true

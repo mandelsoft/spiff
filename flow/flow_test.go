@@ -6595,6 +6595,32 @@ value: true
 		})
 	})
 
+	Describe("when calling rand", func() {
+		It("it generates a random number in given range", func() {
+			source := parseYAML(`
+---
+value: (( rand(2) < 2  ))
+`)
+			resolved := parseYAML(`
+---
+value: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("it generates a random string of given length", func() {
+			source := parseYAML(`
+---
+value: (( length(rand("[:alnum:]", 10)) == 10  ))
+`)
+			resolved := parseYAML(`
+---
+value: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
 	Describe("when calling substr", func() {
 		Context("with 2 args", func() {
 			It("it handles positive start index", func() {

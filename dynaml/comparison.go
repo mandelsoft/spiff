@@ -186,7 +186,7 @@ func compareEquals(a, b interface{}) (bool, EvaluationInfo, bool) {
 		vb, ok := b.([]yaml.Node)
 		if !ok || len(va) != len(vb) {
 			debug.Debug("compare list len mismatch")
-			break
+			return false, info, true
 		}
 		for i, v := range vb {
 			result, info, _ := compareEquals(va[i].Value(), v.Value())
@@ -200,7 +200,8 @@ func compareEquals(a, b interface{}) (bool, EvaluationInfo, bool) {
 	case map[string]yaml.Node:
 		vb, ok := b.(map[string]yaml.Node)
 		if !ok || len(va) != len(vb) {
-			break
+			debug.Debug("compare map len mismatch")
+			return false, info, true
 		}
 
 		for k, v := range vb {

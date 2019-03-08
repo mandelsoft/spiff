@@ -87,6 +87,7 @@ Contents:
 		- [(( md5(string) ))](#-md5string-)
 		- [(( bcrypt("password", 10) ))](#-bcryptpassword-10-)
 		- [(( bcrypt_check("password", hash) ))](#-bcrypt_checkpassword-hash-)
+		- [(( rand("[:alnum:]", 10) ))](#-randalnum-10-)
 		- [(( type(foobar) ))](#-typefoobar-)
 		- [(( defined(foobar) ))](#-definedfoobar-)
 		- [(( valid(foobar) ))](#-validfoobar-)
@@ -1591,6 +1592,44 @@ evaluates to
 ```yaml
 hash: $2a$10$b9RKb8NLuHB.tM9haPD3N.qrCsWrZy8iaCD4/.cCFFCRmWO4h.koe
 valid: true
+```
+
+### `(( rand("[:alnum:]", 10) ))`
+
+The function `rand` generates random values. The first argument 
+decides what kind of values are requested. With no argument it generates
+a positive random number in the `int64` range.
+
+| argument type | result |
+| ------------- | ------ |
+| int | integer value in the range [0,_n_) for positive _n_ and (_n_,0] for negative _n_ |
+| bool | boolean value |
+| string | one rune string, where the rune is in the given character range, any combination of character classes or character ranges usable for [regexp](https://github.com/google/re2/wiki/Syntax) can be used. If an additional length argument is specified the resulting string will have the given length.
+
+e.g.:
+
+```yaml
+int:   (( rand() ))
+int10: (( rand(10) ))
+neg10:   (( rand(-10) ))
+bool: (( rand(true) ))
+string: (( rand("[:alpha:][:digit:]-", 10) ))
+upper: (( rand("A-Z", 10) ))
+punct: (( rand("[:punct:]", 10) ))
+alnum: (( rand("[:alnum:]", 10) ))
+```
+
+evaluates to
+
+```yaml
+int: 8037669378456096839
+int10: 7
+neg10: -5
+bool: true
+string: ghhjAYPMlD
+upper: LBZQFRSURL
+alnum: 0p6KS7EhAj
+punct: '&{;,^])"(#'
 ```
 
 ### `(( type(foobar) ))`
