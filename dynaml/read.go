@@ -1,8 +1,6 @@
 package dynaml
 
 import (
-	"io/ioutil"
-	"net/http"
 	"path"
 	"regexp"
 	"strings"
@@ -10,8 +8,6 @@ import (
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/yaml"
 )
-
-var fileCache = map[string][]byte{}
 
 var templ_pattern = regexp.MustCompile(".*\\s+&template(\\(?|\\s+).*")
 
@@ -39,30 +35,9 @@ func func_read(cached bool, arguments []interface{}, binding Binding) (interface
 
 	}
 
-	var err error
-
-	data := fileCache[file]
-	if !cached || data == nil {
-		debug.Debug("reading %s file %s\n", t, file)
-		if strings.HasPrefix(file, "http:") || strings.HasPrefix(file, "https:") {
-			response, err := http.Get(file)
-			if err != nil {
-				return info.Error("error getting [%s]: %s", file, err)
-			} else {
-				defer response.Body.Close()
-				contents, err := ioutil.ReadAll(response.Body)
-				if err != nil {
-					return info.Error("error getting body [%s]: %s", file, err)
-				}
-				data = contents
-			}
-		} else {
-			data, err = ioutil.ReadFile(file)
-			if err != nil {
-				return info.Error("error reading [%s]: %s", path.Clean(file), err)
-			}
-		}
-		fileCache[file] = data
+	data, err := binding.GetFileContent(file, cached)
+	if err != nil {
+		return info.Error("read: %s", err)
 	}
 	return parse(file, data, t, binding)
 }

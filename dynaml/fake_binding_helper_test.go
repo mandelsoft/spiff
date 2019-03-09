@@ -20,6 +20,10 @@ func (c FakeBinding) GetTempName([]byte) (string, error) {
 	return "", fmt.Errorf("no temp names")
 }
 
+func (c FakeBinding) GetFileContent(file string, cached bool) ([]byte, error) {
+	return nil, fmt.Errorf("no file access")
+}
+
 func (c FakeBinding) Outer() Binding {
 	return nil
 }

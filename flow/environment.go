@@ -78,6 +78,13 @@ func (e DefaultEnvironment) GetTempName(data []byte) (string, error) {
 	return e.state.GetTempName(data)
 }
 
+func (e DefaultEnvironment) GetFileContent(file string, cached bool) ([]byte, error) {
+	if e.outer != nil {
+		return e.outer.GetFileContent(file, cached)
+	}
+	return e.state.GetFileContent(file, cached)
+}
+
 func (e DefaultEnvironment) Outer() dynaml.Binding {
 	return e.outer
 }

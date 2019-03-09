@@ -35,6 +35,7 @@ type Binding interface {
 	NoMerge() bool
 
 	GetTempName(data []byte) (string, error)
+	GetFileContent(file string, cached bool) ([]byte, error)
 
 	Flow(source yaml.Node, shouldOverride bool) (yaml.Node, Status)
 	Cascade(outer Binding, template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error)
