@@ -282,8 +282,9 @@ type Updateable interface {
 	Deactivate() dynaml.Binding
 }
 
-func updateBinding(root yaml.Node) func(yaml.Node) yaml.Node {
-	return func(node yaml.Node) yaml.Node {
+func updateBinding(root yaml.Node) CleanupFunction {
+	var me CleanupFunction
+	me = func(node yaml.Node) (yaml.Node, CleanupFunction) {
 		if v := node.Value(); v != nil {
 			if static, ok := v.(dynaml.StaticallyScopedValue); ok {
 				debug.Debug("update found static scoped %q\n", static)
@@ -304,20 +305,21 @@ func updateBinding(root yaml.Node) func(yaml.Node) yaml.Node {
 				}
 			}
 		}
-		return node
+		return node, me
 	}
+	return me
 }
 
-func deactivateScopes(node yaml.Node) yaml.Node {
+func deactivateScopes(node yaml.Node) (yaml.Node, CleanupFunction) {
 	if v := node.Value(); v != nil {
 		if lambda, ok := v.(dynaml.StaticallyScopedValue); ok {
 			debug.Debug("deactivate statically scoped node %q\n", lambda)
 			if env := lambda.StaticResolver().(Updateable); env.Active() {
-				return yaml.ReplaceValue(lambda.SetStaticResolver(env.Deactivate()), node)
+				return yaml.ReplaceValue(lambda.SetStaticResolver(env.Deactivate()), node), deactivateScopes
 			}
 		}
 	}
-	return node
+	return node, deactivateScopes
 }
 
 func resolveSymbol(env *DefaultEnvironment, name string, scope *Scope) (yaml.Node, bool, *Scope) {

@@ -34,20 +34,23 @@ func Cascade(outer dynaml.Binding, template yaml.Node, partial bool, stubs ...ya
 	return Apply(outer, template, prepared)
 }
 
-func discardTemporary(node yaml.Node) yaml.Node {
+func discardTemporary(node yaml.Node) (yaml.Node, CleanupFunction) {
 	if node.Temporary() || node.Local() {
-		return nil
+		return nil, discardTemporary
 	}
-	return node
-}
-func discardLocal(node yaml.Node) yaml.Node {
-	if node.Local() {
-		return nil
-	}
-	return node
+	return node, discardTemporary
 }
 
-func Cleanup(node yaml.Node, test func(yaml.Node) yaml.Node) yaml.Node {
+func discardLocal(node yaml.Node) (yaml.Node, CleanupFunction) {
+	if node.Local() {
+		return nil, discardLocal
+	}
+	return node, discardLocal
+}
+
+type CleanupFunction func(yaml.Node) (yaml.Node, CleanupFunction)
+
+func Cleanup(node yaml.Node, test CleanupFunction) yaml.Node {
 	if node == nil {
 		return nil
 	}
@@ -56,8 +59,8 @@ func Cleanup(node yaml.Node, test func(yaml.Node) yaml.Node) yaml.Node {
 	case []yaml.Node:
 		r := []yaml.Node{}
 		for _, e := range v {
-			if n := test(e); n != nil {
-				r = append(r, Cleanup(n, test))
+			if n, t := test(e); n != nil {
+				r = append(r, Cleanup(n, t))
 			}
 		}
 		value = r
@@ -65,8 +68,8 @@ func Cleanup(node yaml.Node, test func(yaml.Node) yaml.Node) yaml.Node {
 	case map[string]yaml.Node:
 		r := map[string]yaml.Node{}
 		for k, e := range v {
-			if n := test(e); n != nil {
-				r[k] = Cleanup(n, test)
+			if n, t := test(e); n != nil {
+				r[k] = Cleanup(n, t)
 			}
 		}
 		value = r

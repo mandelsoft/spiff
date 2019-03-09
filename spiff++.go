@@ -52,6 +52,10 @@ func main() {
 					Name:  "path",
 					Usage: "output is taken from given path",
 				},
+				cli.StringFlag{
+					Name:  "state",
+					Usage: "select state file to maintain",
+				},
 				cli.StringSliceFlag{
 					Name:  "select",
 					Usage: "filter dedicated output fields",
@@ -67,6 +71,7 @@ func main() {
 				merge(c.Args()[0], c.Bool("partial"),
 					c.Bool("json"), c.Bool("split"),
 					c.String("path"), c.StringSlice("select"),
+					c.String("state"),
 					c.Args()[1:])
 			},
 		},
@@ -116,7 +121,27 @@ func main() {
 	app.Run(os.Args)
 }
 
-func merge(templateFilePath string, partial bool, json, split bool, subpath string, selection []string, stubFilePaths []string) {
+func keepAll(node yaml.Node) (yaml.Node, flow.CleanupFunction) {
+	return node, keepAll
+}
+
+func discardNonState(node yaml.Node) (yaml.Node, flow.CleanupFunction) {
+	if node.State() {
+		return node, keepAll
+	}
+	return nil, discardNonState
+}
+
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}
+
+func merge(templateFilePath string, partial bool, json, split bool,
+	subpath string, selection []string, stateFilePath string, stubFilePaths []string) {
 	var templateFile []byte
 	var err error
 	var stdin = false
@@ -135,6 +160,17 @@ func merge(templateFilePath string, partial bool, json, split bool, subpath stri
 	templateYAMLs, err := yaml.ParseMulti(templateFilePath, templateFile)
 	if err != nil {
 		log.Fatalln(fmt.Sprintf("error parsing template [%s]:", path.Clean(templateFilePath)), err)
+	}
+
+	var stateData []byte
+
+	if stateFilePath != "" {
+		if len(templateYAMLs) > 1 {
+			log.Fatalln(fmt.Sprintf("state handling not supported gor multi documents [%s]:", path.Clean(templateFilePath)), err)
+		}
+		if fileExists(stateFilePath) {
+			stateData, err = ioutil.ReadFile(stateFilePath)
+		}
 	}
 
 	stubs := []yaml.Node{}
@@ -161,6 +197,14 @@ func merge(templateFilePath string, partial bool, json, split bool, subpath stri
 		}
 
 		stubs = append(stubs, stubYAML)
+	}
+
+	if stateData != nil {
+		stateYAML, err := yaml.Parse(stateFilePath, stateData)
+		if err != nil {
+			log.Fatalln(fmt.Sprintf("error parsing state [%s]:", path.Clean(stateFilePath)), err)
+		}
+		stubs = append(stubs, stateYAML)
 	}
 
 	legend := "\nerror classification:\n" +
@@ -197,6 +241,28 @@ func merge(templateFilePath string, partial bool, json, split bool, subpath stri
 					log.Fatalln(fmt.Sprintf("path %q not found%s", subpath, doc))
 				}
 				flowed = node
+			}
+			if stateFilePath != "" {
+				state := flow.Cleanup(flowed, discardNonState)
+				if json {
+					bytes, err = yaml.ToJSON(state)
+				} else {
+					bytes, err = candiedyaml.Marshal(state)
+				}
+				old := false
+				if fileExists(stateFilePath) {
+					os.Rename(stateFilePath, stateFilePath+".bak")
+					old = true
+				}
+				err := ioutil.WriteFile(stateFilePath, bytes, 0664)
+				if err != nil {
+					os.Remove(stateFilePath)
+					os.Remove(stateFilePath)
+					if old {
+						os.Rename(stateFilePath+".bak", stateFilePath)
+					}
+					log.Fatalln(fmt.Sprintf("cannot write state file %q", stateFilePath))
+				}
 			}
 			if len(selection) > 0 {
 				new := map[string]yaml.Node{}

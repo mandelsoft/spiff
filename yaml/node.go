@@ -23,6 +23,7 @@ type Node interface {
 	Flags() NodeFlags
 	Temporary() bool
 	Local() bool
+	State() bool
 	ReplaceFlag() bool
 	Preferred() bool
 	Merged() bool
