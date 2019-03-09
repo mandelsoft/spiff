@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path"
+	"regexp"
 	"strings"
 
 	"github.com/mandelsoft/spiff/debug"
@@ -11,6 +12,8 @@ import (
 )
 
 var fileCache = map[string][]byte{}
+
+var templ_pattern = regexp.MustCompile(".*\\s+&template(\\(?|\\s+).*")
 
 func func_read(cached bool, arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
@@ -61,12 +64,50 @@ func func_read(cached bool, arguments []interface{}, binding Binding) (interface
 		}
 		fileCache[file] = data
 	}
+	return parse(file, data, t, binding)
+}
 
-	switch t {
+func parse(file string, data []byte, mode string, binding Binding) (interface{}, EvaluationInfo, bool) {
+	info := DefaultInfo()
+	switch mode {
+	case "template":
+		n, err := yaml.Parse(file, data)
+		orig := node_copy(n)
+
+		switch v := orig.Value().(type) {
+		case map[string]yaml.Node:
+			if _, ok := v["<<"]; !ok {
+				v["<<"] = node("(( &template ))", n)
+			}
+		case []yaml.Node:
+			found := false
+			for _, e := range v {
+				if m, ok := e.Value().(map[string]yaml.Node); ok {
+					if e, ok := m["<<"]; ok {
+						s := yaml.EmbeddedDynaml(e)
+						if s != nil && templ_pattern.MatchString(*s) {
+							found = true
+							break
+						}
+					}
+				}
+			}
+			if !found {
+				new := []yaml.Node{node(map[string]yaml.Node{"<<": node("(( &template ))", n)}, n)}
+				new = append(new, v...)
+				orig = node(new, n)
+			}
+		}
+		if err != nil {
+			return info.Error("error parsing file [%s]: %s", path.Clean(file), err)
+		}
+		result := NewTemplateValue(binding.Path(), n, orig, binding)
+		return result, info, true
+
 	case "yaml":
 		node, err := yaml.Parse(file, data)
 		if err != nil {
-			return info.Error("error parsing stub [%s]: %s", path.Clean(file), err)
+			return info.Error("error parsing file [%s]: %s", path.Clean(file), err)
 		}
 		debug.Debug("resolving yaml file\n")
 		result, state := binding.Flow(node, false)
@@ -80,7 +121,7 @@ func func_read(cached bool, arguments []interface{}, binding Binding) (interface
 	case "multiyaml":
 		nodes, err := yaml.ParseMulti(file, data)
 		if err != nil {
-			return info.Error("error parsing stub [%s]: %s", path.Clean(file), err)
+			return info.Error("error parsing file [%s]: %s", path.Clean(file), err)
 		}
 		for len(nodes) > 1 && nodes[len(nodes)-1].Value() == nil {
 			nodes = nodes[:len(nodes)-1]
@@ -97,7 +138,7 @@ func func_read(cached bool, arguments []interface{}, binding Binding) (interface
 	case "import":
 		node, err := yaml.Parse(file, data)
 		if err != nil {
-			return info.Error("error parsing stub [%s]: %s", path.Clean(file), err)
+			return info.Error("error parsing file [%s]: %s", path.Clean(file), err)
 		}
 		info.Source = file
 		info.Raw = true
@@ -106,7 +147,7 @@ func func_read(cached bool, arguments []interface{}, binding Binding) (interface
 	case "importmulti":
 		nodes, err := yaml.ParseMulti(file, data)
 		if err != nil {
-			return info.Error("error parsing stub [%s]: %s", path.Clean(file), err)
+			return info.Error("error parsing file [%s]: %s", path.Clean(file), err)
 		}
 		info.Source = file
 		info.Raw = true
@@ -120,6 +161,6 @@ func func_read(cached bool, arguments []interface{}, binding Binding) (interface
 		return string(data), info, true
 
 	default:
-		return info.Error("invalid file type [%s] %s", path.Clean(file), t)
+		return info.Error("invalid file type [%s] %s", path.Clean(file), mode)
 	}
 }

@@ -1919,6 +1919,11 @@ result: (( parse( json ).alice ))
 
 yields the value `25` for the field `result`.
 
+The function `parse` supports an optional second argument, the _parse mode_.
+Here the same modes are possible as for the [read function](#-readfileyml-).
+The default parsing mode is `import`, the content is just parsed and there is
+no further evaluation during this step.
+
 ### `(( asjson(expr) ))`
 
 This function transforms a yaml value given by its argument to a _json_ string.
@@ -2390,8 +2395,8 @@ by default the yaml type is used. If the file should be read as `text`, this
  type must be explicitly specified.
   
 An optional second parameter can be used to explicitly specifiy the desired
-return type: `yaml` or `text`. For _yaml_ document some addtional 
-types are supported: `multiyaml`, `import` and `importmulti`.
+return type: `yaml` or `text`. For _yaml_ documents some addtional 
+types are supported: `multiyaml`, `template`, `import` and `importmulti`.
 
 ##### yaml documents
 
@@ -2405,6 +2410,10 @@ may result in different sub trees, depending on the used dynaml expressions.
 
 If is poassible to read a multi-document yaml, also. If the type `multiyaml`
 is given, a list node with the yaml document root nodes is returned.
+
+The yaml or json document can also read as _template_ by specifying the type
+`template`. Here the result will be a template value, that can be used like
+regular inline templates.
 
 If the read type is set to `import`, the file content is read as yaml document
 and the root node is used to substitute the expression. Potential dynaml

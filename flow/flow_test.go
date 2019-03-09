@@ -3710,7 +3710,6 @@ result: ufuououbuauru
 				Expect(source).To(FlowAs(resolved))
 			})
 
-
 			It("replaces limited", func() {
 				source := parseYAML(`
 ---
@@ -7006,6 +7005,26 @@ data:
 result: |+
     alice: 25
 `)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+		Context("evaluating", func() {
+			It("it parses template", func() {
+				source := parseYAML(`
+---
+json: |
+    { "alice": 25 }
+
+result: (( parse( json, "template" ) ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+json: |
+    { "alice": 25 }
+result:
+    <<: (( &template ))
+    alice: 25
+`))
 				Expect(source).To(FlowAs(resolved))
 			})
 		})

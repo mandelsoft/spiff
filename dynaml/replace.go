@@ -109,9 +109,9 @@ func LambdaExpander(lambda LambdaValue, binding Binding) Expander {
 func processReplace(str string, find Finder, expand Expander, cnt int) (bool, string, error) {
 	b := []byte(str)
 	n := []byte{}
-	emptyMatch :=true
+	emptyMatch := true
 
-	for (cnt < 0 || cnt > 0) {
+	for cnt < 0 || cnt > 0 {
 		loc := find(b)
 		if len(loc) == 0 {
 			break
@@ -121,7 +121,7 @@ func processReplace(str string, find Finder, expand Expander, cnt int) (bool, st
 		}
 		n = append(n, b[0:loc[0]]...)
 
-		if emptyMatch || loc[1]>0 {
+		if emptyMatch || loc[1] > 0 {
 			resolved, m, err := expand(n, b, loc)
 			if !resolved {
 				return false, "", err

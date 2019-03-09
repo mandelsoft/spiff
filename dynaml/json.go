@@ -37,19 +37,23 @@ func func_as_yaml(arguments []interface{}, binding Binding) (interface{}, Evalua
 func func_parse_yaml(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 
-	if len(arguments) != 1 {
-		return info.Error("parseyaml takes exactly one argument")
+	if len(arguments) < 1 || len(arguments) > 2 {
+		return info.Error("parse takes one or two arguments")
 	}
 
 	str, ok := arguments[0].(string)
 	if !ok {
-		return info.Error("first argument for parseyaml must be a string")
-	}
-	name := strings.Join(binding.Path(), ".")
-	node, err := yaml.Parse(name, []byte(str))
-	if err != nil {
-		return info.Error("error parsing stub [%s]: %s", name, err)
+		return info.Error("first argument for parse must be a string")
 	}
 
-	return node.Value(), info, true
+	mode := "import"
+	if len(arguments) > 1 {
+		mode, ok = arguments[1].(string)
+		if !ok {
+			return info.Error("second argument for parse must be a string")
+		}
+	}
+
+	name := strings.Join(binding.Path(), ".")
+	return parse(name, []byte(str), mode, binding)
 }
