@@ -91,14 +91,14 @@ func LambdaExpander(lambda LambdaValue, binding Binding) Expander {
 		inp := []interface{}{matches}
 		resolved, v, info, ok := lambda.Evaluate(false, inp, binding, false)
 		if !ok {
-			return resolved, nil, fmt.Errorf("%s", info.Issue.Issue)
+			return resolved, nil, fmt.Errorf("replace: %s", info.Issue.Issue)
 		}
 		if !resolved {
 			return false, nil, nil
 		}
 		str, ok := v.(string)
 		if !ok {
-			return false, nil, fmt.Errorf("lambda must return a string")
+			return false, nil, fmt.Errorf("replace: lambda must return a string")
 		}
 		return resolved, append(dst, []byte(str)...), nil
 	}

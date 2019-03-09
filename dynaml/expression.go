@@ -60,6 +60,46 @@ type EvaluationInfo struct {
 	yaml.NodeFlags
 }
 
+type EvaluationError struct {
+	resolved bool
+	EvaluationInfo
+	ok bool
+}
+
+func (e EvaluationError) Error() string {
+	return e.Issue.Issue
+}
+
+func RaiseEvaluationError(resolved bool, info EvaluationInfo, ok bool) {
+	panic(EvaluationError{resolved, info, ok})
+}
+
+func RaiseEvaluationErrorf(format string, args ...interface{}) {
+	info := DefaultInfo()
+	info.SetError(format, args...)
+	panic(EvaluationError{true, info, false})
+}
+
+func CatchEvaluationError(result *interface{}, info *EvaluationInfo, ok *bool, msgfmt string, args ...interface{}) {
+	err := recover()
+	if err != nil {
+		if eerr, my := err.(EvaluationError); my {
+			*result = nil
+			*info = eerr.EvaluationInfo
+			if msgfmt != "" {
+				(*info).SetError(msgfmt, args...)
+				(*info).Issue.Sequence = true
+				if eerr.Issue.Issue != "" {
+					(*info).Issue.Nested = []yaml.Issue{eerr.Issue}
+				}
+			}
+			*ok = eerr.ok
+		} else {
+			panic(err)
+		}
+	}
+}
+
 func (e EvaluationInfo) SourceName() string {
 	return e.Source
 }

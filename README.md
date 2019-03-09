@@ -78,6 +78,7 @@ Contents:
 		- [(( contains(list, "foobar") ))](#-containslist-foobar-)
 		- [(( index(list, "foobar") ))](#-indexlist-foobar-)
 		- [(( lastindex(list, "foobar") ))](#-lastindexlist-foobar-)
+		- [(( sort(list) ))](#-sortlist-)
 		- [(( replace(string, "foo", "bar") ))](#-replacestring-foo-bar-)
 		- [(( substr(string, 1, 3) ))](#-substrstring-1-3-)
 		- [(( match("(f.*)(b.*)", "xxxfoobar") ))](#-matchfb-xxxfoobar-)
@@ -1427,6 +1428,64 @@ yields `3`.
 ### `(( lastindex(list, "foobar") ))`
 
 The function `lastindex` works like [`index`](#-indexlist-foobar-) but the index of the last occurence is returned.
+
+### `(( sort(list) ))
+
+The function `sort` can be used to sort integer or string lists. The sort
+operation is stable.
+
+e.g.:
+
+```yaml
+list:
+  - alice
+  - foobar
+  - bob
+
+sorted: (( sort(list) ))
+
+```
+
+yields for `sorted`
+
+```yaml
+- alice
+- bob
+- foobar
+
+```
+
+If other types should be sorted, especially complex types like lists or maps, or
+a different comparison rule is required, a
+compare function can be specified as an optional second argument. The compare
+function must be a lambda expression taking two arguments. The result type
+must be `integer`or `bool`  indicating whether _a_ is less then _b_. If an
+integer is returned it should be
+- negative, if _a<b_
+- zero, if _a==b_ and
+- positive if _a>b_
+
+e.g.:
+
+```yaml
+list:
+  - alice
+  - foobar
+  - bob
+
+sorted: (( sort(list, |a,b|->length(a) < length(b)) ))
+
+```
+
+yields for `sorted`
+
+```yaml
+- bob
+- alice
+- foobar
+
+```
+
 
 ### `(( replace(string, "foo", "bar") ))`
 
