@@ -27,7 +27,7 @@ resource:
 ```
 
 spiff is a command line tool and declarative YAML templating system, specially designed for generating deployment
-manifests (for example BOSH manifests or [kubernetes](https://github.com/kubernetes) manifests).
+manifests (for example BOSH or [kubernetes](https://github.com/kubernetes) manifests).
 
 Contents:
 - [Installation](#installation)
@@ -118,8 +118,6 @@ Contents:
 		    - [(( x509publickey(key) ))](#-x509publickeykey-)
 		    - [(( x509cert(spec) ))](#-x509certspec-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
-	- [(( &temporary ))](#-temporary-)
-	- [(( &inject ))](#-inject-)
 	- [(( catch[expr|v,e|->v] ))](#-catchexprve-v-)
 	- [(( sync[expr|v,e|->defined(v.field),v.field|10] ))](#-syncexprve-definedvfieldvfield10-)
 	- [Mappings](#mappings)
@@ -136,6 +134,11 @@ Contents:
 	- [Projections](#projections)
 	    - [(( expr.[*].value ))](#-exprvalue-)
 		- [(( list.[1..2].value ))](#-list12value-)
+	- [Markers](#markers)
+	    - [(( &temporary ))](#-temporary-)
+	    - [(( &local ))](#-local-)
+    	- [(( &inject ))](#-inject-)
+    	- [(( &state ))](#-state-)
 	- [Templates](#templates)
 		- [<<: (( &template ))](#--template-)
 		- [(( *foo.bar ))](#-foobar-)
@@ -172,10 +175,6 @@ Example:
 spiff merge cf-release/templates/cf-deployment.yml my-cloud-stub.yml
 ```
 
-The ` merge` command offers the option `--partial`. If this option is
-given spiff handles incomplete expression evaluation. All errors are ignored
-and the unresolvable parts of the yaml document are returned as strings.
-
 It is possible to read one file from standard input by using the file
 name `-`. It may be used only once. This allows using spiff as part of a
 pipeline to just process a single stream or to process a stream based on
@@ -188,12 +187,32 @@ The result is the stream of processed documents in the same order.
 For example, this can be used to generate *kubernetes* manifests to be used
 by `kubectl`.
 
-With the option `--json` the output will be in JSON format instead of YAML.
-The Option `--path <path>` can be used to output a nested path, instead of the 
-the complete processed document.
+The ` merge` command offers several options:
 
-If the output is a list, the option `--split` outputs every list element as
-deparate document.
+- The option `--partial`. If this option is
+  given spiff handles incomplete expression evaluation. All errors are ignored
+  and the unresolvable parts of the yaml document are returned as strings.
+  
+- With the option `--json` the output will be in JSON format instead of YAML.
+
+- The Option `--path <path>` can be used to output a nested path, instead of the 
+  the complete processed document.
+  
+- If the output is a list, the option `--split` outputs every list element as
+  separate documen. The _yaml_ format uses as usual `---` as separator line.
+  The _json_ format outputs a sequence of _json_ documents, one per line.
+  
+- With `--select <field path>` is is possible to select a dedicated field of the
+  processed document for the output
+  
+- The option `--state <path>` enables the state support of _spiff_. If the
+  given file exists it is put on top of the configured stub list for the
+  merge processing. Additionally to the output of the processed document
+  it is filtered for nodes marked with the [`&state` marker](#-state-).
+  This filtered document is then stored under the denoted file, saving the old
+  state file with the `.bak` suffix. This can be used together with a manual
+  merging as offered by the [state](libraries/state/README.md) utility library.
+  
 
 The folder [libraries](libraries/README.md) offers some useful
 utility libraries. They can also be used as an example for the power
@@ -2876,85 +2895,6 @@ value: (( .mult2(3) ))
 
 If a complete expression is a lambda expression the keyword `lambda` can be omitted.
 
-## `(( &temporary ))`
-
-Maps, lists or simple value nodes can be marked as *temporary*. Temporary nodes are removed from the final output document, but are available during merging and dynaml evaluation.
-
-e.g.:
-
-```yaml
-temp:
-  <<: (( &temporary ))
-  foo: bar
-
-value: (( temp.foo ))
-```
-
-yields:
-
-```yaml
-value: bar
-```
-Adding `- <<: (( &temporary ))` to a list can be used to mark a list as temporary.
-
-The temporary marker can be combined with regular dynaml expressions to tag plain fields. Hereby the
-parenthesised expression is just appended to the marker
-
-e.g.:
-
-```yaml
-data:
-  alice: (( &temporary ( "bar" ) ))
-  foo: (( alice ))
-```
-
-yields:
-
-```yaml
-data:
-  foo: bar
-```
-
-The temporary marker can be combined with the [template marker](#templates) to omit templates from the final output.
-
-The marker `&local` acts similar to `&temporary` but local nodes are always
-removed from a stub directly after resolving dynaml expressions. Such nodes
-are therefore not available for merging.
-
-## `(( &inject ))`
-
-This marker requests the marked item to be injected into the next stub level,
-even is the hosting element (list or map) does not requests a merge.
-This only works if the next level stub already contains the hosting element.
-
-e.g.:
-
-**template.yaml**
-```yaml
-alice:
- foo: 1
-```
-
-**stub.yaml**
-```yaml
-alice:
-  bar: (( &inject(2) ))
-  nope: not injected
-bob:
-  <<: (( &inject ))
-  foobar: yep
-
-```
-
-is merged to
-
-```yaml
-alice:
-  foo: 1
-  bar: 2
-bob:
-  foobar: yep
-```
 ## `(( catch[expr|v,e|->v] ))`
 
 This expression evaluates an expression (`expr`) and then
@@ -3412,6 +3352,130 @@ names:
   - peter
 ```
 
+## Markers
+
+Nodes of the yaml document can be marked to enable dedicated behaviours for this
+node. Such markers are part of the _dynaml_ syntax and may be prepended to
+any dynaml expression. They are denoted by the `&` character directly followed 
+by a marker name. If the expression is combination of markers and regular
+expressions, the expression follows the marker list enclosed in brackets
+(for example `(( &temporary( a + b ) ))`).
+
+### `(( &temporary ))`
+
+Maps, lists or simple value nodes can be marked as *temporary*. Temporary nodes
+are removed from the final output document, but are available during merging and
+dynaml evaluation.
+
+e.g.:
+
+```yaml
+temp:
+  <<: (( &temporary ))
+  foo: bar
+
+value: (( temp.foo ))
+```
+
+yields:
+
+```yaml
+value: bar
+```
+Adding `- <<: (( &temporary ))` to a list can be used to mark a list as temporary.
+
+The temporary marker can be combined with regular dynaml expressions to tag plain fields. Hereby the
+parenthesised expression is just appended to the marker
+
+e.g.:
+
+```yaml
+data:
+  alice: (( &temporary ( "bar" ) ))
+  foo: (( alice ))
+```
+
+yields:
+
+```yaml
+data:
+  foo: bar
+```
+
+The temporary marker can be combined with the [template marker](#templates) to omit templates from the final output.
+
+### `(( &local ))`
+
+The marker `&local` acts similar to `&temporary` but local nodes are always
+removed from a stub directly after resolving dynaml expressions. Such nodes
+are therefore not available for merging and they are not used for further
+merging of stubs and finally the template.
+
+
+### `(( &inject ))`
+
+This marker requests the marked item to be injected into the next stub level,
+even is the hosting element (list or map) does not requests a merge.
+This only works if the next level stub already contains the hosting element.
+
+e.g.:
+
+**template.yaml**
+```yaml
+alice:
+ foo: 1
+```
+
+**stub.yaml**
+```yaml
+alice:
+  bar: (( &inject(2) ))
+  nope: not injected
+bob:
+  <<: (( &inject ))
+  foobar: yep
+
+```
+
+is merged to
+
+```yaml
+alice:
+  foo: 1
+  bar: 2
+bob:
+  foobar: yep
+```
+
+### `(( &state ))`
+
+Nodes marked as *state* are handled during the merge processing as if the
+marker would not be present. But there will be a special handling for enabled
+state processing [(option `--state <path>`)](#usage) at the end of the
+template processing.
+Additionally to the regular output a document consisting only of state nodes
+(plus all nested nodes) will be written to a state file. This file will be used
+as top-level stub for further merge processings with enabled state support.
+
+This enables to keep state between two merge processings. For regular
+merging sich nodes are only processed during the first processing. Later
+processings will keep the state from the first one, because those nodes
+will be overiden by the state stub added to the end of the sub list.
+
+If those nodes additionally disable merging (for example using 
+`(( &state(merge none) ))`) dynaml expressions in sub level nodes may
+perform explicit merging using the function `stub()` to refer to
+values provided by already processed stubs (especially the implicitly added
+state stub). For an example please refer to the 
+[state library](libraries/state/README.md).
+
+### `(( &template ))`
+
+Nodes marked as *template* will not be evaluated at the place of their
+occurrence. Instead, they will result in a template value stored as value for
+the node. They can later be instantiated inside a _dynaml_ expression
+(see [below](#templates)).
+
 ## Templates
 
 A map can be tagged by a dynaml expression to be used as template. Dynaml expressions in a template are not evaluated at its definition location in the document, but can be inserted at other locations using dynaml.
@@ -3441,7 +3505,7 @@ The template marker can be combined with the [temporary marker](#-temporary-) to
 
 ### `(( *foo.bar ))`
 
-The dynaml expression `*<refernce expression>` can be used to evaluate a template somewhere in the yaml document.
+The dynaml expression `*<reference expression>` can be used to evaluate a template somewhere in the yaml document.
 Dynaml expressions in the template are evaluated in the context of this expression.
 
 e.g.:

@@ -13,13 +13,13 @@ The package name is `utilities.graph`.
 ## Invert a Directed Graph
 
 ```
-    invert(model)
+    invert(<model>)
 ```
 
 ## Evaluate a directed Graph
 
 ``` 
-    evaluate(model)
+    evaluate(<model>)
 ```
 
 The result a a graph evaluation map with entries for every node
@@ -31,7 +31,7 @@ providing the evaluated node info:
 ## List all Cycles
 
 ```
-    cycles(evaluatedmodel) -> list of lists
+    cycles(<evaluatedmodel>) -> list of lists
 ```
 
 List all normalized dependencies cycles in a graph using its
@@ -40,7 +40,7 @@ evaluated model.
 ## Provide a global Execution Order
 
 ```
-    order(evaluatedmodel) -> list
+    order(<evaluatedmodel>) -> list
 ```
 
 Uses the evaluated model to determine a global execution order
@@ -49,7 +49,7 @@ for nodes included i the graph.
 ## Reverse a List
 
 ```
-    reverse(list)  -> list
+    reverse(<list>)  -> list
 ```
 
 Reverse the order of elements in a list.

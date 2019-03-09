@@ -9,6 +9,8 @@ The package name is `utilities.state`.
 
 To use this package a shell wrapper is required, that generates and replaces
 the state stub. An example for such an wrapper can be taken from [gen.sh](gen.sh).
+Alternatively the new [option `--state <path>`](../../README.md#usage) can be
+used.
 
 The provided lambda expressions work on two types of data:
 - an input data representing the input for generating a state value. When
@@ -117,3 +119,6 @@ state and the state `value` hosting the actual state.
 
 Those fields must be stored in node with disabled auto-merge. The functions
 maintain the merge from the stub on their own.
+
+A simplified certificate support can be bound in the
+ [`utilities.certs` package](../certs/README.md).

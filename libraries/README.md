@@ -34,6 +34,12 @@ the package finally offering the functionality.
 
 ## Library Overview
 
+### Certificate Generation
+
+This [library](certs/README.md) offers useful lambda functions to generate
+certificates for self signed certificate authorities, and key/certificate pairs
+using the [state library](state/README.md).
+
 ### Simple Graph Library
 
 This [library](graph/README.md) offers simple graph analysis for directed graphs, like cycle
@@ -41,6 +47,6 @@ detection and dependeny closures, or inverting a directed graph.
 
 ### State Handling
 
-This [library](state/README.md) offers simple state handling support together 
+This [library](state/README.md) offers a simple state handling support together 
 with a small shell script example.
 
