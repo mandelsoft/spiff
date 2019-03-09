@@ -6,6 +6,7 @@ import (
 	"github.com/mandelsoft/spiff/yaml"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 )
 
 func func_replace(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
@@ -41,6 +42,7 @@ func ReplaceRegExp(str string, src string, dst interface{}, cnt int, binding Bin
 
 	templ, ok := dst.(string)
 	if ok {
+		// fmt.Printf("%s -> %s\n", str, exp.ReplaceAllString(str, templ))
 		expand = RegExpExpander(exp, []byte(templ))
 	} else {
 		lambda, ok := dst.(LambdaValue)
@@ -107,21 +109,37 @@ func LambdaExpander(lambda LambdaValue, binding Binding) Expander {
 func processReplace(str string, find Finder, expand Expander, cnt int) (bool, string, error) {
 	b := []byte(str)
 	n := []byte{}
-	for cnt < 0 || cnt > 0 {
+	emptyMatch :=true
+
+	for (cnt < 0 || cnt > 0) {
 		loc := find(b)
-		if loc == nil {
+		if len(loc) == 0 {
 			break
 		}
 		if cnt > 0 {
 			cnt--
 		}
 		n = append(n, b[0:loc[0]]...)
-		resolved, m, err := expand(n, b, loc)
-		if !resolved {
-			return false, "", err
+
+		if emptyMatch || loc[1]>0 {
+			resolved, m, err := expand(n, b, loc)
+			if !resolved {
+				return false, "", err
+			}
+			n = m
 		}
-		n = m
 		b = b[loc[1]:]
+
+		// Advance past this match; always advance at least one character.
+		emptyMatch = loc[1] == loc[0]
+		if emptyMatch {
+			_, width := utf8.DecodeRune(b)
+			if width == 0 {
+				break
+			}
+			n = append(n, b[:width]...)
+			b = b[width:]
+		}
 	}
 	r := string(append(n, b...))
 	return true, r, nil

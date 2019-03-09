@@ -2870,6 +2870,139 @@ foo:
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
+
+		It("splits characterss", func() {
+			source := parseYAML(`
+---
+foo: (( split( "", "alice") ))
+`)
+			resolved := parseYAML(`
+---
+foo:
+ - a
+ - l
+ - i
+ - c
+ - e
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("splits regexp", func() {
+			source := parseYAML(`
+---
+foo: (( split_match( " *, *", "alice ,     bob") ))
+`)
+			resolved := parseYAML(`
+---
+foo:
+ - alice
+ - bob
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when changing case", func() {
+		It("it lowers", func() {
+			source := parseYAML(`
+---
+value: (( lower("AlicE") ))
+`)
+			resolved := parseYAML(`
+---
+value:  alice
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("it uppers", func() {
+			source := parseYAML(`
+---
+value: (( upper("AlicE") ))
+`)
+			resolved := parseYAML(`
+---
+value:  ALICE
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+	})
+
+	Describe("when sorting", func() {
+		It("it sorts integers", func() {
+			source := parseYAML(`
+---
+list:
+  - 5
+  - 10
+  - 4
+  - 7
+sorted: (( sort(list) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+  - 5
+  - 10
+  - 4
+  - 7
+sorted:
+  - 4
+  - 5
+  - 7
+  - 10
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("it sorts strings", func() {
+			source := parseYAML(`
+---
+list:
+  - foo
+  - alice
+  - bar
+  - bob
+sorted: (( sort(list) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+  - foo
+  - alice
+  - bar
+  - bob
+sorted:
+  - alice
+  - bar
+  - bob
+  - foo
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("it sorts by lambda", func() {
+			source := parseYAML(`
+---
+list:
+  - foobar
+  - bob
+  - alice
+sorted: (( sort(list, |a,b|->length(a) < length(b)) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+  - foobar
+  - bob
+  - alice
+sorted:
+  - bob
+  - alice
+  - foobar
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
 	})
 
 	Describe("when trimming", func() {
@@ -3552,28 +3685,120 @@ index: -1
 	})
 
 	Describe("when replacing", func() {
-		It("replaces unlimited", func() {
-			source := parseYAML(`
+		Context("regular strings", func() {
+			It("replaces unlimited", func() {
+				source := parseYAML(`
 ---
 result: (( replace("foobar","o", "u") ))
 `)
-			resolved := parseYAML(`
+				resolved := parseYAML(`
 ---
 result: fuubar
 `)
-			Expect(source).To(FlowAs(resolved))
-		})
+				Expect(source).To(FlowAs(resolved))
+			})
 
-		It("replaces limited", func() {
-			source := parseYAML(`
+			It("replaces empty", func() {
+				source := parseYAML(`
+---
+result: (( replace("foobar","", "u") ))
+`)
+				resolved := parseYAML(`
+---
+result: ufuououbuauru
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+
+			It("replaces limited", func() {
+				source := parseYAML(`
 ---
 result: (( replace("foobar","o", "u", 1) ))
 `)
-			resolved := parseYAML(`
+				resolved := parseYAML(`
 ---
 result: fuobar
 `)
-			Expect(source).To(FlowAs(resolved))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("replaces with lambda", func() {
+				source := parseYAML(`
+---
+sep: "-"
+result: (( replace("foobar","o", |m|->m[0] sep m[0]) ))
+`)
+				resolved := parseYAML(`
+---
+sep: "-"
+result: fo-oo-obar
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("regexps", func() {
+			It("replaces unlimited", func() {
+				source := parseYAML(`
+---
+result: (( replace_match("foobaro","o+", "u") ))
+`)
+				resolved := parseYAML(`
+---
+result: fubaru
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("replaces empty match", func() {
+				source := parseYAML(`
+---
+result: (( replace_match("foobar","o*", "u") ))
+`)
+				resolved := parseYAML(`
+---
+result: ufubuauru
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("replaces limited", func() {
+				source := parseYAML(`
+---
+result: (( replace_match("foobaro","o+", "u", 1) ))
+`)
+				resolved := parseYAML(`
+---
+result: fubaro
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("replaces with placeholder", func() {
+				source := parseYAML(`
+---
+result: (( replace_match("fooobar","o(o*)", "${0}-${1}") ))
+`)
+				resolved := parseYAML(`
+---
+result: fooo-oobar
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("replaces with lambda", func() {
+				source := parseYAML(`
+---
+sep: "-"
+result: (( replace_match("fooobar","o(o*)", |m|->join(sep,m)) ))
+`)
+				resolved := parseYAML(`
+---
+sep: "-"
+result: fooo-oobar
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
 	})
 

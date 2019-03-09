@@ -1520,10 +1520,10 @@ The single input argument is a list of actual sub expression matches.
 e.g.:
 
 ```yaml
-string: (( replace_match("foobar", "(o*)b", |m|->m.[0] m.[1]) ))
+string: (( replace_match("foobar-barfoo", "(o*)b", |m|->upper(m.[1]) "b" ) ))
 ```
 
-yields `foobooar`.
+yields `fOObar-barfoo`.
 
 ### `(( substr(string, 1, 2) ))`
 
