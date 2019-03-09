@@ -80,7 +80,7 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	switch funcName {
 	case "":
 		debug.Debug("calling lambda function %#v\n", value)
-		resolved, result, sub, ok = value.(LambdaValue).Evaluate(values, binding, false)
+		resolved, result, sub, ok = value.(LambdaValue).Evaluate(true, values, binding, false)
 		if !resolved && ok {
 			result = nil
 		}
@@ -93,6 +93,8 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "split":
 		result, sub, ok = func_split(values, binding)
+	case "split_match":
+		result, sub, ok = func_splitMatch(values, binding)
 
 	case "trim":
 		result, sub, ok = func_trim(values, binding)
@@ -120,9 +122,13 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "replace":
 		result, sub, ok = func_replace(values, binding)
+	case "replace_match":
+		result, sub, ok = func_replaceMatch(values, binding)
 
 	case "match":
 		result, sub, ok = func_match(values, binding)
+	case "sort":
+		result, sub, ok = func_sort(values, binding)
 
 	case "exec":
 		result, sub, ok = func_exec(true, values, binding)
@@ -212,6 +218,10 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "substr":
 		result, sub, ok = func_substr(values, binding)
+	case "lower":
+		result, sub, ok = func_lower(values, binding)
+	case "upper":
+		result, sub, ok = func_upper(values, binding)
 
 	case "keys":
 		result, sub, ok = func_keys(values, binding)

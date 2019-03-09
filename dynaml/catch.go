@@ -96,7 +96,7 @@ func (e CatchExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluat
 		return info.Error("lambda expression for sync condition must take one or two arguments, found %d", len(lambda.lambda.Names))
 	}
 
-	resolved, mapped, info, ok := lambda.Evaluate(inp, binding, false)
+	resolved, mapped, info, ok := lambda.Evaluate(false, inp, binding, false)
 	if !ok {
 		debug.Debug("catch lambda failed\n")
 		return nil, info, false

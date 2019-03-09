@@ -1244,6 +1244,10 @@ list:
   - ' bob'
 ```
 
+If a [regular expression](https://github.com/google/re2/wiki/Syntax) should
+be used as separator string, the function `split_match` can be used.
+
+
 ### `(( trim(string) ))`
 
 Trim a string or all elements of a list of strings. There is an optional second string argument. It can be used to specify a set of characters that will be cut. The default cut set consists of a space and a tab character.
@@ -1437,6 +1441,31 @@ string: (( replace("foobar", "o", "u") ))
 
 yields `fuubar`.
 
+If a regular expression should be used as search string the function 
+`replace_match` can be used. Here the search string is evaluated as [regular
+expression](https://github.com/google/re2/wiki/Syntax). It may conatain sub expressions.
+These matches can be used in the [replacement string](https://golang.org/pkg/regexp/#Regexp.Expand)
+
+e.g.:
+
+```yaml
+string: (( replace_match("foobar", "(o*)b", "b${1}") ))
+```
+
+yields `fbooar`.
+
+The replacement argument might also be a lambda function. In this case, for
+every match the function is called to determine the replacement value.
+The single input argument is a list of actual sub expression matches.
+
+e.g.:
+
+```yaml
+string: (( replace_match("foobar", "(o*)b", |m|->m.[0] m.[1]) ))
+```
+
+yields `foobooar`.
+
 ### `(( substr(string, 1, 2) ))`
 
 Extract a stub string from a string, starting from a given start index up to an optional end index (exclusive). If no end index is given the sub struvt up to the end of the string is extracted.
@@ -1462,7 +1491,11 @@ range: ooba
 
 ### `(( match("(f.*)(b.*)", "xxxfoobar") ))`
 
-Returns the match of a regular expression for a given string value. The match is a list of the matched values for the sub expressions contained in the regular expression. Index 0 refers to the match of the complete regular expression. If the string value does not match an empty list is returned.
+Returns the match of a [regular expression](https://github.com/google/re2/wiki/Syntax)
+for a given string value. The match is a list of the matched values for the sub
+expressions contained in the regular expression. Index 0 refers to the match of
+the complete regular expression. If the string value does not match an empty
+list is returned.
 
 e.g.:
 

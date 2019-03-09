@@ -11,12 +11,12 @@ func func_match(arguments []interface{}, binding Binding) (interface{}, Evaluati
 	info := DefaultInfo()
 
 	if len(arguments) != 2 {
-		return info.Error("subexp takes exactly two arguments")
+		return info.Error("match takes exactly two arguments")
 	}
 
 	pattern, ok := arguments[0].(string)
 	if !ok {
-		return info.Error("pattern string for argument one of function subexp required")
+		return info.Error("pattern string for argument one of function match required")
 	}
 
 	if arguments[1] == nil {
@@ -32,12 +32,12 @@ func func_match(arguments []interface{}, binding Binding) (interface{}, Evaluati
 	case bool:
 		elem = strconv.FormatBool(v)
 	default:
-		return info.Error("simple value for argument two of function subexp required")
+		return info.Error("simple value for argument two of function match required")
 	}
 
 	re, err := regexp.Compile(pattern)
 	if err != nil {
-		return info.Error("%s", err)
+		return info.Error("match: %s", err)
 	}
 
 	list := re.FindStringSubmatch(elem)

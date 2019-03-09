@@ -87,7 +87,7 @@ func sumList(source []yaml.Node, e LambdaValue, initial interface{}, binding Bin
 		inp[0] = result
 		inp[1] = i
 		inp[len(inp)-1] = n.Value()
-		resolved, mapped, info, ok := e.Evaluate(inp, binding, false)
+		resolved, mapped, info, ok := e.Evaluate(false, inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %d %+v: failed\n", i, n)
 			return nil, info, false
@@ -118,7 +118,7 @@ func sumMap(source map[string]yaml.Node, e LambdaValue, initial interface{}, bin
 		inp[0] = result
 		inp[1] = k
 		inp[len(inp)-1] = n.Value()
-		resolved, mapped, info, ok := e.Evaluate(inp, binding, false)
+		resolved, mapped, info, ok := e.Evaluate(false, inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %s %+v: failed\n", k, n)
 			return nil, info, false

@@ -6619,6 +6619,21 @@ value: true
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
+
+		It("it generates a random string of given charset", func() {
+			source := parseYAML(`
+---
+value: (( sort(uniq(split("",rand("a-c", 1000))))  ))
+`)
+			resolved := parseYAML(`
+---
+value:
+  - a
+  - b
+  - c
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
 	})
 
 	Describe("when calling substr", func() {

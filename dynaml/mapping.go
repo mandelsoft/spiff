@@ -196,7 +196,7 @@ func mapList(source []yaml.Node, e LambdaValue, binding Binding, aggr MappingAgg
 		debug.Debug("map:  mapping for %d: %+v\n", i, n)
 		inp[0] = i
 		inp[len(inp)-1] = n.Value()
-		resolved, mapped, info, ok := e.Evaluate(inp, binding, false)
+		resolved, mapped, info, ok := e.Evaluate(false, inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %d %+v: failed\n", i, n)
 			return nil, info, false
@@ -225,7 +225,7 @@ func mapMap(source map[string]yaml.Node, e LambdaValue, binding Binding, aggr Ma
 		debug.Debug("map:  mapping for %s: %+v\n", k, n)
 		inp[0] = k
 		inp[len(inp)-1] = n.Value()
-		resolved, mapped, info, ok := e.Evaluate(inp, binding, false)
+		resolved, mapped, info, ok := e.Evaluate(false, inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %s %+v: failed\n", k, n)
 			return nil, info, false

@@ -154,7 +154,7 @@ func (e LambdaValue) MarshalYAML() (tag string, value interface{}, err error) {
 	return "", "(( " + e.lambda.String() + " ))", nil
 }
 
-func (e LambdaValue) Evaluate(args []interface{}, binding Binding, locally bool) (bool, interface{}, EvaluationInfo, bool) {
+func (e LambdaValue) Evaluate(curry bool, args []interface{}, binding Binding, locally bool) (bool, interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 
 	if len(args) > len(e.lambda.Names) {
@@ -171,9 +171,13 @@ func (e LambdaValue) Evaluate(args []interface{}, binding Binding, locally bool)
 	}
 
 	if len(args) < len(e.lambda.Names) {
-		debug.Debug("LAMBDA CALL: currying %+v\n", inp)
-		rest := e.lambda.Names[len(args):]
-		return true, LambdaValue{LambdaExpr{rest, e.lambda.E}, inp, e.resolver}, DefaultInfo(), true
+		if curry {
+			debug.Debug("LAMBDA CALL: currying %+v\n", inp)
+			rest := e.lambda.Names[len(args):]
+			return true, LambdaValue{LambdaExpr{rest, e.lambda.E}, inp, e.resolver}, DefaultInfo(), true
+		}
+		info.SetError("expected %d arguments, but found %d", len(e.lambda.Names), len(args))
+		return false, nil, info, false
 	}
 	debug.Debug("LAMBDA CALL: staticScope %+v\n", e.resolver)
 	inp[yaml.SELF] = yaml.ResolverNode(node(e, binding), e.resolver)
