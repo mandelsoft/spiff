@@ -2355,6 +2355,9 @@ result:
   bob: 100
 ```
 
+Instead of multiple arguments a single list argument can be given. The list
+must contain the maps to be merged.
+
 Nested merges have access to all outer bindings. Relative references are first
 searched in the actual document. If they are not found there all outer bindings
 are used to lookup the reference, from inner to outer bindings. Additionally the

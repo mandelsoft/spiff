@@ -40,6 +40,11 @@ This [library](certs/README.md) offers useful lambda functions to generate
 certificates for self signed certificate authorities, and key/certificate pairs
 using the [state library](state/README.md).
 
+### Manifest Generation
+
+This [library](generate/README.md) offers manifest generation functions
+processing template files with input values.
+
 ### Simple Graph Library
 
 This [library](graph/README.md) offers simple graph analysis for directed graphs, like cycle
