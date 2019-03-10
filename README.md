@@ -113,6 +113,7 @@ Contents:
 		    - [(( write("file.yml", data) ))](#-writefileyml-data-)
 		    - [(( tempfile("file.yml", data) ))](#-tempfilefileyml-data-)
 		    - [(( lookup_file("file.yml", data) ))](#-lookup_filefileyml-list-)
+		    - [(( list_files(".") ))](#-list_files-)
 		- [X509 Functions](#x509-functions)
 		    - [(( x509genkey(spec) ))](#-x509genkeyspec-)
 		    - [(( x509publickey(key) ))](#-x509publickeykey-)
@@ -2581,6 +2582,10 @@ If no existing files can be found the empty list is returned.
 It is possible to pass multiple list or string arguments to compose the
 search path.
 
+#### `(( list_files(".") ))`
+
+List files in a directory. The result is a list of existing
+files. With `list_dirs` it is possible to list directories, instead.
 
 ### X509 Functions
 

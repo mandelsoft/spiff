@@ -165,6 +165,10 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		result, sub, ok = func_lookup(false, values, binding)
 	case "lookup_dir":
 		result, sub, ok = func_lookup(true, values, binding)
+	case "list_files":
+		result, sub, ok = func_listFiles(false, values, binding)
+	case "list_dirs":
+		result, sub, ok = func_listFiles(true, values, binding)
 	case "tempfile":
 		result, sub, ok = func_tempfile(values, binding)
 
