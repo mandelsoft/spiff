@@ -2419,7 +2419,8 @@ by default the yaml type is used. If the file should be read as `text`, this
   
 An optional second parameter can be used to explicitly specifiy the desired
 return type: `yaml` or `text`. For _yaml_ documents some addtional 
-types are supported: `multiyaml`, `template`, `import` and `importmulti`.
+types are supported: `multiyaml`, `template`, `templates`, `import` and
+`importmulti`.
 
 ##### yaml documents
 
@@ -2436,7 +2437,8 @@ is given, a list node with the yaml document root nodes is returned.
 
 The yaml or json document can also read as _template_ by specifying the type
 `template`. Here the result will be a template value, that can be used like
-regular inline templates.
+regular inline templates. If `templates` is specified, a multi-document is
+mapped to a list of templates.
 
 If the read type is set to `import`, the file content is read as yaml document
 and the root node is used to substitute the expression. Potential dynaml

@@ -7027,6 +7027,31 @@ result:
 `))
 				Expect(source).To(FlowAs(resolved))
 			})
+
+			It("it parses templates", func() {
+				source := parseYAML(`
+---
+yaml: |
+    { "alice": 25 }
+    ---
+    { "bob": 26 }
+
+result: (( parse( yaml, "templates" ) ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+yaml: |
+    { "alice": 25 }
+    ---
+    { "bob": 26 }
+result:
+  - <<: (( &template ))
+    alice: 25
+  - <<: (( &template ))
+    bob: 26
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
 	})
 

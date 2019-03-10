@@ -44,41 +44,25 @@ func func_read(cached bool, arguments []interface{}, binding Binding) (interface
 
 func parse(file string, data []byte, mode string, binding Binding) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
+	info.Source = file
 	switch mode {
 	case "template":
 		n, err := yaml.Parse(file, data)
-		orig := node_copy(n)
-
-		switch v := orig.Value().(type) {
-		case map[string]yaml.Node:
-			if _, ok := v["<<"]; !ok {
-				v["<<"] = node("(( &template ))", n)
-			}
-		case []yaml.Node:
-			found := false
-			for _, e := range v {
-				if m, ok := e.Value().(map[string]yaml.Node); ok {
-					if e, ok := m["<<"]; ok {
-						s := yaml.EmbeddedDynaml(e)
-						if s != nil && templ_pattern.MatchString(*s) {
-							found = true
-							break
-						}
-					}
-				}
-			}
-			if !found {
-				new := []yaml.Node{node(map[string]yaml.Node{"<<": node("(( &template ))", n)}, n)}
-				new = append(new, v...)
-				orig = node(new, n)
-			}
-		}
 		if err != nil {
 			return info.Error("error parsing file [%s]: %s", path.Clean(file), err)
 		}
-		result := NewTemplateValue(binding.Path(), n, orig, binding)
-		return result, info, true
+		return asTemplate(n, binding), info, true
 
+	case "templates":
+		nodes, err := yaml.ParseMulti(file, data)
+		if err != nil {
+			return info.Error("error parsing file [%s]: %s", path.Clean(file), err)
+		}
+		result := []yaml.Node{}
+		for _, n := range nodes {
+			result = append(result, node(asTemplate(n, binding), n))
+		}
+		return result, info, true
 	case "yaml":
 		node, err := yaml.Parse(file, data)
 		if err != nil {
@@ -91,7 +75,6 @@ func parse(file string, data []byte, mode string, binding Binding) (interface{},
 			return info.PropagateError(nil, state, "resolution of yaml file '%s' failed", file)
 		}
 		debug.Debug("resolving yaml file succeeded")
-		info.Source = file
 		return result.Value(), info, true
 	case "multiyaml":
 		nodes, err := yaml.ParseMulti(file, data)
@@ -102,7 +85,6 @@ func parse(file string, data []byte, mode string, binding Binding) (interface{},
 			nodes = nodes[:len(nodes)-1]
 		}
 		debug.Debug("resolving yaml list from file\n")
-		info.Source = file
 		result, state := binding.Flow(node(nodes, info), false)
 		if state != nil {
 			debug.Debug("resolving yaml file failed: " + state.Error())
@@ -115,7 +97,6 @@ func parse(file string, data []byte, mode string, binding Binding) (interface{},
 		if err != nil {
 			return info.Error("error parsing file [%s]: %s", path.Clean(file), err)
 		}
-		info.Source = file
 		info.Raw = true
 		debug.Debug("import yaml file succeeded")
 		return node.Value(), info, true
@@ -124,7 +105,6 @@ func parse(file string, data []byte, mode string, binding Binding) (interface{},
 		if err != nil {
 			return info.Error("error parsing file [%s]: %s", path.Clean(file), err)
 		}
-		info.Source = file
 		info.Raw = true
 		for len(nodes) > 1 && nodes[len(nodes)-1].Value() == nil {
 			nodes = nodes[:len(nodes)-1]
@@ -132,10 +112,39 @@ func parse(file string, data []byte, mode string, binding Binding) (interface{},
 		return nodes, info, true
 
 	case "text":
-		info.Source = file
 		return string(data), info, true
 
 	default:
 		return info.Error("invalid file type [%s] %s", path.Clean(file), mode)
 	}
+}
+
+func asTemplate(n yaml.Node, binding Binding) TemplateValue {
+	orig := node_copy(n)
+
+	switch v := orig.Value().(type) {
+	case map[string]yaml.Node:
+		if _, ok := v["<<"]; !ok {
+			v["<<"] = node("(( &template ))", n)
+		}
+	case []yaml.Node:
+		found := false
+		for _, e := range v {
+			if m, ok := e.Value().(map[string]yaml.Node); ok {
+				if e, ok := m["<<"]; ok {
+					s := yaml.EmbeddedDynaml(e)
+					if s != nil && templ_pattern.MatchString(*s) {
+						found = true
+						break
+					}
+				}
+			}
+		}
+		if !found {
+			new := []yaml.Node{node(map[string]yaml.Node{"<<": node("(( &template ))", n)}, n)}
+			new = append(new, v...)
+			orig = node(new, n)
+		}
+	}
+	return NewTemplateValue(binding.Path(), n, orig, binding)
 }
