@@ -34,7 +34,7 @@ func func_split(arguments []interface{}, binding Binding) (interface{}, Evaluati
 	array := strings.SplitN(str, sep, n)
 	result := make([]yaml.Node, len(array))
 	for i, e := range array {
-		result[i] = node(e, binding)
+		result[i] = NewNode(e, binding)
 	}
 	return result, info, true
 }
@@ -72,7 +72,7 @@ func func_splitMatch(arguments []interface{}, binding Binding) (interface{}, Eva
 
 	result := make([]yaml.Node, len(array))
 	for i, e := range array {
-		result[i] = node(e, binding)
+		result[i] = NewNode(e, binding)
 	}
 	return result, info, true
 }

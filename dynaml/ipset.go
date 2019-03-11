@@ -190,7 +190,7 @@ func func_ipset(arguments []interface{}, binding Binding) (interface{}, Evaluati
 				ip := r.GetIP(int64(index) - offset).String()
 				debug.Debug("ipset: get %d from range %d: %s",
 					int64(index)-offset, j, ip)
-				result[i] = node(ip, nil)
+				result[i] = NewNode(ip, nil)
 				break
 			}
 			debug.Debug("ipset: skipping range %d: offset %d size %d",

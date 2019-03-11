@@ -10,13 +10,13 @@ import (
 func newNetworkFakeBinding(subnets yaml.Node, instances interface{}) Binding {
 	return FakeBinding{
 		FoundReferences: map[string]yaml.Node{
-			"name":      node("cf1", nil),
-			"instances": node(instances, nil),
+			"name":      NewNode("cf1", nil),
+			"instances": NewNode(instances, nil),
 		},
 		FoundFromRoot: map[string]yaml.Node{
-			"":                     node("dummy", nil),
-			"networks":             node("dummy", nil),
-			"networks.cf1":         node("dummy", nil),
+			"":                     NewNode("dummy", nil),
+			"networks":             NewNode("dummy", nil),
+			"networks.cf1":         NewNode("dummy", nil),
 			"networks.cf1.subnets": subnets,
 		},
 	}
@@ -102,8 +102,8 @@ var _ = Describe("calls", func() {
 		It("joins string values ", func() {
 			binding := FakeBinding{
 				FoundReferences: map[string]yaml.Node{
-					"alice": node("alice", nil),
-					"bob":   node("bob", nil),
+					"alice": NewNode("alice", nil),
+					"bob":   NewNode("bob", nil),
 				},
 			}
 
@@ -118,8 +118,8 @@ var _ = Describe("calls", func() {
 		It("joins int values ", func() {
 			binding := FakeBinding{
 				FoundReferences: map[string]yaml.Node{
-					"alice": node(10, nil),
-					"bob":   node(20, nil),
+					"alice": NewNode(10, nil),
+					"bob":   NewNode(20, nil),
 				},
 			}
 
@@ -140,7 +140,7 @@ var _ = Describe("calls", func() {
 			binding := FakeBinding{
 				FoundReferences: map[string]yaml.Node{
 					"alice": list,
-					"bob":   node(20, nil),
+					"bob":   NewNode(20, nil),
 				},
 			}
 
@@ -209,7 +209,7 @@ var _ = Describe("calls", func() {
 
 			Expect(expr).To(
 				EvaluateAs(
-					[]yaml.Node{node("10.10.16.10", nil), node("10.10.16.14", nil)},
+					[]yaml.Node{NewNode("10.10.16.10", nil), NewNode("10.10.16.14", nil)},
 					binding,
 				),
 			)
@@ -225,7 +225,7 @@ var _ = Describe("calls", func() {
 
 			Expect(expr).To(
 				EvaluateAs(
-					[]yaml.Node{node("10.10.16.10", nil)},
+					[]yaml.Node{NewNode("10.10.16.10", nil)},
 					binding,
 				),
 			)
@@ -279,7 +279,7 @@ var _ = Describe("calls", func() {
 
 				Expect(expr).To(
 					EvaluateAs(
-						[]yaml.Node{node("10.10.16.10", nil), node("10.10.16.14", nil), node("10.10.16.33", nil)},
+						[]yaml.Node{NewNode("10.10.16.10", nil), NewNode("10.10.16.14", nil), NewNode("10.10.16.33", nil)},
 						binding,
 					),
 				)

@@ -25,7 +25,7 @@ func (e SubstitutionExpr) Evaluate(binding Binding, locally bool) (interface{}, 
 		return info.Error("template value required")
 	}
 	prepared := node_copy(template.Prepared)
-	inp[yaml.SELF] = yaml.ResolverNode(node(n, binding), template.resolver)
+	inp[yaml.SELF] = yaml.ResolverNode(NewNode(n, binding), template.resolver)
 
 	debug.Debug("resolving template '%s' %s\n", strings.Join(template.Path, "."), binding)
 	result, state := binding.WithLocalScope(inp).Flow(prepared, false)

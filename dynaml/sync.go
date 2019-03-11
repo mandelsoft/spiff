@@ -50,16 +50,16 @@ func (e SyncExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	if !ok {
 		errmsg = infoe.Issue.Issue
 		debug.Debug("sync arg failed: %s\n", errmsg)
-		result[CATCH_VALID] = node(false, binding)
-		result[CATCH_ERROR] = node(errmsg, binding)
+		result[CATCH_VALID] = NewNode(false, binding)
+		result[CATCH_ERROR] = NewNode(errmsg, binding)
 	} else {
 		if !resolved {
 			return e, info, true
 		}
 		debug.Debug("sync arg succeeded\n")
-		result[CATCH_VALID] = node(true, binding)
-		result[CATCH_ERROR] = node("", binding)
-		result[CATCH_VALUE] = node(value, binding)
+		result[CATCH_VALID] = NewNode(true, binding)
+		result[CATCH_ERROR] = NewNode("", binding)
+		result[CATCH_VALUE] = NewNode(value, binding)
 	}
 
 	condbinding := binding

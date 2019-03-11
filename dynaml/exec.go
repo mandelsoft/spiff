@@ -90,7 +90,7 @@ func getArg(i int, value interface{}, yaml bool) (string, bool) {
 		if !yaml || value == nil {
 			return "", false
 		}
-		yaml, err := candiedyaml.Marshal(node(value, nil))
+		yaml, err := candiedyaml.Marshal(NewNode(value, nil))
 		if err != nil {
 			log.Fatalln("error marshalling manifest:", err)
 		}

@@ -49,7 +49,7 @@ func func_lookup(directory bool, arguments []interface{}, binding Binding) (inte
 	result := []yaml.Node{}
 	if filepath.IsAbs(name) {
 		if checkExistence(name, directory) {
-			result = append(result, node(name, binding))
+			result = append(result, NewNode(name, binding))
 		}
 		return result, info, true
 	}
@@ -58,7 +58,7 @@ func func_lookup(directory bool, arguments []interface{}, binding Binding) (inte
 		if d != "" {
 			p := d + "/" + name
 			if checkExistence(p, directory) {
-				result = append(result, node(p, binding))
+				result = append(result, NewNode(p, binding))
 			}
 		}
 	}

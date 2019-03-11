@@ -24,13 +24,13 @@ func format(name string, arguments []interface{}, binding Binding) (interface{},
 	for i, arg := range arguments {
 		switch v := arg.(type) {
 		case []yaml.Node:
-			yaml, err := candiedyaml.Marshal(node(v, nil))
+			yaml, err := candiedyaml.Marshal(NewNode(v, nil))
 			if err != nil {
 				log.Fatalln("error marshalling yaml fragment:", err)
 			}
 			args[i] = string(yaml)
 		case map[string]yaml.Node:
-			yaml, err := candiedyaml.Marshal(node(v, nil))
+			yaml, err := candiedyaml.Marshal(NewNode(v, nil))
 			if err != nil {
 				log.Fatalln("error marshalling yaml fragment:", err)
 			}

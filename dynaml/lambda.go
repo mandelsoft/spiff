@@ -167,7 +167,7 @@ func (e LambdaValue) Evaluate(curry bool, args []interface{}, binding Binding, l
 	}
 	debug.Debug("LAMBDA CALL: inherit local %+v\n", inp)
 	for i, v := range args {
-		inp[e.lambda.Names[i]] = node(v, binding)
+		inp[e.lambda.Names[i]] = NewNode(v, binding)
 	}
 
 	if len(args) < len(e.lambda.Names) {
@@ -180,7 +180,7 @@ func (e LambdaValue) Evaluate(curry bool, args []interface{}, binding Binding, l
 		return false, nil, info, false
 	}
 	debug.Debug("LAMBDA CALL: staticScope %+v\n", e.resolver)
-	inp[yaml.SELF] = yaml.ResolverNode(node(e, binding), e.resolver)
+	inp[yaml.SELF] = yaml.ResolverNode(NewNode(e, binding), e.resolver)
 	debug.Debug("LAMBDA CALL: effective local %+v\n", inp)
 	value, info, ok := e.lambda.E.Evaluate(binding.WithLocalScope(inp), locally)
 	if !ok {

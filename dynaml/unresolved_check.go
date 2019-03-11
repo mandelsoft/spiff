@@ -228,7 +228,7 @@ func ResetUnresolvedNodes(root yaml.Node) yaml.Node {
 		}
 
 	case Expression:
-		root = node(fmt.Sprintf("(( %s ))", elem), nil)
+		root = NewNode(fmt.Sprintf("(( %s ))", elem), nil)
 	}
 
 	return root
@@ -297,7 +297,7 @@ func isResolvedValue(val interface{}) bool {
 		return true
 
 	case string:
-		if yaml.EmbeddedDynaml(node(val, nil)) != nil {
+		if yaml.EmbeddedDynaml(NewNode(val, nil)) != nil {
 			return false
 		}
 		return true

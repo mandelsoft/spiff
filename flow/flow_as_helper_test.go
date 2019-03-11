@@ -28,9 +28,9 @@ func (matcher *FlowAsMatcher) Match(source interface{}) (success bool, err error
 		return false, err
 	}
 
-	actual := Cleanup(matcher.actual, discardTemporary)
+	matcher.actual = Cleanup(matcher.actual, discardTemporary)
 
-	if actual.EquivalentToNode(matcher.Expected) {
+	if matcher.actual.EquivalentToNode(matcher.Expected) {
 		return true, nil
 	} else {
 		return false, nil

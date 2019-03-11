@@ -43,7 +43,7 @@ func func_match(arguments []interface{}, binding Binding) (interface{}, Evaluati
 	list := re.FindStringSubmatch(elem)
 	newList := make([]yaml.Node, len(list))
 	for i, v := range list {
-		newList[i] = node(v, info)
+		newList[i] = NewNode(v, info)
 	}
 	return newList, info, true
 }

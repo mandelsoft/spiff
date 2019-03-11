@@ -30,7 +30,7 @@ func (matcher *EvaluateAsMatcher) Match(source interface{}) (success bool, err e
 		return false, fmt.Errorf("Node failed to evaluate: %s.", info.Issue.Issue)
 	}
 
-	if node(matcher.actual, nil).EquivalentToNode(node(matcher.Expected, nil)) {
+	if NewNode(matcher.actual, nil).EquivalentToNode(NewNode(matcher.Expected, nil)) {
 		return true, nil
 	} else {
 		return false, nil

@@ -88,7 +88,7 @@ func LambdaExpander(lambda LambdaValue, binding Binding) Expander {
 	return func(dst []byte, src []byte, match []int) (bool, []byte, error) {
 		matches := []yaml.Node{}
 		for i := 0; i < len(match); i += 2 {
-			matches = append(matches, node(string(src[match[i]:match[i+1]]), binding))
+			matches = append(matches, NewNode(string(src[match[i]:match[i+1]]), binding))
 		}
 		inp := []interface{}{matches}
 		resolved, v, info, ok := lambda.Evaluate(false, inp, binding, false)

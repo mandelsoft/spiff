@@ -33,7 +33,7 @@ func func_trim(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 				return info.Error("list elements must be strings to be trimmed")
 			}
 			t = strings.Trim(t, cutset)
-			list[i] = node(t, binding)
+			list[i] = NewNode(t, binding)
 		}
 		result = list
 	default:

@@ -38,7 +38,7 @@ func (e ProjectionExpr) Evaluate(binding Binding, locally bool) (interface{}, Ev
 				if !locally && !isResolvedValue(newList[index]) {
 					return e, infoa, true
 				}
-				newList[index] = node(result, binding)
+				newList[index] = NewNode(result, binding)
 			}
 			return newList, infoa, true
 		}
@@ -56,7 +56,7 @@ func (e ProjectionExpr) Evaluate(binding Binding, locally bool) (interface{}, Ev
 			if !locally && !isResolvedValue(newList[index]) {
 				return e, infoa, true
 			}
-			newList[index] = node(result, binding)
+			newList[index] = NewNode(result, binding)
 			index++
 		}
 		return newList, infoa, true

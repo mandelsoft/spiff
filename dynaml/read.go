@@ -60,7 +60,7 @@ func parse(file string, data []byte, mode string, binding Binding) (interface{},
 		}
 		result := []yaml.Node{}
 		for _, n := range nodes {
-			result = append(result, node(asTemplate(n, binding), n))
+			result = append(result, NewNode(asTemplate(n, binding), n))
 		}
 		return result, info, true
 	case "yaml":
@@ -85,7 +85,7 @@ func parse(file string, data []byte, mode string, binding Binding) (interface{},
 			nodes = nodes[:len(nodes)-1]
 		}
 		debug.Debug("resolving yaml list from file\n")
-		result, state := binding.Flow(node(nodes, info), false)
+		result, state := binding.Flow(NewNode(nodes, info), false)
 		if state != nil {
 			debug.Debug("resolving yaml file failed: " + state.Error())
 			return info.PropagateError(nil, state, "resolution of yaml file '%s' failed", file)
@@ -125,7 +125,7 @@ func asTemplate(n yaml.Node, binding Binding) TemplateValue {
 	switch v := orig.Value().(type) {
 	case map[string]yaml.Node:
 		if _, ok := v["<<"]; !ok {
-			v["<<"] = node("(( &template ))", n)
+			v["<<"] = NewNode("(( &template ))", n)
 		}
 	case []yaml.Node:
 		found := false
@@ -141,9 +141,9 @@ func asTemplate(n yaml.Node, binding Binding) TemplateValue {
 			}
 		}
 		if !found {
-			new := []yaml.Node{node(map[string]yaml.Node{"<<": node("(( &template ))", n)}, n)}
+			new := []yaml.Node{NewNode(map[string]yaml.Node{"<<": NewNode("(( &template ))", n)}, n)}
 			new = append(new, v...)
-			orig = node(new, n)
+			orig = NewNode(new, n)
 		}
 	}
 	return NewTemplateValue(binding.Path(), n, orig, binding)

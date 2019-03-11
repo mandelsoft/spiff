@@ -110,7 +110,7 @@ func func_x509cert(arguments []interface{}, binding Binding) (interface{}, Evalu
 
 	if pub == nil {
 		if priv == nil {
-			return info.Error("one of 'publicKey' or 'privKey' must be given")
+			return info.Error("one of 'publicKey' or 'privateKey' must be given")
 		}
 		pub = publicKey(priv)
 	}

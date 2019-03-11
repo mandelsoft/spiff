@@ -18,7 +18,7 @@ func func_keys(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 
 	result := []yaml.Node{}
 	for _, k := range getSortedKeys(m) {
-		result = append(result, node(k, binding))
+		result = append(result, NewNode(k, binding))
 	}
 	return result, info, true
 }

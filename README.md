@@ -2774,6 +2774,83 @@ cacert: |+
     Cyvds9xGtAtmZRvYNI0=
     -----END CERTIFICATE-----
 ```
+#### `(( x509parsecert(cert) ))`
+
+This function parses a certificate given in PEM format and returns a map
+of fields:
+
+| Field Name  | Type | Required | Meaning |
+| ------------| ---- | -------- | ------- |
+| `commonName` | string | optional |  Common Name field of the subject |
+| `organization` | string list | optional |  Organization field of the subject |
+| `country` | string list | optional |  Country field of the subject |
+| `isCA` | bool | always |  CA option of certificate |
+| `usage` | string list | always |  usage keys for the certificate (see below) |
+| `validity` | integer | always |  validity interval in hours |
+| `validFrom` | string | always |  start time in the format "Jan 1 01:22:31 2019" |
+| `validUntil` | string | always |  start time in the format "Jan 1 01:22:31 2019" |
+| `hosts` | string list | optional |  List of DNS names or IP addresses |
+| `dnsNames` | string list | optional |  List of DNS names |
+| `ipAddresses` | string list | optional |  List of IP addresses |
+| `publicKey` | string | always|  public key to generate the certificate for |
+
+e.g.:
+
+```yaml
+data:
+  <<: (( &temporary ))
+  spec:
+    commonName: test
+    organization: org
+    validity: 100
+    isCA: true
+    privateKey: (( gen.key ))
+    hosts:
+      - localhost
+      - 127.0.0.1
+
+    usage:
+     - ServerAuth
+     - ClientAuth
+     - CertSign
+
+  gen:
+    key: (( x509genkey() ))
+    cert: (( x509cert(spec) ))
+
+cert: (( x509parsecert(data.gen.cert) ))
+```
+
+resolves to
+
+```yaml
+cert:
+  commonName: test
+  dnsNames:
+  - localhost
+  hosts:
+  - 127.0.0.1
+  - localhost
+  ipAddresses:
+  - 127.0.0.1
+  isCA: true
+  organization:
+  - org
+  publickey: |+
+    -----BEGIN RSA PUBLIC KEY-----
+    MIIBCgKCAQEA+UIZQUTa/j+WlXC394bccBTltV+Ig3+zB1l4T6Vo36pMBmU4JIkJ
+    ...
+    TCsrEC5ey0cCeFij2FijOJ5kmm4cK8jpkkb6fLeQhFEt1qf+QqgBw3targ3LnZQf
+    uE9t5MIR2X9ycCQSDNBxcuafHSwFrVuy7wIDAQAB
+    -----END RSA PUBLIC KEY-----
+  usage:
+  - CertSign
+  - ServerAuth
+  - ClientAuth
+  validFrom: Mar 11 15:34:36 2019
+  validUntil: Mar 15 19:34:36 2019
+  validity: 99  # yepp, that's right, there has already time passed since the creation
+```
 
 ## `(( lambda |x|->x ":" port ))`
 

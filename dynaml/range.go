@@ -64,7 +64,7 @@ func (e RangeExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluat
 		delta = -1
 	}
 	for i := start; i*delta <= end*delta; i += delta {
-		nodes = append(nodes, node(i, binding))
+		nodes = append(nodes, NewNode(i, binding))
 	}
 
 	return nodes, info, true

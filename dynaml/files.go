@@ -32,7 +32,7 @@ func func_listFiles(directory bool, arguments []interface{}, binding Binding) (i
 	result := []yaml.Node{}
 	for _, f := range files {
 		if f.IsDir() == directory {
-			result = append(result, node(f.Name(), binding))
+			result = append(result, NewNode(f.Name(), binding))
 		}
 	}
 	return result, info, true

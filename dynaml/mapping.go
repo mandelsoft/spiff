@@ -141,7 +141,7 @@ func (m *mapToList) Map(key interface{}, value interface{}, n yaml.Node, info Ev
 	if value == nil {
 		return
 	}
-	m.result = append(m.result, node(value, info))
+	m.result = append(m.result, NewNode(value, info))
 }
 
 func (m *mapToList) Result() interface{} {
@@ -173,7 +173,7 @@ func (m *mapToMap) Map(key interface{}, value interface{}, n yaml.Node, info Eva
 	if value == nil {
 		return
 	}
-	m.result[key.(string)] = node(value, info)
+	m.result[key.(string)] = NewNode(value, info)
 }
 
 func (m *mapToMap) Result() interface{} {

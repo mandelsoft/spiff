@@ -67,7 +67,7 @@ func (e ConcatenationExpr) Evaluate(binding Binding, locally bool) (interface{},
 		case nil:
 			return a, info, true
 		default:
-			return append(alist, node(b, info)), info, true
+			return append(alist, NewNode(b, info)), info, true
 		}
 	}
 }

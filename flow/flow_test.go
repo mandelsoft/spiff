@@ -7485,4 +7485,65 @@ result:
 			})
 		})
 	})
+
+	Describe("x509 expressions", func() {
+		Context("certs and keys", func() {
+			It("parses created certs", func() {
+				source := parseYAML(`
+---
+data:
+  <<: (( &temporary ))
+  spec:
+    commonName: test
+    organization: org
+    validity: 100
+    isCA: true
+    privateKey: (( gen.key ))
+    hosts:
+      - localhost
+      - 127.0.0.1
+  
+    usage:
+     - ServerAuth
+     - ClientAuth
+     - CertSign
+  
+  gen:
+    key: (( x509genkey() ))
+    cert: (( x509cert(spec) ))
+  cert: (( x509parsecert(gen.cert) ))
+
+value:
+  commonName: (( data.cert.commonName ))
+  organization: (( data.cert.organization ))
+  validity: (( data.cert.validity ))
+  isCA: (( data.cert.isCA ))
+  public: (( data.cert.publicKey == x509publickey(data.gen.key) ))
+  hosts: (( data.cert.hosts ))
+  dnsNames: (( data.cert.dnsNames ))
+  ipAddresses:  (( data.cert.ipAddresses ))
+    
+`)
+				resolved := parseYAML(`
+---
+value:
+  commonName: test
+  organization:
+  - org
+  validity: 99
+  isCA: true
+  public: true
+  dnsNames:
+    - localhost
+  ipAddresses:
+    - 127.0.0.1
+  hosts:
+    - 127.0.0.1
+    - localhost
+    
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
 })

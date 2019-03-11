@@ -54,8 +54,8 @@ func (e CatchExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluat
 		result := map[string]yaml.Node{}
 		if !ok {
 			debug.Debug("catch arg failed\n")
-			result[CATCH_VALID] = node(false, binding)
-			result[CATCH_ERROR] = node(infoe.Issue.Issue, binding)
+			result[CATCH_VALID] = NewNode(false, binding)
+			result[CATCH_ERROR] = NewNode(infoe.Issue.Issue, binding)
 			return result, info, true
 		}
 
@@ -65,9 +65,9 @@ func (e CatchExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluat
 		}
 
 		debug.Debug("catch arg succeeded\n")
-		result[CATCH_VALID] = node(true, binding)
-		result[CATCH_ERROR] = node("", binding)
-		result[CATCH_VALUE] = node(value, binding)
+		result[CATCH_VALID] = NewNode(true, binding)
+		result[CATCH_ERROR] = NewNode("", binding)
+		result[CATCH_VALUE] = NewNode(value, binding)
 		return result, info, ok
 	}
 
