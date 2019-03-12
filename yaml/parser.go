@@ -30,6 +30,10 @@ func Parse(sourceName string, source []byte) (Node, error) {
 
 func ParseMulti(sourceName string, source []byte) ([]Node, error) {
 	docs := []Node{}
+
+	if len(bytes.Trim(source, " \t\n\r")) == 0 {
+		source = []byte("---\n")
+	}
 	r := bytes.NewBuffer(source)
 	d := candiedyaml.NewDecoder(r)
 

@@ -244,6 +244,14 @@ func merge(templateFilePath string, partial bool, json, split bool,
 			}
 			if stateFilePath != "" {
 				state := flow.Cleanup(flowed, discardNonState)
+				json := json
+				if strings.HasSuffix(stateFilePath, ".yaml") || strings.HasSuffix(stateFilePath, ".yml") {
+					json = false
+				} else {
+					if strings.HasSuffix(stateFilePath, ".json") {
+						json = true
+					}
+				}
 				if json {
 					bytes, err = yaml.ToJSON(state)
 				} else {
