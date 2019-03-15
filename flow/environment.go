@@ -232,6 +232,9 @@ func (e DefaultEnvironment) Flow(source yaml.Node, shouldOverride bool) (yaml.No
 	for {
 		debug.Debug("@@{ loop:  %+v\n", result)
 		next := flow(result, e, shouldOverride)
+		if next.Undefined() {
+			next = node(nil)
+		}
 		debug.Debug("@@} --->   %+v\n", next)
 
 		next = Cleanup(next, updateBinding(next))

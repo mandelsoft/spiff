@@ -60,5 +60,5 @@ func getMap(n int, arg interface{}) (map[string]yaml.Node, error) {
 	if ok {
 		return m, nil
 	}
-	return nil, fmt.Errorf("%d: no map or map template, but %s", n+1, expression_type(arg))
+	return nil, fmt.Errorf("%d: no map or map template, but %s", n+1, ExpressionType(arg))
 }

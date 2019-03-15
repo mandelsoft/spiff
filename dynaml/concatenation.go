@@ -47,7 +47,7 @@ func (e ConcatenationExpr) Evaluate(binding Binding, locally bool) (interface{},
 	if !aok {
 		amap, aok := a.(map[string]yaml.Node)
 		if !aok {
-			return info.Error("type '%s' cannot be concatenated with type '%s'", expression_type(b), expression_type(a))
+			return info.Error("type '%s' cannot be concatenated with type '%s'", ExpressionType(b), ExpressionType(a))
 		}
 		switch bmap := b.(type) {
 		case map[string]yaml.Node:
@@ -58,7 +58,7 @@ func (e ConcatenationExpr) Evaluate(binding Binding, locally bool) (interface{},
 		case nil:
 			return a, info, true
 		default:
-			return info.Error("type '%s' cannot be concatenated with type '%s'", expression_type(b), expression_type(a))
+			return info.Error("type '%s' cannot be concatenated with type '%s'", ExpressionType(b), ExpressionType(a))
 		}
 	} else {
 		switch b.(type) {

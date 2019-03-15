@@ -54,7 +54,7 @@ func func_rand(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 			if len(arguments) == 2 {
 				l, ok := arguments[1].(int64)
 				if !ok {
-					return info.Error("rand length must be an integer, found %T", arguments[1])
+					return info.Error("rand length must be an integer, found %s", ExpressionType(arguments[1]))
 				}
 				if l <= 0 {
 					return info.Error("rand length must be positive, found %d", l)

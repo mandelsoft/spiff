@@ -11,7 +11,7 @@ func func_type(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 		info.Error("exactly one argument required for function 'type'")
 	}
 
-	tn := expression_type(arguments[0])
+	tn := ExpressionType(arguments[0])
 	if tn == "" {
 		return info.Error("unknown type for %v", arguments[0])
 	} else {
@@ -19,7 +19,7 @@ func func_type(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 	}
 }
 
-func expression_type(elem interface{}) string {
+func ExpressionType(elem interface{}) string {
 	switch elem.(type) {
 	case string:
 		return "string"

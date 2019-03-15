@@ -193,6 +193,14 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (result []Unresolved
 		}
 	}
 
+	if root.Failed() {
+		nodes = append(nodes, UnresolvedNode{
+			Node:    root,
+			Context: context,
+			Path:    []string{},
+		})
+	}
+
 	for _, n := range nodes {
 		if n.GetAnnotation().HasError() {
 			result = append(result, n)

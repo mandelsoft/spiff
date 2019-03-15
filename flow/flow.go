@@ -219,10 +219,12 @@ func simpleMergeCompatibilityCheck(initial bool, node yaml.Node) bool {
 func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 	var flags yaml.NodeFlags
 	var stub yaml.Node
+	var err error
 	flags, stub = get_inherited_flags(env)
 	processed := true
 	template := false
 	merged := false
+	issue, failed := root.Issue(), root.Failed()
 	rootMap := root.Value().(map[string]yaml.Node)
 
 	rootEnv := env
@@ -244,6 +246,9 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 		if key == "<<" {
 			_, initial := val.Value().(string)
 			base := flow(val, env, false)
+			if base.Undefined() {
+				return yaml.UndefinedNode(root)
+			}
 			debug.Debug("flow to %#v\n", base.Value())
 			_, ok := base.Value().(dynaml.Expression)
 			if ok {
@@ -275,7 +280,6 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 				}
 				processed = false
 			} else {
-				baseMap, ok := base.Value().(map[string]yaml.Node)
 				if base == nil {
 					debug.Debug("base is nil\n")
 				} else {
@@ -285,17 +289,23 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 						env = env.RedirectOverwrite(redirect)
 					}
 				}
+				if base.Merged() {
+					merged = true
+				}
+
+				baseMap, ok := base.Value().(map[string]yaml.Node)
 				if ok {
 					for k, v := range baseMap {
 						newMap[k] = v
 					}
 				}
-				if base.Merged() {
-					merged = true
-				}
 				// still ignore non dynaml value (might be strange but compatible)
 				replace = base.ReplaceFlag()
-				if ok || base.Value() == nil || yaml.EmbeddedDynaml(base) == nil {
+				parseError := yaml.EmbeddedDynaml(base) != nil
+				if !ok && base.Value() != nil && !parseError {
+					err = fmt.Errorf("require map value for '<<' insert, found '%s'", dynaml.ExpressionType(base.Value()))
+				}
+				if ok || base.Value() == nil || !parseError {
 					if replace {
 						break
 					}
@@ -345,6 +355,13 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 		node = yaml.ReplaceNode(result, root, redirect)
 	} else {
 		node = yaml.RedirectNode(result, root, redirect)
+	}
+	if err != nil {
+		node = yaml.IssueNode(node, true, true, yaml.NewIssue("%s", err))
+	} else {
+		if failed {
+			node = yaml.IssueNode(node, true, true, issue)
+		}
 	}
 	if (flags | node.Flags()) != node.Flags() {
 		node = yaml.AddFlags(node, flags)
