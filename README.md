@@ -463,7 +463,8 @@ evaluates `foo` to the list `[b,c]`.
 
 ## `(( "foo" ))`
 
-String literal. The only escape character handled currently is '"'.
+String literal. All [json string encodings](https://www.json.org/) are supported
+(for exmple `\n`, `\"` or `\uxxxx`).
 
 ## `(( [ 1, 2, 3 ] ))`
 
@@ -3074,9 +3075,8 @@ just demonstrates the usage.
 ## Mappings
 
 Mappings are used to produce a new list from the entries of a _list_ or _map_,
-or a new map from entries of a new _map_.
-
-containing the entries processed by a dynaml expression. The expression is
+or a new map from entries of a _map_ containing the entries processed by a
+dynaml expression. The expression is
 given by a [lambda function](#-lambda-x-x--port-). There are two basic forms of
 the mapping function: It can be inlined as in `(( map[list|x|->x ":" port] ))`, 
 or it can be determined by a regular dynaml expression evaluating to a lambda
@@ -3088,12 +3088,22 @@ The mapping comes in two target flavors: with `[]` or `{}` in the syntax. The fi
 flavor always produces a _list_ from the entries of the given source. The
 second one takes only a map source and produces a filtered or transformed _map_.
 
-Additionally the mapping uses two basic mapping behaviours:
+Additionally the mapping uses three basic mapping behaviours:
 - _transforming the values using the keyword `map`_. Here the result of the lambda
   function is used as new value to replace the original one. Or
 - _filtering using the keywork `select`_. Here the result of the lambda
   function is used as a boolean to decide whether the entry should be kept
   (`true`) or omitted (`false`).
+- _composing_ using the keyword `sum`. Here always the list flavor is used,
+  but the result type and content is completely determined by the parameterization
+  of the statement by successively aggregating one entry after the other into an
+  arbitrary initial value. 
+
+**Note**: The special reference `_` is not set for inlined lambda functions as part of
+the mapping syntax. Therefore the mapping statements (and all other statements using
+inlined lambda functions as part of their syntax) can be used inside regular lambda
+functions without hampering the meaning of this special refrence for the surrounding
+explicit lambda expression.
 
 ### `(( map[list|elem|->dynaml-expr] ))`
 
