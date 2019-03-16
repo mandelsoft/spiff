@@ -44,11 +44,11 @@ type operationHelper struct {
 }
 
 func lineError(lines, syms, linee, syme int, txt string) string {
-	return fmt.Sprintf("parse error near symbol %v - symbol %v: %v", syms, syme, txt)
+	return fmt.Sprintf("parse error near symbol %v - symbol %v: '%s'", syms, syme, txt)
 }
 
 func docError(lines, syms, linee, syme int, txt string) string {
-	return fmt.Sprintf("parse error near line %v symbol %v - line %v symbol %v: %v", lines, syms, linee, syme, txt)
+	return fmt.Sprintf("parse error near line %v symbol %v - line %v symbol %v: '%s'", lines, syms, linee, syme, txt)
 }
 
 func (e *parseError) String() string {
@@ -68,7 +68,7 @@ func (e *parseError) String() string {
 		error += errf(
 			translations[begin].line, translations[begin].symbol,
 			translations[end].line, translations[end].symbol,
-			strconv.Quote(string(e.p.buffer[begin:end])))
+			string(e.p.buffer[begin:end]))
 	}
 
 	return error
@@ -114,11 +114,24 @@ func PathComponents(ref string, leading bool) []string {
 	//return strings.Split(contents, ".")
 }
 
-func parseString(s string) (string, error) {
+type ExpressionParseError struct {
+	*parseError
+	msg error
+}
+
+func (e ExpressionParseError) Error() string {
+	return fmt.Sprintf("%s: %s", e.parseError.String(), e.msg)
+}
+
+func NewParseError(grammar *DynamlGrammar, token token32, msg error) *ExpressionParseError {
+	return &ExpressionParseError{&parseError{grammar, token}, msg}
+}
+
+func parseString(s string, g *DynamlGrammar, t token32) (string, *ExpressionParseError) {
 	result := strings.Replace(s, `\"`, `"`, -1)
-	err := json.Unmarshal([]byte("\""+s+"\""), &result)
+	err := json.Unmarshal([]byte(s), &result)
 	if err != nil {
-		return "", err
+		return "", NewParseError(g, t, err)
 	}
 	return result, nil
 }
@@ -252,8 +265,7 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (
 		case ruleBoolean:
 			tokens.Push(BooleanExpr{contents == "true"})
 		case ruleString:
-			//val := strings.Replace(contents[1:len(contents)-1], `\"`, `"`, -1)
-			val, err := parseString(contents[1 : len(contents)-1])
+			val, err := parseString(contents, grammar, token)
 			if err != nil {
 				return nil, err
 			}

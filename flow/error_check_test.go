@@ -178,7 +178,7 @@ node: (( map{[5]|x|->x} ))
 node: (( a "." ) ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a "." ) ))	in test	node	()	*parse error near symbol 7 - symbol 8: " "`,
+			`	(( a "." ) ))	in test	node	()	*parse error near symbol 7 - symbol 8: ' '`,
 		))
 	})
 
@@ -189,7 +189,7 @@ node:
   - <<: (( a "." ) ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a "." ) ))	in test	node.[0].<<	()	*parse error near symbol 7 - symbol 8: " "`,
+			`	(( a "." ) ))	in test	node.[0].<<	()	*parse error near symbol 7 - symbol 8: ' '`,
 		))
 	})
 
@@ -200,7 +200,7 @@ node:
   <<: (( a "." ) ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a "." ) ))	in test	node.<<	()	*parse error near symbol 7 - symbol 8: " "`,
+			`	(( a "." ) ))	in test	node.<<	()	*parse error near symbol 7 - symbol 8: ' '`,
 		))
 	})
 
@@ -216,7 +216,7 @@ node:
 		Expect(source).To(FlowToErr(
 			`	((
 	a "." )
-	))	in test	node.<<	()	*parse error near line 2 symbol 6 - line 2 symbol 7: " "`,
+	))	in test	node.<<	()	*parse error near line 2 symbol 6 - line 2 symbol 7: ' '`,
 		))
 	})
 })
