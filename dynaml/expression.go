@@ -27,6 +27,7 @@ type Binding interface {
 	WithLocalScope(step map[string]yaml.Node) Binding
 	WithPath(step string) Binding
 	WithSource(source string) Binding
+	WithNewRoot() Binding
 	RedirectOverwrite(path []string) Binding
 
 	Outer() Binding

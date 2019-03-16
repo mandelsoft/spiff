@@ -35,7 +35,7 @@ func (e ConcatenationExpr) Evaluate(binding Binding, locally bool) (interface{},
 		return e, info, true
 	}
 
-	debug.Debug("CONCAT resolved %+v,%+v\n", a, b)
+	debug.Debug("CONCAT resolved %s(%s)(%+v), %s(%s)(%+v)\n", ExpressionType(a), e.A, a, ExpressionType(b), e.B, b)
 
 	val, ok := concatenateString(a, b)
 	if ok {
@@ -47,26 +47,31 @@ func (e ConcatenationExpr) Evaluate(binding Binding, locally bool) (interface{},
 	if !aok {
 		amap, aok := a.(map[string]yaml.Node)
 		if !aok {
-			return info.Error("type '%s' cannot be concatenated with type '%s'", ExpressionType(b), ExpressionType(a))
+			return info.Error("type '%s'(%s) cannot be concatenated with type '%s'(%s)", ExpressionType(b), e.B, ExpressionType(a), e.A)
 		}
 		switch bmap := b.(type) {
 		case map[string]yaml.Node:
 			result := make(map[string]yaml.Node)
 			concatenateMap(result, amap)
 			concatenateMap(result, bmap)
+			debug.Debug("CONCAT --> map %+v\n", result)
 			return result, info, true
 		case nil:
+			debug.Debug("CONCAT --> %s(%+v)\n", ExpressionType(a), a)
 			return a, info, true
 		default:
-			return info.Error("type '%s' cannot be concatenated with type '%s'", ExpressionType(b), ExpressionType(a))
+			return info.Error("type '%s'(%s) cannot be concatenated with type '%s'(%s)", ExpressionType(b), e.B, ExpressionType(a), e.A)
 		}
 	} else {
 		switch b.(type) {
 		case []yaml.Node:
+			debug.Debug("CONCAT --> %s\n", ExpressionType(alist))
 			return append(alist, b.([]yaml.Node)...), info, true
 		case nil:
+			debug.Debug("CONCAT --> %s\n", ExpressionType(a))
 			return a, info, true
 		default:
+			debug.Debug("CONCAT --> %s\n", ExpressionType(alist))
 			return append(alist, NewNode(b, info)), info, true
 		}
 	}

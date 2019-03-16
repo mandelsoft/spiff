@@ -2,11 +2,10 @@ package dynaml
 
 import (
 	"fmt"
-	"reflect"
-	"strings"
-
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/yaml"
+	"reflect"
+	"strings"
 )
 
 func staticScope(binding Binding) Binding {
@@ -20,6 +19,11 @@ func staticScope(binding Binding) Binding {
 type LambdaExpr struct {
 	Names []string
 	E     Expression
+}
+
+func isInline(e Expression) bool {
+	_, ok := e.(LambdaExpr)
+	return ok
 }
 
 func keys(m map[string]yaml.Node) []string {
@@ -154,7 +158,7 @@ func (e LambdaValue) MarshalYAML() (tag string, value interface{}, err error) {
 	return "", "(( " + e.lambda.String() + " ))", nil
 }
 
-func (e LambdaValue) Evaluate(curry bool, args []interface{}, binding Binding, locally bool) (bool, interface{}, EvaluationInfo, bool) {
+func (e LambdaValue) Evaluate(inline bool, curry bool, args []interface{}, binding Binding, locally bool) (bool, interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 
 	if len(args) > len(e.lambda.Names) {
@@ -163,10 +167,12 @@ func (e LambdaValue) Evaluate(curry bool, args []interface{}, binding Binding, l
 	}
 	inp := map[string]yaml.Node{}
 	for n, v := range e.static {
+		//fmt.Printf("  static %s: %s\n", n, ExpressionType(v.Value()))
 		inp[n] = v
 	}
 	debug.Debug("LAMBDA CALL: inherit local %+v\n", inp)
 	for i, v := range args {
+		//fmt.Printf("  dyn %s: %s\n", e.lambda.Names[i], ExpressionType(v))
 		inp[e.lambda.Names[i]] = NewNode(v, binding)
 	}
 
@@ -179,9 +185,11 @@ func (e LambdaValue) Evaluate(curry bool, args []interface{}, binding Binding, l
 		info.SetError("expected %d arguments, but found %d", len(e.lambda.Names), len(args))
 		return false, nil, info, false
 	}
-	debug.Debug("LAMBDA CALL: staticScope %+v\n", e.resolver)
-	inp[yaml.SELF] = yaml.ResolverNode(NewNode(e, binding), e.resolver)
-	debug.Debug("LAMBDA CALL: effective local %+v\n", inp)
+	if !inline {
+		debug.Debug("LAMBDA CALL: staticScope %+v\n", e.resolver)
+		inp[yaml.SELF] = yaml.ResolverNode(NewNode(e, binding), e.resolver)
+		debug.Debug("LAMBDA CALL: effective local %+v\n", inp)
+	}
 	value, info, ok := e.lambda.E.Evaluate(binding.WithLocalScope(inp), locally)
 	if !ok {
 		debug.Debug("failed LAMBDA CALL: %s", info.Issue)

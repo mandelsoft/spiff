@@ -67,6 +67,7 @@ func (e SyncExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		condbinding = binding.WithLocalScope(result)
 	}
 
+	inline := isInline(e.Cond) && !e.function
 	cond, infoc, ok := e.Cond.Evaluate(condbinding, false)
 	if !ok {
 		return info.AnnotateError(infoc, "condition evaluation failed)")
@@ -87,7 +88,7 @@ func (e SyncExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		default:
 			return info.Error("lambda expression for sync condition must take one or two arguments, found %d", len(lambda.lambda.Names))
 		}
-		resolved, result, sub, ok := lambda.Evaluate(false, args, binding, locally)
+		resolved, result, sub, ok := lambda.Evaluate(inline, false, args, binding, locally)
 		if !resolved {
 			return e, sub, ok
 		}
@@ -126,6 +127,7 @@ func (e SyncExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	if !isDefaulted(e.Value) {
 		debug.Debug("evaluating sync value\n")
+		inline = isInline(e.Value) && !e.function
 		value, infov, ok := e.Value.Evaluate(binding.WithLocalScope(result), false)
 		if !ok {
 			return info.AnnotateError(infoc, "value expression failed)")
@@ -152,7 +154,7 @@ func (e SyncExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 			default:
 				return info.Error("lambda expression for sync value must take one or two arguments, found %d", len(lambda.lambda.Names))
 			}
-			resolved, result, sub, ok := lambda.Evaluate(false, args, binding, locally)
+			resolved, result, sub, ok := lambda.Evaluate(inline, false, args, binding, locally)
 			if !resolved {
 				return e, sub, ok
 			}

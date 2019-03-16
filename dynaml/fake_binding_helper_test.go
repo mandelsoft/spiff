@@ -71,6 +71,10 @@ func (c FakeBinding) WithSource(source string) Binding {
 	return c
 }
 
+func (c FakeBinding) WithNewRoot() Binding {
+	return c
+}
+
 func (c FakeBinding) GetStaticBinding() map[string]yaml.Node {
 	return map[string]yaml.Node{}
 }

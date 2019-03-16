@@ -16,7 +16,7 @@ type MappingExpr struct {
 
 func (e MappingExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
-
+	inline := isInline(e.Lambda)
 	debug.Debug("evaluate mapping\n")
 	value, info, ok := ResolveExpressionOrPushEvaluation(&e.A, &resolved, nil, binding, true)
 	if !ok {
@@ -42,14 +42,14 @@ func (e MappingExpr) Evaluate(binding Binding, locally bool) (interface{}, Evalu
 	switch value.(type) {
 	case []yaml.Node:
 		if e.Context.Supports(value) {
-			result, info, ok = mapList(value.([]yaml.Node), lambda, binding, e.Context.CreateMappingAggregation())
+			result, info, ok = mapList(inline, value.([]yaml.Node), lambda, binding, e.Context.CreateMappingAggregation())
 		} else {
 			return info.Error("list value not supported for %s mapping", e.Context.Keyword())
 		}
 
 	case map[string]yaml.Node:
 		if e.Context.Supports(value) {
-			result, info, ok = mapMap(value.(map[string]yaml.Node), lambda, binding, e.Context.CreateMappingAggregation())
+			result, info, ok = mapMap(inline, value.(map[string]yaml.Node), lambda, binding, e.Context.CreateMappingAggregation())
 		} else {
 			return info.Error("map value not supported for %s mapping", e.Context.Keyword())
 		}
@@ -184,7 +184,7 @@ func (m *mapToMap) Result() interface{} {
 // global handler functions
 ///////////////////////////////////////////////////////////////////////////////
 
-func mapList(source []yaml.Node, e LambdaValue, binding Binding, aggr MappingAggregation) (interface{}, EvaluationInfo, bool) {
+func mapList(inline bool, source []yaml.Node, e LambdaValue, binding Binding, aggr MappingAggregation) (interface{}, EvaluationInfo, bool) {
 	inp := make([]interface{}, len(e.lambda.Names))
 	info := DefaultInfo()
 
@@ -196,7 +196,7 @@ func mapList(source []yaml.Node, e LambdaValue, binding Binding, aggr MappingAgg
 		debug.Debug("map:  mapping for %d: %+v\n", i, n)
 		inp[0] = i
 		inp[len(inp)-1] = n.Value()
-		resolved, mapped, info, ok := e.Evaluate(false, inp, binding, false)
+		resolved, mapped, info, ok := e.Evaluate(inline, false, inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %d %+v: failed\n", i, n)
 			return nil, info, false
@@ -215,7 +215,7 @@ func mapList(source []yaml.Node, e LambdaValue, binding Binding, aggr MappingAgg
 	return aggr.Result(), info, true
 }
 
-func mapMap(source map[string]yaml.Node, e LambdaValue, binding Binding, aggr MappingAggregation) (interface{}, EvaluationInfo, bool) {
+func mapMap(inline bool, source map[string]yaml.Node, e LambdaValue, binding Binding, aggr MappingAggregation) (interface{}, EvaluationInfo, bool) {
 	inp := make([]interface{}, len(e.lambda.Names))
 	info := DefaultInfo()
 
@@ -225,7 +225,7 @@ func mapMap(source map[string]yaml.Node, e LambdaValue, binding Binding, aggr Ma
 		debug.Debug("map:  mapping for %s: %+v\n", k, n)
 		inp[0] = k
 		inp[len(inp)-1] = n.Value()
-		resolved, mapped, info, ok := e.Evaluate(false, inp, binding, false)
+		resolved, mapped, info, ok := e.Evaluate(inline, false, inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %s %+v: failed\n", k, n)
 			return nil, info, false

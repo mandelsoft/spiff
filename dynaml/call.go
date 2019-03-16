@@ -80,7 +80,7 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	switch funcName {
 	case "":
 		debug.Debug("calling lambda function %#v\n", value)
-		resolved, result, sub, ok = value.(LambdaValue).Evaluate(true, values, binding, false)
+		resolved, result, sub, ok = value.(LambdaValue).Evaluate(false, true, values, binding, false)
 		if !resolved && ok {
 			result = nil
 		}

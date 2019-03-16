@@ -2,6 +2,7 @@ package dynaml
 
 import (
 	"container/list"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -82,7 +83,7 @@ func Parse(source string, path []string, stubPath []string) (Expression, error) 
 		return nil, errors.New(err.(*parseError).String())
 	}
 
-	return buildExpression(grammar, path, stubPath), nil
+	return buildExpression(grammar, path, stubPath)
 }
 
 func PathComponents(ref string, leading bool) []string {
@@ -113,7 +114,16 @@ func PathComponents(ref string, leading bool) []string {
 	//return strings.Split(contents, ".")
 }
 
-func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) Expression {
+func parseString(s string) (string, error) {
+	result := strings.Replace(s, `\"`, `"`, -1)
+	err := json.Unmarshal([]byte("\""+s+"\""), &result)
+	if err != nil {
+		return "", err
+	}
+	return result, nil
+}
+
+func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (Expression, error) {
 	tokens := &tokenStack{}
 
 	// flags for parsing merge options in merge expression
@@ -127,7 +137,7 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 
 		switch token.pegRule {
 		case ruleDynaml:
-			return tokens.Pop()
+			return tokens.Pop(), nil
 
 		case ruleMarker:
 			tokens.Push(newMarkerExpr(contents))
@@ -242,7 +252,11 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 		case ruleBoolean:
 			tokens.Push(BooleanExpr{contents == "true"})
 		case ruleString:
-			val := strings.Replace(contents[1:len(contents)-1], `\"`, `"`, -1)
+			//val := strings.Replace(contents[1:len(contents)-1], `\"`, `"`, -1)
+			val, err := parseString(contents[1 : len(contents)-1])
+			if err != nil {
+				return nil, err
+			}
 			tokens.Push(StringExpr{val})
 		case ruleIP:
 			tokens.Push(StringExpr{contents})

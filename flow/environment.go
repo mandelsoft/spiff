@@ -25,7 +25,7 @@ func newFakeScope(outer *Scope, path []string, local map[string]yaml.Node) *Scop
 
 func newScope(outer *Scope, path []string, local, static map[string]yaml.Node) *Scope {
 	scope := &Scope{local, static, path, outer, nil}
-	if outer == nil {
+	if outer == nil || outer.root == nil {
 		scope.root = scope
 	} else {
 		scope.root = outer.root
@@ -163,6 +163,7 @@ func (e DefaultEnvironment) FindReference(path []string) (yaml.Node, bool) {
 		return nil, false
 	}
 
+	//fmt.Printf("RESOLVE: %s: %s\n",path[0], dynaml.ExpressionType(root.Value()))
 	if len(path) > 1 && path[0] == yaml.SELF {
 		resolver := root.Resolver()
 		return resolver.FindReference(path[1:])
@@ -188,6 +189,13 @@ func (e DefaultEnvironment) WithSource(source string) dynaml.Binding {
 
 func (e DefaultEnvironment) WithScope(step map[string]yaml.Node) dynaml.Binding {
 	e.scope = newScope(e.scope, e.path, step, e.static)
+	return e
+}
+
+func (e DefaultEnvironment) WithNewRoot() dynaml.Binding {
+	static := map[string]yaml.Node{}
+	e.scope = newScope(e.scope, e.path, static, e.static)
+	e.scope.root = nil
 	return e
 }
 
