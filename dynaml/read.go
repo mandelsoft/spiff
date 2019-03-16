@@ -45,6 +45,12 @@ func func_read(cached bool, arguments []interface{}, binding Binding) (interface
 func parse(file string, data []byte, mode string, binding Binding) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 	info.Source = file
+
+	rerooted := binding
+	if strings.HasPrefix(mode, ".") {
+		rerooted = binding.WithNewRoot()
+		mode = mode[1:]
+	}
 	switch mode {
 	case "template":
 		n, err := yaml.Parse(file, data)
@@ -69,7 +75,6 @@ func parse(file string, data []byte, mode string, binding Binding) (interface{},
 			return info.Error("error parsing file [%s]: %s", path.Clean(file), err)
 		}
 		debug.Debug("resolving yaml file\n")
-		rerooted := binding.WithNewRoot()
 		result, state := rerooted.Flow(node, false)
 		if state != nil {
 			debug.Debug("resolving yaml file failed: " + state.Error())
@@ -86,7 +91,7 @@ func parse(file string, data []byte, mode string, binding Binding) (interface{},
 			nodes = nodes[:len(nodes)-1]
 		}
 		debug.Debug("resolving yaml list from file\n")
-		result, state := binding.Flow(NewNode(nodes, info), false)
+		result, state := rerooted.Flow(NewNode(nodes, info), false)
 		if state != nil {
 			debug.Debug("resolving yaml file failed: " + state.Error())
 			return info.PropagateError(nil, state, "resolution of yaml file '%s' failed", file)
