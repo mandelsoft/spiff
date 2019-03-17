@@ -232,6 +232,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "keys":
 		result, sub, ok = func_keys(values, binding)
 
+	case "archive":
+		result, sub, ok = func_archive(values, binding)
+
 	case "type":
 		if info.Undefined {
 			info.Undefined = false
