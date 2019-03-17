@@ -206,6 +206,8 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "md5":
 		result, sub, ok = func_md5(values, binding)
+	case "hash":
+		result, sub, ok = func_hash(values, binding)
 
 	case "bcrypt":
 		result, sub, ok = func_bcrypt(values, binding)

@@ -6791,15 +6791,39 @@ value: test
 		})
 	})
 
-	Describe("when calling md5", func() {
-		It("it encodesgenerates md5 hash of a string", func() {
+	Describe("when calling hash", func() {
+		It("it encodesgenerates hashes of a string", func() {
 			source := parseYAML(`
 ---
-value: (( md5("test") ))
+data: alice
+hash:
+  deprecated: (( md5(data) ))
+  md4: (( hash(data,"md4") ))
+  md5: (( hash(data,"md5") ))
+  md5: (( hash(data,"md5") ))
+  sha1: (( hash(data,"sha1") ))
+  sha224: (( hash(data,"sha224") ))
+  sha256: (( hash(data,"sha256") ))
+  sha384: (( hash(data,"sha384") ))
+  sha512: (( hash(data,"sha512") ))
+  sha512_224: (( hash(data,"sha512/224") ))
+  sha512_256: (( hash(data,"sha512/256") ))
 `)
 			resolved := parseYAML(`
 ---
-value: 098f6bcd4621d373cade4e832627b4f6
+data: alice
+hash:
+  deprecated: 6384e2b2184bcbf58eccf10ca7a6563c
+  md4: 616c69636531d6cfe0d16ae931b73c59d7e0c089c0
+  md5: 6384e2b2184bcbf58eccf10ca7a6563c
+  sha1: 522b276a356bdf39013dfabea2cd43e141ecc9e8
+  sha224: 38b7e5d5651aaf85694a7a7c6d5db1275af86a6df93a36b8a4a2e771
+  sha256: 2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90
+  sha384: 96a5353e625adc003a01bdcd9b21b21189bdd9806851829f45b81d3dfc6721ee21f6e0e98c4dd63bc559f66c7a74233a
+  sha512: 408b27d3097eea5a46bf2ab6433a7234a33d5e49957b13ec7acc2ca08e1a13c75272c90c8d3385d47ede5420a7a9623aad817d9f8a70bd100a0acea7400daa59
+  sha512_224: c3b8cfaa37ae15922adf3d21606e3a9836ba2a9d7838b040b7c96fd7
+  sha512_256: ad0a339b08dc090fe3b16eae376f7e162836e8728da9c45466842e19508d7627
+
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
