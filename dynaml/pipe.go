@@ -21,7 +21,7 @@ func func_pipe(cached bool, arguments []interface{}, binding Binding) (interface
 				if len(arguments) == 2 && len(list) > 0 {
 					// handle single list argument to gain command and argument
 					for j, arg := range list {
-						v, ok := getArg(j, arg.Value(), j != 0)
+						v, _, ok := getArg(j, arg.Value(), j != 0)
 						if !ok {
 							return info.Error("command argument must be string")
 						}
@@ -31,14 +31,14 @@ func func_pipe(cached bool, arguments []interface{}, binding Binding) (interface
 					return info.Error("list not allowed for command argument")
 				}
 			} else {
-				v, ok := getArg(i, arg, i != 1)
+				v, _, ok := getArg(i, arg, i != 1)
 				if !ok {
 					return info.Error("command argument must be string")
 				}
 				args = append(args, v)
 			}
 		} else {
-			v, ok := getArg(i, arg, i != 1)
+			v, _, ok := getArg(i, arg, i != 1)
 			if !ok {
 				return info.Error("command argument must be string")
 			}

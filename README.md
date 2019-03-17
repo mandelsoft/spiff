@@ -114,6 +114,7 @@ Contents:
 		    - [(( tempfile("file.yml", data) ))](#-tempfilefileyml-data-)
 		    - [(( lookup_file("file.yml", data) ))](#-lookup_filefileyml-list-)
 		    - [(( list_files(".") ))](#-list_files-)
+		    - [(( archive(files, "tar") ))](#-archivefiles-tar-)
 		- [X509 Functions](#x509-functions)
 		    - [(( x509genkey(spec) ))](#-x509genkeyspec-)
 		    - [(( x509publickey(key) ))](#-x509publickeykey-)
@@ -2592,12 +2593,16 @@ The same command will be executed once, only, even if it is used in multiple exp
 
 Write a file and return its content. If the result can be parsed as yaml document,
 the document is returned. An optional 3rd argument can be used to pass the
-file permissions (default is `0644`).
+write options.
+The option arguments might be an integer denoting file permissions (default is `0644`)
+or a comma separated string with options. Supported options are
+- `binary`: data is base64 decoded before writing
+- _integer_ string: file permissions, a leading `0` is indicating an octal value.
 
 #### `(( tempfile("file.yml", data) ))`
 
 Write a a temporary file and return its path name. An optional 3rd argument can
-be used to pass the file permissions (default is `0644`). It basically behavies
+be used to pass write options. It basically behavies
 like [`write`](#-writefileyml-data-) 
 
 _Attention_: A temporary file only exists during the merge processing. It will
@@ -2620,6 +2625,75 @@ search path.
 
 List files in a directory. The result is a list of existing
 files. With `list_dirs` it is possible to list directories, instead.
+
+#### `(( archive(files, "tar") ))`
+
+Create an archive of the given type (default is `tar`) containing the listed
+files. The result is the base64 encoded archive.
+
+Supported archive types are `tar` and `targz`.
+
+`files` might be a list or map of file entries. In case of a map, the map key
+is used as default for the file path. A file entry is a map with the 
+following fields:
+
+| field | type | meaning |
+|-------|------|---------|
+| `path`| string | optional for maps, the file path in the archive, defaulted by the map key |
+| `mode` | int or int string | file mode or write options. It basically behavies like the option argument for [`write`](#-writefileyml-data-). |
+| `data` | any | file content, yaml will be marshalled as yaml document. If `mode` indicates binary mode, a string value will be base64 decoded. |
+| `base64` | string | base64 encoded binary data |
+
+e.g.:
+
+```yaml
+yaml:
+  alice: 26
+  bob: 27
+
+files:
+  "data/a/test.yaml":
+    data: (( yaml ))
+  "data/b/README.md":
+    data: |+
+      ### Test Docu
+
+      **Note**: This is a test
+
+archive: (( archive(files,"targz") ))
+
+content: (( split("\n", exec_uncached("tar", "-tvf", tempfile(archive,"binary"))) ))
+```
+
+yields:
+
+```yaml
+archive: |-
+  H4sIAAAAAAAA/+zVsQqDMBAG4Mx5igO3gHqJSQS3go7tUHyBqIEKitDEoW9f
+  dLRDh6KlJd/yb8ll+HOd8SY1qbfOJw8zDmQHiIhayjURcZuIQhOeSZlphVwL
+  glwsAXvM8mJ23twJ4qfnbB/3I+I4pmboW1uA0LSZmgJETr89VXCUtf9Neq1O
+  5blKxm6PO972X/FN/7nKVej/EaIogto6D+XUzpQydpm8ZayA+tY76B0YWHYD
+  DV9CEATBf3kGAAD//5NlAmIADAAA
+content:
+- -rw-r--r-- 0/0              22 2019-03-18 09:01 data/a/test.yaml
+- -rw-r--r-- 0/0              41 2019-03-18 09:01 data/b/README.md
+
+files:
+  data/a/test.yaml:
+    data:
+      alice: 26
+      bob: 27
+  data/b/README.md:
+    data: |+
+      ### Test Docu
+
+      **Note**: This is a test
+
+yaml:
+  alice: 26
+  bob: 27
+
+```
 
 ### X509 Functions
 

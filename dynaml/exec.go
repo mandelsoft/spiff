@@ -31,7 +31,7 @@ func func_exec(cached bool, arguments []interface{}, binding Binding) (interface
 			if len(arguments) == 1 && len(list) > 0 {
 				// handle single list argument to gain command and argument
 				for j, arg := range list {
-					v, ok := getArg(j, arg.Value(), j != 0)
+					v, _, ok := getArg(j, arg.Value(), j != 0)
 					if !ok {
 						return info.Error("command argument must be string")
 					}
@@ -41,7 +41,7 @@ func func_exec(cached bool, arguments []interface{}, binding Binding) (interface
 				return info.Error("list not allowed for command argument")
 			}
 		} else {
-			v, ok := getArg(i, arg, i != 0)
+			v, _, ok := getArg(i, arg, i != 0)
 			if !ok {
 				return info.Error("command argument must be string")
 			}
@@ -59,8 +59,11 @@ func func_exec(cached bool, arguments []interface{}, binding Binding) (interface
 func convertOutput(data []byte) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 	str := string(data)
+	debug.Debug("DATA--------------------------\n")
+	debug.Debug("%s\n", str)
+	debug.Debug("------------------------------\n")
 	execYML, err := yaml.Parse("exec", data)
-	if execYML != nil && err == nil {
+	if execYML != nil && err == nil && (isMap(execYML) || isMap(execYML) || strings.HasPrefix(str, "---\n")) {
 		debug.Debug("exec: found yaml result %+v\n", execYML)
 		return execYML.Value(), info, true
 	} else {
@@ -77,24 +80,24 @@ func convertOutput(data []byte) (interface{}, EvaluationInfo, bool) {
 	}
 }
 
-func getArg(i int, value interface{}, yaml bool) (string, bool) {
-	debug.Debug("arg %d: %+v\n", i, value)
+func getArg(key interface{}, value interface{}, yaml bool) (string, bool, bool) {
+	debug.Debug("arg %v: %+v\n", key, value)
 	switch v := value.(type) {
 	case string:
-		return v, true
+		return v, true, true
 	case int64:
-		return strconv.FormatInt(v, 10), true
+		return strconv.FormatInt(v, 10), false, true
 	case bool:
-		return strconv.FormatBool(v), true
+		return strconv.FormatBool(v), false, true
 	default:
 		if !yaml || value == nil {
-			return "", false
+			return "", false, false
 		}
 		yaml, err := candiedyaml.Marshal(NewNode(value, nil))
 		if err != nil {
 			log.Fatalln("error marshalling manifest:", err)
 		}
-		return "---\n" + string(yaml), true
+		return "---\n" + string(yaml), false, true
 	}
 }
 
@@ -133,4 +136,20 @@ func cachedExecute(cached bool, content *string, args []string) ([]byte, error) 
 	}
 	cache[hash] = result
 	return result, err
+}
+
+func isMap(n yaml.Node) bool {
+	if n == nil || n.Value() == nil {
+		return false
+	}
+	_, ok := n.Value().(map[string]yaml.Node)
+	return ok
+}
+
+func isList(n yaml.Node) bool {
+	if n == nil || n.Value() == nil {
+		return false
+	}
+	_, ok := n.Value().([]yaml.Node)
+	return ok
 }

@@ -8,9 +8,15 @@ import (
 	"fmt"
 	"github.com/mandelsoft/spiff/yaml"
 	"io"
-	"sort"
 	"strings"
+	"time"
 )
+
+type FileEntry struct {
+	path string
+	mode int64
+	data []byte
+}
 
 func func_archive(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
@@ -24,49 +30,58 @@ func func_archive(arguments []interface{}, binding Binding) (interface{}, Evalua
 	if len(arguments) == 2 {
 		str, ok := arguments[1].(string)
 		if !ok {
-			return info.Error("second argument for hash must be a string")
+			return info.Error("second argument for archive must be a string")
 		}
 		mode = str
 	}
 
-	data, ok := arguments[0].(map[string]yaml.Node)
-	if !ok {
-		return info.Error("first argument for hash must be a file map ")
-	}
+	files := []*FileEntry{}
 
-	files := map[string][]byte{}
-	for file, val := range data {
-		if val == nil {
-			continue
-		}
-		var content []byte
-		switch v := val.Value().(type) {
-		case string:
-			content = []byte(v)
-			if hasTag(file, "#") {
-				b, err := base64.StdEncoding.DecodeString(v)
-				if err == nil {
-					content = b
+	var e *FileEntry
+	var err error
+
+	if arguments[0] != nil {
+		switch data := arguments[0].(type) {
+		case map[string]yaml.Node:
+			for _, file := range getSortedKeys(data) {
+				val := data[file]
+				if val == nil || val.Value() == nil {
+					continue
 				}
+				switch v := val.Value().(type) {
+				case map[string]yaml.Node:
+					e, err = getFileEntry(&file, v)
+					if err != nil {
+						return info.Error("%s", err)
+					}
+				default:
+					file, _, content, ok := getData(file, false, file, val.Value(), true)
+					if !ok {
+						return info.Error("invalid file content type %s", ExpressionType(val))
+					}
+					e = &FileEntry{file, 0644, content}
+				}
+				files = append(files, e)
 			}
-		case int64:
-			content = []byte(fmt.Sprintf("%d", v))
-		case bool:
-			content = []byte(fmt.Sprintf("%t", v))
-		case map[string]yaml.Node, []yaml.Node:
-			c, infoa, ok := func_as_yaml([]interface{}{v}, binding)
-			if !ok {
-				return info.Error("cannot convert %s: %s", file, infoa.Issue.Issue)
+		case []yaml.Node:
+			for _, val := range data {
+				switch v := val.Value().(type) {
+				case map[string]yaml.Node:
+					e, err = getFileEntry(nil, v)
+					if err != nil {
+						return info.Error("%s", err)
+					}
+				default:
+					return info.Error("invalid file content type %s", ExpressionType(val))
+				}
+				files = append(files, e)
 			}
-			content = []byte(c.(string))
 		default:
-			return info.Error("invalid file content type %s", ExpressionType(v))
+			return info.Error("first argument for hash must be a file map or list, found %s", ExpressionType(arguments[0]))
 		}
-		files[file] = content
 	}
 
 	var buf bytes.Buffer
-	var err error
 	switch mode {
 	case "targz":
 		zipper := gzip.NewWriter(&buf)
@@ -84,18 +99,94 @@ func func_archive(arguments []interface{}, binding Binding) (interface{}, Evalua
 		return info.Error("invalid archive type '%s'", mode)
 	}
 
-	return base64.StdEncoding.EncodeToString(buf.Bytes()), info, true
+	result := ""
+	str := base64.StdEncoding.EncodeToString(buf.Bytes())
+	for len(str) > 60 {
+		result = result + str[:60] + "\n"
+		str = str[60:]
+	}
+	if len(str) > 0 {
+		result = result + str
+	}
+	if strings.HasSuffix(result, "\n") {
+		result = result[:len(result)-1]
+	}
+	return result, info, true
 }
 
-func getSortedMapKeys(unsortedMap map[string][]byte) []string {
-	keys := make([]string, len(unsortedMap))
-	i := 0
-	for k, _ := range unsortedMap {
-		keys[i] = k
-		i++
+func getFileEntry(file *string, info map[string]yaml.Node) (*FileEntry, error) {
+	var e FileEntry
+	var err error
+
+	binary := false
+
+	e.mode = 0644
+	field, ok := info["path"]
+	if ok {
+		if field == nil || field.Value() == nil {
+			return nil, fmt.Errorf("path field must not be nil")
+		}
+		v, ok := field.Value().(string)
+		if !ok {
+			return nil, fmt.Errorf("path field must be string, found %s", ExpressionType(field))
+		}
+		e.path = v
+	} else {
+		if file == nil {
+			return nil, fmt.Errorf("path field required")
+		}
+		e.path = removeTags(*file)
 	}
-	sort.Strings(keys)
-	return keys
+
+	field, ok = info["mode"]
+	if ok {
+		if field == nil || field.Value() == nil {
+			return nil, fmt.Errorf("mode field must not be nil")
+		}
+		switch v := field.Value().(type) {
+		case int64:
+			e.mode = v
+		case string:
+			e.mode, binary, err = getWriteOptions(v, e.mode)
+			if err != nil {
+				return nil, fmt.Errorf("permissions must be given as int or int string: %s", err)
+			}
+		default:
+			return nil, fmt.Errorf("mode field must be an integer, found %s", ExpressionType(field))
+		}
+	}
+
+	field, ok = info["base64"]
+	if ok {
+		if field == nil || field.Value() == nil {
+			return nil, fmt.Errorf("base64 field must not be nil")
+		}
+		v, ok := field.Value().(string)
+		if !ok {
+			return nil, fmt.Errorf("base64 field must be string, found %s", ExpressionType(field))
+		}
+		e.data, err = base64.StdEncoding.DecodeString(v)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		field, ok = info["data"]
+		if ok {
+			if field == nil || field.Value() == nil {
+				return nil, fmt.Errorf("data field must not be nil")
+			}
+			_, _, content, ok := getData("", binary, e.path, field.Value(), true)
+			if !ok {
+				return nil, fmt.Errorf("invalid data field")
+			}
+			e.data = content
+		}
+	}
+
+	if file != nil && hasTag(*file, "*") {
+		e.mode |= 0100
+	}
+	return &e, nil
 }
 
 func hasTag(file, tag string) bool {
@@ -112,31 +203,34 @@ func hasTag(file, tag string) bool {
 	return false
 }
 
-func tar_archive(w io.Writer, files map[string][]byte) error {
+func removeTags(file string) string {
+	for strings.HasPrefix(file, "*") || strings.HasPrefix(file, "#") || strings.HasPrefix(file, ":") {
+		stop := strings.HasPrefix(file, ":")
+		file = file[1:]
+		if stop {
+			break
+		}
+	}
+	return file
+}
+
+func tar_archive(w io.Writer, files []*FileEntry) error {
 	tw := tar.NewWriter(w)
 	defer tw.Close()
-	keys := getSortedMapKeys(files)
-	for _, file := range keys {
-		mode := int64(0600)
-		if hasTag(file, "*") {
-			mode = 0744
-		}
-		for strings.HasPrefix(file, "*") || strings.HasPrefix(file, "#") || strings.HasPrefix(file, "-") {
-			stop := strings.HasPrefix(file, "-")
-			file = file[1:]
-			if stop {
-				break
-			}
-		}
+	now := time.Now()
+	for _, file := range files {
 		header := &tar.Header{
-			Name: file,
-			Mode: mode,
-			Size: int64(len(files[file])),
+			Name:       file.path,
+			Mode:       file.mode,
+			Size:       int64(len(file.data)),
+			ModTime:    now,
+			ChangeTime: now,
+			AccessTime: now,
 		}
 		if err := tw.WriteHeader(header); err != nil {
 			return err
 		}
-		if _, err := tw.Write([]byte(files[file])); err != nil {
+		if _, err := tw.Write(file.data); err != nil {
 			return err
 		}
 	}

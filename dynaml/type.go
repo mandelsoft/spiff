@@ -20,6 +20,10 @@ func func_type(arguments []interface{}, binding Binding) (interface{}, Evaluatio
 }
 
 func ExpressionType(elem interface{}) string {
+	node, ok := elem.(yaml.Node)
+	if ok {
+		elem = node.Value()
+	}
 	switch elem.(type) {
 	case string:
 		return "string"
