@@ -184,11 +184,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:1ecf2a49df33be51e757d0033d5d51d5f784f35f68e5a38f797b2d3f03357d71"
+  digest = "1:68344dbfaa4179bb50a583eb8172ace3f1edaf3aebc24e68c03f549f6e6b60dc"
   name = "golang.org/x/crypto"
   packages = [
     "bcrypt",
     "blowfish",
+    "md4",
   ]
   pruneopts = "UT"
   revision = "a4c6cb3142f211c99e4bf4cd769535b29a9b616f"
@@ -279,6 +280,7 @@
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "golang.org/x/crypto/bcrypt",
+    "golang.org/x/crypto/md4",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
