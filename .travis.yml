@@ -1,11 +1,11 @@
 language: go
 
 go:
-  - 1.10.4
+  - 1.11.x
 
 install:
-  - go get -v github.com/kr/godep
-  - export PATH=$HOME/gopath/bin:$PATH
+  - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
   - ./travis.sh
 
-script: godep go test -v ./...
+script:
+  - make

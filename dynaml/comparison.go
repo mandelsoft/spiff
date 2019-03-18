@@ -97,11 +97,11 @@ func compareEquals(a, b interface{}) (bool, EvaluationInfo, bool) {
 		if b == nil {
 			return true, info, true
 		}
-		debug.Debug("compare failed: nil vs non-nil '%v'\n")
+		debug.Debug("compare failed: nil vs non-nil '%v'\n", b)
 		return false, info, false
 	} else {
 		if b == nil {
-			debug.Debug("compare failed: nil vs non-nil '%v'\n")
+			debug.Debug("compare failed: nil vs non-nil '%v'\n", a)
 			return false, info, false
 		}
 	}
