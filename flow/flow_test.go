@@ -2844,6 +2844,34 @@ foo: failed
 	})
 
 	Describe("when splitting", func() {
+		It("splits single limited line length", func() {
+			source := parseYAML(`
+---
+foo: (( split( 4, "1234567890") ))
+`)
+			resolved := parseYAML(`
+---
+foo:
+ - "1234"
+ - "5678"
+ - "90"
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("splits single limited line length with limit", func() {
+			source := parseYAML(`
+---
+foo: (( split( 4, "1234567890", 2) ))
+`)
+			resolved := parseYAML(`
+---
+foo:
+ - "1234"
+ - "567890"
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
 		It("splits single value", func() {
 			source := parseYAML(`
 ---
@@ -2870,8 +2898,21 @@ foo:
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
+		It("splits multiple values with limit", func() {
+			source := parseYAML(`
+---
+foo: (( split( ",", "alice,bob,peter", 2) ))
+`)
+			resolved := parseYAML(`
+---
+foo:
+ - alice
+ - bob,peter
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
 
-		It("splits characterss", func() {
+		It("splits characters", func() {
 			source := parseYAML(`
 ---
 foo: (( split( "", "alice") ))

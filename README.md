@@ -1252,11 +1252,16 @@ yields the string value `bob, foo, bar, alice, 10` for `join`.
 ### `(( split( ",", string) ))`
 
 Split a string for a dedicated separator. The result is a list.
+Instead of a separator string an integer value might be given,
+which splits the give string into list of length limited strings.
+The length is counted in runes, not bytes.
 
 e.g.:
 
 ```yaml
 list: (( split("," "alice, bob") ))
+limited: (( split(4, "1234567890") ))
+
 ```
 
 yields:
@@ -1265,7 +1270,15 @@ yields:
 list:
   - alice
   - ' bob'
+limited:
+  - "1234"
+  - "5678"
+  - "90"
+
 ```
+
+An optional 3rd argument might be specified. It limits the number of returned
+list entries. The value -1 leads to an unlimited list length.
 
 If a [regular expression](https://github.com/google/re2/wiki/Syntax) should
 be used as separator string, the function `split_match` can be used.
