@@ -2535,8 +2535,15 @@ The read type `importmulti` can be used to import multi document yaml files as a
 list of nodes.
 
 ##### text documents
+
 A text document will be returned as single string.
 
+##### binary documents
+
+It is possible to read binary documents, also. The content cannot be used
+as a string (or yaml document), directly. Therefore the read mode `binary` has
+to be specified. The content is returned as a base64 encoded multi-line string
+value.
 
 #### `(( exec("command", arg1, arg2) ))`
 
