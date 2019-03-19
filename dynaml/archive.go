@@ -99,19 +99,7 @@ func func_archive(arguments []interface{}, binding Binding) (interface{}, Evalua
 		return info.Error("invalid archive type '%s'", mode)
 	}
 
-	result := ""
-	str := base64.StdEncoding.EncodeToString(buf.Bytes())
-	for len(str) > 60 {
-		result = result + str[:60] + "\n"
-		str = str[60:]
-	}
-	if len(str) > 0 {
-		result = result + str
-	}
-	if strings.HasSuffix(result, "\n") {
-		result = result[:len(result)-1]
-	}
-	return result, info, true
+	return Base64Encode(buf.Bytes(), 60), info, true
 }
 
 func getFileEntry(file *string, info map[string]yaml.Node) (*FileEntry, error) {

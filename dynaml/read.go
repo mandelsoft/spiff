@@ -120,6 +120,9 @@ func parse(file string, data []byte, mode string, binding Binding) (interface{},
 	case "text":
 		return string(data), info, true
 
+	case "binary":
+		return Base64Encode(data, 60), info, true
+
 	default:
 		return info.Error("invalid file type [%s] %s", path.Clean(file), mode)
 	}

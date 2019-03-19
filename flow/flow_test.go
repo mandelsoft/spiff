@@ -6816,9 +6816,61 @@ value: dGVzdA==
 `)
 				Expect(source).To(FlowAs(resolved))
 			})
+
+			It("it encodes a string with limit", func() {
+				source := parseYAML(`
+---
+value: (( base64("alice+bob", 5 ) ))
+`)
+				resolved := parseYAML(`
+---
+value: |-
+  YWxpY
+  2UrYm
+  9i
+
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it encodes a string with limit string", func() {
+				source := parseYAML(`
+---
+value: (( base64("alice+bob", "5" ) ))
+`)
+				resolved := parseYAML(`
+---
+value: |-
+  YWxpY
+  2UrYm
+  9i
+
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
 		Context("doing decoding", func() {
 			It("it decodes a string", func() {
+				source := parseYAML(`
+---
+data: |-
+  YWxpY
+  2UrYm
+  9i
+value: (( base64_decode(data) ))
+`)
+				resolved := parseYAML(`
+---
+data: |-
+  YWxpY
+  2UrYm
+  9i
+value: alice+bob
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it decodes a multi-line string", func() {
 				source := parseYAML(`
 ---
 value: (( base64_decode("dGVzdA==") ))

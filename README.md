@@ -1670,6 +1670,9 @@ base54: dGVzdA==
 test: test
 ```
 
+An optional second argument can be used to specify the maximum line length.
+In this case the result will be multi-line string.
+
 ### `(( hash(string) ))`
 
 The function `hash` generates several kinds of hashes for the given string.
@@ -2455,10 +2458,15 @@ in two flavors.
 
 #### `(( read("file.yml") ))`
 
-Read a file and return its content. There is support for two content types:
-`yaml` files and `text` files. If the file suffix is `.yml`, `.yaml` or `.json`,
+Read a file and return its content. There is support for three content types:
+`yaml` files,`text` files and `binary` files. Reading in binary mode will
+result in a base64 encoded multi-line string.
+
+If the file suffix is `.yml`, `.yaml` or `.json`,
 by default the yaml type is used. If the file should be read as `text`, this
- type must be explicitly specified.
+type must be explicitly specified.
+In all other cases the default is `text`, therefore reading a binary file
+(for example an archive) urgently requires specifying the `binary` mode.
   
 An optional second parameter can be used to explicitly specifiy the desired
 return type: `yaml` or `text`. For _yaml_ documents some addtional 
