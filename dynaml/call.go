@@ -81,12 +81,12 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "":
 		debug.Debug("calling lambda function %#v\n", value)
 		resolved, result, sub, ok = value.(LambdaValue).Evaluate(false, true, values, binding, false)
-		if !resolved && ok {
-			result = nil
-		}
 
 	case "static_ips":
 		result, sub, ok = func_static_ips(e.Arguments, binding)
+		if ok && result == nil {
+			resolved = false
+		}
 
 	case "join":
 		result, sub, ok = func_join(values, binding)
@@ -254,7 +254,7 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	if cleaned {
 		info.Cleanup()
 	}
-	if ok && (result == nil || isExpression(result)) {
+	if ok && (!resolved || isExpression(result)) {
 		return e, sub.Join(info), true
 	}
 	return result, sub.Join(info), ok
