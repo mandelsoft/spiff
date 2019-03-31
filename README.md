@@ -2468,13 +2468,14 @@ The following validators are available:
 | `certificate` | none | certificate in pem format |
 | `ca`|  none | certificate for CA |
 | `type`| list of accepted type keys | at least one [type key](#-typefoobar-) must match |
-| `and` | list of validators | all validators must succeed |
-| `or` | list of validators | at least one validator must succeed |
 | `valueset` | list argument with values | possible values |
+| `match` | regular expression | string value matching regular expression |
 | `list` | optional list of entry validators | is list and entries match given validators |
 | `map` | [[ &lt;key validator&gt;, ] &lt;entry validator&gt; ] | is map and keys and entries match given validators |
 | `mapfield` | &lt;field name&gt; [ , &lt;validator&gt;] | required entry in map |
 | `optionalfield` | &lt;field name&gt; [ , &lt;validator&gt;] | optional entry in map |
+| `and` | list of validators | all validators must succeed |
+| `or` | list of validators | at least one validator must succeed |
 | `not` or `!` | validator | negate the validator argument(s) |
 
 If the validation succeeds the value is returned.

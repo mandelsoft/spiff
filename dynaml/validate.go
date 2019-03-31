@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/mandelsoft/spiff/yaml"
 	"net"
+	"regexp"
 	"strings"
 )
 
@@ -240,7 +241,7 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 
 	case "and", "not", "":
 		if len(args) == 0 {
-			return false, "", "", fmt.Errorf("validator argument required"), true
+			return ValidatorErrorf("validator argument required")
 		}
 		for _, c := range args {
 			r, t, f, err, resolved := validate(value, c, binding)
@@ -259,7 +260,7 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 		return true, reason, reason, nil, true
 	case "or":
 		if len(args) == 0 {
-			return false, "", "", fmt.Errorf("validator argument required"), true
+			return ValidatorErrorf("validator argument required")
 		}
 		for _, c := range args {
 			r, t, f, err, resolved := validate(value, c, binding)
@@ -289,11 +290,11 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 		}
 	case "valueset":
 		if len(args) != 1 {
-			return false, "", "", fmt.Errorf("valueset requires a list argument with possible values"), true
+			return ValidatorErrorf("valueset requires a list argument with possible values")
 		}
 		l, ok := args[0].Value().([]yaml.Node)
 		if !ok {
-			return false, "", "", fmt.Errorf("valueset requires a list argument with possible values"), true
+			return ValidatorErrorf("valueset requires a list argument with possible values")
 		}
 		for _, v := range l {
 			if ok, _, _ := compareEquals(value, v.Value()); ok {
@@ -309,6 +310,28 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 			return false, fmt.Sprint("valid value %d", i), fmt.Sprintf("invalid value %d", i), nil, true
 		}
 		return false, "valid value", "invalid value", nil, true
+
+	case "match":
+		if len(args) != 1 {
+			return ValidatorErrorf("match requires a regexp argument")
+		}
+		s, ok := args[0].Value().(string)
+		if !ok {
+			return ValidatorErrorf("match requires a regexp argument")
+		}
+
+		re, err := regexp.Compile(s)
+		if err != nil {
+			return ValidatorErrorf("regexp %s: %s", s, err)
+		}
+		s, ok = value.(string)
+		if !ok {
+			return ValidatorErrorf("no string to match regexp")
+		}
+		if !re.MatchString(s) {
+			return false, fmt.Sprintf("invalid value %q", s), fmt.Sprintf("invalid value %q", s), nil, true
+		}
+		return true, fmt.Sprintf("valid value %q", s), fmt.Sprintf("valid value %q", s), nil, true
 
 	case "type":
 		e := ExpressionType(value)
@@ -367,7 +390,7 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 	case "ip":
 		s, err := StringValue(op, value)
 		if err != nil {
-			return false, "", "", err, true
+			return ValidatorErrorf("%s: %s", op, err)
 		}
 		if ip := net.ParseIP(s); ip == nil {
 			return false, "is ip address", fmt.Sprintf("is no ip address: %s", s), nil, true
@@ -376,7 +399,7 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 	case "cidr":
 		s, err := StringValue(op, value)
 		if err != nil {
-			return false, "", "", err, true
+			return ValidatorErrorf("%s: %s", op, err)
 		}
 		if _, _, err := net.ParseCIDR(s); err != nil {
 			return false, "is CIDR", fmt.Sprintf("is no CIDR: %s", err), nil, true
