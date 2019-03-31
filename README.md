@@ -2472,6 +2472,8 @@ The following validators are available:
 | `or` | list of validators | at least one validator must succeed |
 | `list` | optional list of entry validators | is list and entries match given validators |
 | `map` | [[ &lt;key validator&gt;, ] &lt;entry validator&gt; ] | is map and keys and entries match given validators |
+| `mapfield` | &lt;field name&gt; [ , &lt;validator&gt;] | required entry in map |
+| `optionalfield` | &lt;field name&gt; [ , &lt;validator&gt;] | optional entry in map |
 | `not` or `!` | validator | negate the validator argument(s) |
 
 If the validation succeeds the value is returned.

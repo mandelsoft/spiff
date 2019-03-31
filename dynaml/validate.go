@@ -131,6 +131,7 @@ func _validate(value interface{}, cond interface{}, binding Binding, args ...yam
 
 func handleStringType(value interface{}, op string, binding Binding, args ...yaml.Node) (bool, string, string, error, bool) {
 	reason := "("
+	optional := false
 	switch op {
 	case "list":
 		l, ok := value.([]yaml.Node)
@@ -199,6 +200,43 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 			}
 		}
 		return true, "all map entries and keys match", "all map entries and keys match", nil, true
+
+	case "optionalfield":
+		optional = true
+		fallthrough
+	case "mapfield":
+		l, ok := value.(map[string]yaml.Node)
+		if !ok {
+			return false, "is a map", "is no map", nil, true
+		}
+		if len(args) == 0 || len(args) > 2 {
+			return false, "", "", fmt.Errorf("%s reqires one or two arguments", op), true
+		}
+		field, err := StringValue(op, args[0].Value())
+		if err != nil {
+			return false, "", "", fmt.Errorf("field name must be string"), true
+		}
+		val, ok := l[field]
+		if !ok {
+			if optional {
+				return true, fmt.Sprintf("has no optional field %q", field), "oops", nil, true
+			}
+			return false, fmt.Sprintf("has field %q", field), fmt.Sprintf("has no field %q", field), nil, true
+		}
+		if len(args) == 2 {
+			r, t, f, err, valid := validate(val.Value(), args[1], binding)
+			if err != nil {
+				return false, "", "", fmt.Errorf("map entry %q %s", field, err), false
+			}
+			if !valid {
+				return false, "", "", nil, false
+			}
+			if !r {
+				return false, fmt.Sprintf("map entry %q %s", field, t), fmt.Sprintf("map key %q %s", field, f), nil, true
+			}
+			return true, fmt.Sprintf("map entry %q %s", field, t), fmt.Sprintf("map entry %q %s", field, t), nil, true
+		}
+		return true, fmt.Sprintf("map entry %q exists", field), fmt.Sprintf("map entry %q exists", field), nil, true
 
 	case "and", "not", "":
 		if len(args) == 0 {
