@@ -52,11 +52,11 @@ func validate(value interface{}, cond yaml.Node, binding Binding) (bool, string,
 		return _validate(value, v, binding)
 	case []yaml.Node:
 		if len(v) == 0 {
-			return false, "", "", fmt.Errorf("validation type missing"), true
+			return ValidatorErrorf("validation type missing")
 		}
 		return _validate(value, v[0].Value(), binding, v[1:]...)
 	default:
-		return false, "", "", fmt.Errorf("invalid validation check type: %s", ExpressionType(v)), true
+		return ValidatorErrorf("invalid validation check type: %s", ExpressionType(v))
 	}
 }
 
@@ -65,7 +65,7 @@ func _validate(value interface{}, cond interface{}, binding Binding, args ...yam
 	switch v := cond.(type) {
 	case LambdaValue:
 		if len(v.lambda.Names) != len(args)+1 {
-			return false, "", "", fmt.Errorf("argument count mismatch for lambda %s: expected %d, found %d", v, len(v.lambda.Names), len(args)+1), true
+			return ValidatorErrorf("argument count mismatch for lambda %s: expected %d, found %d", v, len(v.lambda.Names), len(args)+1)
 		}
 		vargs := []interface{}{value}
 		for _, a := range args {
@@ -88,21 +88,21 @@ func _validate(value interface{}, cond interface{}, binding Binding, args ...yam
 			case 2:
 				t, err := StringValue("lambda validator", l[1].Value())
 				if err != nil {
-					return false, "", "", fmt.Errorf("lambda validator result index %d: %s", 1, err), true
+					return ValidatorErrorf("lambda validator result index %d: %s", 1, err)
 				}
 				return toBool(l[0].Value()), t, t, nil, true
 			case 3:
 				t, err := StringValue("lambda validator", l[1].Value())
 				if err != nil {
-					return false, "", "", fmt.Errorf("lambda validator result index %d: %s", 1, err), true
+					return ValidatorErrorf("lambda validator result index %d: %s", 1, err)
 				}
 				f, err := StringValue("lambda validator", l[2].Value())
 				if err != nil {
-					return false, "", "", fmt.Errorf("lambda validator result index %d: %s", 2, err), true
+					return ValidatorErrorf("lambda validator result index %d: %s", 2, err)
 				}
 				return toBool(l[0].Value()), t, f, nil, true
 			default:
-				return false, "", "", fmt.Errorf("invalid result length of validator %s", v), true
+				return ValidatorErrorf("invalid result length of validator %s", v)
 			}
 		}
 		return toBool(r), fmt.Sprintf("%s succeeded", v), fmt.Sprintf("%s failed", v), nil, true
@@ -112,7 +112,7 @@ func _validate(value interface{}, cond interface{}, binding Binding, args ...yam
 			v = v[1:]
 		} else {
 			if v == "" {
-				return false, "", "", fmt.Errorf("empty validator type"), true
+				return ValidatorErrorf("empty validator type")
 			}
 		}
 		r, t, f, err, resolved := handleStringType(value, v, binding, args...)
@@ -125,7 +125,7 @@ func _validate(value interface{}, cond interface{}, binding Binding, args ...yam
 			return r, t, f, err, resolved
 		}
 	default:
-		return false, "", "", fmt.Errorf("unexpected validation type %q", ExpressionType(v)), true
+		return ValidatorErrorf("unexpected validation type %q", ExpressionType(v))
 	}
 }
 
@@ -145,7 +145,7 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 			for j, c := range args {
 				r, t, f, err, valid := validate(e.Value(), c, binding)
 				if err != nil {
-					return false, "", "", fmt.Errorf("list entry %d condition %d: %s", i, j, err), false
+					return ValidatorErrorf("list entry %d condition %d: %s", i, j, err)
 				}
 				if !valid {
 					return false, "", "", nil, false
@@ -167,7 +167,7 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 		}
 		var ck yaml.Node
 		if len(args) > 2 {
-			return false, "", "", fmt.Errorf("map validator takes a maximum of two arguments, got %d", len(args)), true
+			return ValidatorErrorf("map validator takes a maximum of two arguments, got %d", len(args))
 		}
 		if len(args) == 2 {
 			ck = args[0]
@@ -178,7 +178,7 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 			if ck != nil {
 				r, t, f, err, valid := validate(k, ck, binding)
 				if err != nil {
-					return false, "", "", fmt.Errorf("map key %q %s", k, err), false
+					return ValidatorErrorf("map key %q %s", k, err)
 				}
 				if !valid {
 					return false, "", "", nil, false
@@ -190,7 +190,7 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 
 			r, t, f, err, valid := validate(e.Value(), ce, binding)
 			if err != nil {
-				return false, "", "", fmt.Errorf("map entry %q: %s", k, err), false
+				return ValidatorErrorf("map entry %q: %s", k, err)
 			}
 			if !valid {
 				return false, "", "", nil, false
@@ -210,11 +210,11 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 			return false, "is a map", "is no map", nil, true
 		}
 		if len(args) == 0 || len(args) > 2 {
-			return false, "", "", fmt.Errorf("%s reqires one or two arguments", op), true
+			return ValidatorErrorf("%s reqires one or two arguments", op)
 		}
 		field, err := StringValue(op, args[0].Value())
 		if err != nil {
-			return false, "", "", fmt.Errorf("field name must be string"), true
+			return ValidatorErrorf("field name must be string")
 		}
 		val, ok := l[field]
 		if !ok {
@@ -226,7 +226,7 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 		if len(args) == 2 {
 			r, t, f, err, valid := validate(val.Value(), args[1], binding)
 			if err != nil {
-				return false, "", "", fmt.Errorf("map entry %q %s", field, err), false
+				return ValidatorErrorf("map entry %q %s", field, err)
 			}
 			if !valid {
 				return false, "", "", nil, false
@@ -285,14 +285,37 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 		case map[string]yaml.Node:
 			return len(v) == 0, "is empty", "is not empty", nil, true
 		default:
-			return false, "", "", fmt.Errorf("invalid type for empty: %s", ExpressionType(v)), true
+			return ValidatorErrorf("invalid type for empty: %s", ExpressionType(v))
 		}
+	case "valueset":
+		if len(args) != 1 {
+			return false, "", "", fmt.Errorf("valueset requires a list argument with possible values"), true
+		}
+		l, ok := args[0].Value().([]yaml.Node)
+		if !ok {
+			return false, "", "", fmt.Errorf("valueset requires a list argument with possible values"), true
+		}
+		for _, v := range l {
+			if ok, _, _ := compareEquals(value, v.Value()); ok {
+				return true, "matches valueset", "oops", nil, true
+			}
+		}
+		s, ok := value.(string)
+		if ok {
+			return false, fmt.Sprint("valid value %q", s), fmt.Sprintf("invalid value %q", s), nil, true
+		}
+		i, ok := value.(int64)
+		if ok {
+			return false, fmt.Sprint("valid value %d", i), fmt.Sprintf("invalid value %d", i), nil, true
+		}
+		return false, "valid value", "invalid value", nil, true
+
 	case "type":
 		e := ExpressionType(value)
 		for _, t := range args {
 			s, err := StringValue("type arg", t.Value())
 			if err != nil {
-				return false, "", "", err, true
+				return ValidatorErrorf("%s: %s", op, err)
 			}
 			if s == e {
 				return true, fmt.Sprintf("is of type %s", s), fmt.Sprintf("is of type %s", s), nil, true
@@ -306,7 +329,7 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 	case "dnsname":
 		s, err := StringValue(op, value)
 		if err != nil {
-			return false, "", "", err, true
+			return ValidatorErrorf("%s: %s", op, err)
 		}
 		if err := IsWildcardDNS1123Subdomain(s); err != nil {
 			if err := IsDNS1123Subdomain(s); err != nil {
@@ -317,7 +340,7 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 	case "dnslabel":
 		s, err := StringValue(op, value)
 		if err != nil {
-			return false, "", "", err, true
+			return ValidatorErrorf("%s: %s", op, err)
 		}
 		if err := IsDNS1123Label(s); err != nil {
 			return false, "is dns label", fmt.Sprintf("is no dns label: %s", err), nil, true
@@ -326,7 +349,7 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 	case "dnsdomain":
 		s, err := StringValue(op, value)
 		if err != nil {
-			return false, "", "", err, true
+			return ValidatorErrorf("%s: %s", op, err)
 		}
 		if err := IsDNS1123Subdomain(s); err != nil {
 			return false, "is dns domain", fmt.Sprintf("is no dns domain: %s", err), nil, true
@@ -335,7 +358,7 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 	case "wildcarddnsdomain":
 		s, err := StringValue(op, value)
 		if err != nil {
-			return false, "", "", err, true
+			return ValidatorErrorf("%s: %s", op, err)
 		}
 		if err := IsWildcardDNS1123Subdomain(s); err != nil {
 			return false, "is wildcard dns domain", fmt.Sprintf("is no wildcard dns domain: %s", err), nil, true
@@ -368,7 +391,7 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 			}
 			return v(value, binding, vargs...)
 		}
-		return false, "", "", fmt.Errorf("unknown validation operator %q", op), true
+		return ValidatorErrorf("unknown validation operator %q", op)
 	}
 }
 
@@ -378,4 +401,8 @@ func StringValue(msg string, v interface{}) (string, error) {
 		return "", fmt.Errorf("%s requires string, but got %s", msg, ExpressionType(v))
 	}
 	return s, nil
+}
+
+func ValidatorErrorf(msgfmt string, args ...interface{}) (bool, string, string, error, bool) {
+	return false, "", "", fmt.Errorf(msgfmt, args...), true
 }

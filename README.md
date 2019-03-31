@@ -2470,6 +2470,7 @@ The following validators are available:
 | `type`| list of accepted type keys | at least one [type key](#-typefoobar-) must match |
 | `and` | list of validators | all validators must succeed |
 | `or` | list of validators | at least one validator must succeed |
+| `valueset` | list argument with values | possible values |
 | `list` | optional list of entry validators | is list and entries match given validators |
 | `map` | [[ &lt;key validator&gt;, ] &lt;entry validator&gt; ] | is map and keys and entries match given validators |
 | `mapfield` | &lt;field name&gt; [ , &lt;validator&gt;] | required entry in map |

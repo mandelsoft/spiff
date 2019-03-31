@@ -14,7 +14,7 @@ func init() {
 func ValPrivateKey(value interface{}, binding dynaml.Binding, args ...interface{}) (bool, string, string, error, bool) {
 	s, err := dynaml.StringValue("privatekey", value)
 	if err != nil {
-		return false, "", "", err, true
+		return dynaml.ValidatorErrorf("%s", err)
 	}
 	_, err = ParsePrivateKey(s)
 	if err != nil {
@@ -26,7 +26,7 @@ func ValPrivateKey(value interface{}, binding dynaml.Binding, args ...interface{
 func ValCertificate(value interface{}, binding dynaml.Binding, args ...interface{}) (bool, string, string, error, bool) {
 	s, err := dynaml.StringValue("certificate", value)
 	if err != nil {
-		return false, "", "", err, true
+		return dynaml.ValidatorErrorf("%s", err)
 	}
 	_, err = ParseCertificate(s)
 	if err != nil {
@@ -38,7 +38,7 @@ func ValCertificate(value interface{}, binding dynaml.Binding, args ...interface
 func ValCA(value interface{}, binding dynaml.Binding, args ...interface{}) (bool, string, string, error, bool) {
 	s, err := dynaml.StringValue("ca", value)
 	if err != nil {
-		return false, "", "", err, true
+		return dynaml.ValidatorErrorf("%s", err)
 	}
 	c, err := ParseCertificate(s)
 	if err != nil {
@@ -53,7 +53,7 @@ func ValCA(value interface{}, binding dynaml.Binding, args ...interface{}) (bool
 func ValPublicKey(value interface{}, binding dynaml.Binding, args ...interface{}) (bool, string, string, error, bool) {
 	s, err := dynaml.StringValue("publickey", value)
 	if err != nil {
-		return false, "", "", err, true
+		return dynaml.ValidatorErrorf("%s", err)
 	}
 	_, err = ParsePublicKey(s)
 	if err != nil {
