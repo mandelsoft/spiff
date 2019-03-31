@@ -106,6 +106,7 @@ Contents:
 		- [(( asjson(expr) ))](#-asjsonexpr-)
 		- [(( asyaml(expr) ))](#-asjsonexpr-)
 		- [(( catch(expr) ))](#-catchexpr-)
+		- [(( validate(value,"dnsdomain") ))](#-validatevaluednsdomain-)
 		- [Accessing External Content](#accessing-external-content)
 		    - [(( read("file.yml") ))](#-readfileyml-)
 		    - [(( exec("command", arg1, arg2) ))](#-execcommand-arg1-arg2-)
@@ -2439,6 +2440,88 @@ merged:
   outer2: 24
   sum: 49
 ```
+
+### `(( validate(value,"dnsdomain") ))`
+
+The function `validate` validates an expression using a set of validators.
+The first argument is the value to validate and all other arguments are
+validators that must succeed to accept the value. If at least one validator
+fails an appropriate error message is generated that explains the fail reason.
+
+A validator is denoted by a string or a list containing the validator type
+as string and its arguments. A validator can be negated with a preceeding
+`!` in its name.
+
+The following validators are available:
+
+| Type | Arguments | Meaning |
+| ---- | --------- | ------- |
+| `empty` | none | empty list, map or string |
+| `dnsdomain` | none | dns domain name |
+| `wildcarddnsdomain` | none | wildcard dns domain name |
+| `dnslabel` | none | dns label |
+| `dnsname` | none | dns domain or wildcard domain |
+| `ip` | none | ip address |
+| `cidr` | none | cidr | 
+| `publickey` | none | public key in pem format |
+| `privatekey` | none | private key in pem format |
+| `certificate` | none | certificate in pem format |
+| `ca`|  none | certificate for CA |
+| `type`| list of accepted type keys | at least one [type key](#-typefoobar-) must match |
+| `and` | list of validators | all validators must succeed |
+| `or` | list of validators | at least one validator must succeed |
+
+If the validation succeeds the value is returned.
+
+e.g.:
+
+```yaml
+dnstarget: (( validate("192.168.42.42", [ "or", "ip", "dnsdomain" ]) ))
+```
+
+evaluates to
+
+```yaml
+dnstarget: 192.168.42.42
+```
+
+If the validation fails an error explaining the failure reason is generated.
+
+e.g.:
+
+```yaml
+dnstarget: (( validate("alice+bob", [ "or", "ip", "dnsdomain" ]) ))
+```
+
+yields the following error:
+
+```
+*condition 1 failed: (is no ip address: alice+bob and is no dns domain: [a DNS-1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')]) 
+```
+
+A validator might also be a lambda expression taking at least one argument and returning
+a boolean value. This way it is possible to provide own validators as part
+of the yaml document.
+
+e.g.:
+
+```yaml
+val: (( validate( 0, |x|-> x > 1 ) ))
+```
+
+If more than one parameter is declared the additional arguments
+must be specified as validator arguments. The first argument is always
+the value to check.
+
+e.g.:
+
+```yaml
+val: (( validate( 0, [|x,m|-> x > m, 5] ) ))
+```
+
+Just to mention, the validator specification might be given inline as shown
+in the examples above, but as reference expressions, also. The `and` and `or`
+validators accept deeply nested validator specifications.
 
 ### Accessing External Content
 
