@@ -2470,6 +2470,9 @@ The following validators are available:
 | `type`| list of accepted type keys | at least one [type key](#-typefoobar-) must match |
 | `and` | list of validators | all validators must succeed |
 | `or` | list of validators | at least one validator must succeed |
+| `list` | optional list of entry validators | is list and entries match given validators |
+| `map` | [[ &lt;key validator&gt;, ] &lt;entry validator&gt; ] | is map and keys and entries match given validators |
+| `not` or `!` | validator | negate the validator argument(s) |
 
 If the validation succeeds the value is returned.
 
@@ -2519,9 +2522,39 @@ e.g.:
 val: (( validate( 0, [|x,m|-> x > m, 5] ) ))
 ```
 
+The lambda function may return a list with 1, 2 or 3 elements, also.
+This can be used to provide appropriate messages.
+
+| Index | Meaning |
+| ----- | ------- | 
+| 0 | the first index always is the match result, it must be evaluatable as boolean |
+| 1 | if two elements are given, the second index is a commom message |
+| 2 | here index 1 decribes the success message and 2 the failure message |
+
+e.g.:
+
+```yaml
+val: (( validate( 6, [|x,m|-> [x > m, "is larger than " m, "is less than or equal to " m], 5] ) ))
+```
+
 Just to mention, the validator specification might be given inline as shown
 in the examples above, but as reference expressions, also. The `and` and `or`
 validators accept deeply nested validator specifications.
+
+e.g.:
+
+```yaml
+dnsrecords:
+   domain: 1.2.3.4
+validator:
+  - map
+  - - or                              # key validator
+    - dnsdomain
+    - wildcarddnsdomain
+  - ip                                # entry validator
+
+val: (( validate( map, validator)  ))
+```
 
 ### Accessing External Content
 

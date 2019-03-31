@@ -24,8 +24,8 @@ func func_validate(arguments []interface{}, binding Binding) (bool, interface{},
 
 	value := arguments[0]
 
-	for i, a := range arguments[1:] {
-		r, _, f, err, valid := validate(value, NewNode(a, binding), binding)
+	for i, c := range arguments[1:] {
+		r, _, f, err, valid := validate(value, NewNode(c, binding), binding)
 		if err != nil {
 			info.SetError("condition %d has problem: %s", i+1, err)
 			return true, nil, info, false
@@ -79,11 +79,41 @@ func _validate(value interface{}, cond interface{}, binding Binding, args ...yam
 			}
 			return false, "", "", err, false
 		}
+		l, ok := r.([]yaml.Node)
+		if ok {
+			switch len(l) {
+			case 1:
+				r = l[0].Value()
+				break
+			case 2:
+				t, err := StringValue("lambda validator", l[1].Value())
+				if err != nil {
+					return false, "", "", fmt.Errorf("lambda validator result index %d: %s", 1, err), true
+				}
+				return toBool(l[0].Value()), t, t, nil, true
+			case 3:
+				t, err := StringValue("lambda validator", l[1].Value())
+				if err != nil {
+					return false, "", "", fmt.Errorf("lambda validator result index %d: %s", 1, err), true
+				}
+				f, err := StringValue("lambda validator", l[2].Value())
+				if err != nil {
+					return false, "", "", fmt.Errorf("lambda validator result index %d: %s", 2, err), true
+				}
+				return toBool(l[0].Value()), t, f, nil, true
+			default:
+				return false, "", "", fmt.Errorf("invalid result length of validator %s", v), true
+			}
+		}
 		return toBool(r), fmt.Sprintf("%s succeeded", v), fmt.Sprintf("%s failed", v), nil, true
 	case string:
 		not := strings.HasPrefix(v, "!")
 		if not {
 			v = v[1:]
+		} else {
+			if v == "" {
+				return false, "", "", fmt.Errorf("empty validator type"), true
+			}
 		}
 		r, t, f, err, resolved := handleStringType(value, v, binding, args...)
 		if !resolved || err != nil {
@@ -102,7 +132,78 @@ func _validate(value interface{}, cond interface{}, binding Binding, args ...yam
 func handleStringType(value interface{}, op string, binding Binding, args ...yaml.Node) (bool, string, string, error, bool) {
 	reason := "("
 	switch op {
-	case "and":
+	case "list":
+		l, ok := value.([]yaml.Node)
+		if !ok {
+			return false, "is a list", "is no list", nil, true
+		}
+		if len(args) == 0 {
+			return true, "is a list", "is no list", nil, true
+		}
+		for i, e := range l {
+			for j, c := range args {
+				r, t, f, err, valid := validate(e.Value(), c, binding)
+				if err != nil {
+					return false, "", "", fmt.Errorf("list entry %d condition %d: %s", i, j, err), false
+				}
+				if !valid {
+					return false, "", "", nil, false
+				}
+				if !r {
+					return false, fmt.Sprintf("entry %d condition %d %s", i, j, t), fmt.Sprintf("entry %d condition %d %s", i, j, f), nil, true
+				}
+			}
+		}
+		return true, "all entries match all conditions", "all entries match all conditions", nil, true
+
+	case "map":
+		l, ok := value.(map[string]yaml.Node)
+		if !ok {
+			return false, "is a map", "is no map", nil, true
+		}
+		if len(args) == 0 {
+			return true, "is a map", "is no map", nil, true
+		}
+		var ck yaml.Node
+		if len(args) > 2 {
+			return false, "", "", fmt.Errorf("map validator takes a maximum of two arguments, got %d", len(args)), true
+		}
+		if len(args) == 2 {
+			ck = args[0]
+		}
+		ce := args[len(args)-1]
+
+		for k, e := range l {
+			if ck != nil {
+				r, t, f, err, valid := validate(k, ck, binding)
+				if err != nil {
+					return false, "", "", fmt.Errorf("map key %q %s", k, err), false
+				}
+				if !valid {
+					return false, "", "", nil, false
+				}
+				if !r {
+					return false, fmt.Sprintf("map key %q %s", k, t), fmt.Sprintf("map key %q %s", k, f), nil, true
+				}
+			}
+
+			r, t, f, err, valid := validate(e.Value(), ce, binding)
+			if err != nil {
+				return false, "", "", fmt.Errorf("map entry %q: %s", k, err), false
+			}
+			if !valid {
+				return false, "", "", nil, false
+			}
+			if !r {
+				return false, fmt.Sprintf("map entry %q %s", k, t), fmt.Sprintf("map entry %q %s", k, f), nil, true
+			}
+		}
+		return true, "all map entries and keys match", "all map entries and keys match", nil, true
+
+	case "and", "not", "":
+		if len(args) == 0 {
+			return false, "", "", fmt.Errorf("validator argument required"), true
+		}
 		for _, c := range args {
 			r, t, f, err, resolved := validate(value, c, binding)
 			if err != nil || !resolved {
@@ -119,6 +220,9 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 		reason = reason + ")"
 		return true, reason, reason, nil, true
 	case "or":
+		if len(args) == 0 {
+			return false, "", "", fmt.Errorf("validator argument required"), true
+		}
 		for _, c := range args {
 			r, t, f, err, resolved := validate(value, c, binding)
 			if err != nil || !resolved {
