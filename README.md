@@ -2532,7 +2532,7 @@ This can be used to provide appropriate messages.
 | Index | Meaning |
 | ----- | ------- | 
 | 0 | the first index always is the match result, it must be evaluatable as boolean |
-| 1 | if two elements are given, the second index is a commom message |
+| 1 | if two elements are given, the second index is the message describing the actual result |
 | 2 | here index 1 decribes the success message and 2 the failure message |
 
 e.g.:
