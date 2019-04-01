@@ -72,7 +72,7 @@ func pemBlockForPublicKey(priv interface{}) *pem.Block {
 func ParsePublicKey(data string) (interface{}, error) {
 	block, _ := pem.Decode([]byte(data))
 	if block == nil {
-		return nil, fmt.Errorf("invalid private key format (expected pem block)")
+		return nil, fmt.Errorf("invalid public key format (expected pem block)")
 	}
 	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {

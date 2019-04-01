@@ -44,7 +44,7 @@ func func_validate(arguments []interface{}, binding Binding) (bool, interface{},
 
 func validate(value interface{}, cond yaml.Node, binding Binding) (bool, string, error, bool) {
 	if cond == nil || cond.Value() == nil {
-		return ValidatorErrorf("empty condition")
+		return ValidatorResult(true, "no condition")
 	}
 	switch v := cond.Value().(type) {
 	case string:
@@ -115,6 +115,9 @@ func _validate(value interface{}, cond interface{}, binding Binding, args ...yam
 			if v == "" {
 				return ValidatorErrorf("empty validator type")
 			}
+		}
+		if v == "not" {
+			not = !not
 		}
 		r, m, err, resolved := handleStringType(value, v, binding, args...)
 		if !resolved || err != nil {
@@ -253,8 +256,10 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 				return ValidatorResult(false, m)
 			}
 		}
-		reason = reason + ")"
-		return ValidatorResult(true, reason)
+		if len(args) == 1 {
+			return ValidatorResult(true, reason[1:])
+		}
+		return ValidatorResult(true, reason+")")
 	case "or":
 		if len(args) == 0 {
 			return ValidatorErrorf("validator argument required")
@@ -272,8 +277,10 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 				return ValidatorResult(true, m)
 			}
 		}
-		reason = reason + ")"
-		return ValidatorResult(false, reason)
+		if len(args) == 1 {
+			return ValidatorResult(true, reason[1:])
+		}
+		return ValidatorResult(false, reason+")")
 
 	case "empty":
 		switch v := value.(type) {
@@ -345,6 +352,9 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 				reason += " and "
 			}
 			reason += fmt.Sprintf("is not of type %s", s)
+		}
+		if len(args) == 1 {
+			return ValidatorResult(false, reason[1:])
 		}
 		return ValidatorResult(false, reason+")")
 	case "dnsname":
