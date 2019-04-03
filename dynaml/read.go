@@ -77,7 +77,7 @@ func parse(file string, data []byte, mode string, binding Binding) (interface{},
 		debug.Debug("resolving yaml file\n")
 		result, state := rerooted.Flow(node, false)
 		if state != nil {
-			debug.Debug("resolving yaml file failed: " + state.Error())
+			debug.Debug("resolving yaml file failed: %s", state.Error())
 			return info.PropagateError(nil, state, "resolution of yaml file '%s' failed", file)
 		}
 		debug.Debug("resolving yaml file succeeded")

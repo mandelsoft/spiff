@@ -162,7 +162,7 @@ func (i *EvaluationInfo) PropagateError(value interface{}, state Status, msgfmt 
 	if i.LocalError {
 		value = nil
 	}
-	return value, *i, !i.LocalError
+	return value, *i, false //!i.LocalError
 }
 
 func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {

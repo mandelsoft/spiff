@@ -22,7 +22,7 @@ func (e UnresolvedNodes) Issue(msgfmt string, args ...interface{}) (result yaml.
 	format := ""
 	result = yaml.NewIssue(msgfmt, args...)
 	localError = false
-	failed = true
+	failed = false
 
 	for _, node := range e.Nodes {
 		issue := node.Issue()
@@ -33,8 +33,8 @@ func (e UnresolvedNodes) Issue(msgfmt string, args ...interface{}) (result yaml.
 		if node.HasError() {
 			localError = true
 		}
-		if !node.Failed() {
-			failed = false
+		if node.Failed() {
+			failed = true
 		}
 		switch node.Value().(type) {
 		case Expression:
