@@ -2,6 +2,7 @@ package flow
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -69,6 +70,13 @@ func (e DefaultEnvironment) String() string {
 		s = s.next
 	}
 	return result
+}
+
+func (e DefaultEnvironment) GetState() dynaml.State {
+	if e.outer != nil {
+		return e.outer.GetState()
+	}
+	return e.state
 }
 
 func (e DefaultEnvironment) GetTempName(data []byte) (string, error) {
@@ -282,7 +290,7 @@ func CleanupEnvironment(binding dynaml.Binding) {
 func NewNestedEnvironment(stubs []yaml.Node, source string, outer dynaml.Binding) dynaml.Binding {
 	var state *State
 	if outer == nil {
-		state = NewState()
+		state = NewState(os.Getenv("SPIFF_ENCRYPTION_KEY"))
 	}
 	return DefaultEnvironment{state: state, stubs: stubs, sourceName: source, currentSourceName: source, outer: outer, active: true}
 }

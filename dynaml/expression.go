@@ -14,6 +14,12 @@ type SourceProvider interface {
 	SourceName() string
 }
 
+type State interface {
+	GetTempName(data []byte) (string, error)
+	GetFileContent(file string, cached bool) ([]byte, error)
+	GetEncryptionKey() string
+}
+
 type Binding interface {
 	SourceProvider
 	GetStaticBinding() map[string]yaml.Node
@@ -35,6 +41,7 @@ type Binding interface {
 	StubPath() []string
 	NoMerge() bool
 
+	GetState() State
 	GetTempName(data []byte) (string, error)
 	GetFileContent(file string, cached bool) ([]byte, error)
 
