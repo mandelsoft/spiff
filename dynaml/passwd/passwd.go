@@ -2,6 +2,7 @@ package passwd
 
 import (
 	"fmt"
+	"github.com/cloudfoundry-incubator/candiedyaml"
 	. "github.com/mandelsoft/spiff/dynaml"
 )
 
@@ -72,7 +73,8 @@ func func_decrypt(arguments []interface{}, binding Binding) (interface{}, Evalua
 	if err != nil {
 		return info.Error(err)
 	}
-	return result, info, true
+	return ParseData("<decrypt>", []byte(result), "import", binding)
+
 }
 
 func func_encrypt(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
@@ -81,7 +83,7 @@ func func_encrypt(arguments []interface{}, binding Binding) (interface{}, Evalua
 		return info.Error("%s expects one, two or three arguments", F_Encrypt)
 	}
 
-	value, err := StringValue(F_Decrypt, arguments[0])
+	value, err := candiedyaml.Marshal(arguments[0])
 	if err != nil {
 		return info.Error(err)
 	}
@@ -116,7 +118,7 @@ func func_encrypt(arguments []interface{}, binding Binding) (interface{}, Evalua
 	if key == "" {
 		return info.Error("invalid empty encyption key")
 	}
-	result, err := e.Encode(value, key)
+	result, err := e.Encode(string(value), key)
 	if err != nil {
 		return info.Error(err)
 	}

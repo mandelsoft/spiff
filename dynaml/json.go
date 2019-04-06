@@ -55,5 +55,5 @@ func func_parse_yaml(arguments []interface{}, binding Binding) (interface{}, Eva
 	}
 
 	name := strings.Join(binding.Path(), ".")
-	return parse(name, []byte(str), mode, binding)
+	return ParseData(name, []byte(str), mode, binding)
 }

@@ -7665,7 +7665,7 @@ value:
 	})
 
 	Describe("encryption", func() {
-		It("parses created certs", func() {
+		It("encrypts strings", func() {
 			source := parseYAML(`
 ---
 password: this a very secret secret and may never be exposed to unauthorized people
@@ -7677,6 +7677,79 @@ decrypted: (( decrypt(encrypted, password) ))
 ---
 password: this a very secret secret and may never be exposed to unauthorized people
 decrypted: spiff is a cool tool
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("encrypts ints", func() {
+			source := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+encrypted: (( &temporary(encrypt(20, password)) ))
+decrypted: (( decrypt(encrypted, password) ))
+    
+`)
+			resolved := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+decrypted: 20
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("encrypts maps", func() {
+			source := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+value:
+  alice: 25
+  bob: 26
+encrypted: (( &temporary(encrypt(value, password)) ))
+decrypted: (( decrypt(encrypted, password) ))
+    
+`)
+			resolved := parseYAML(`
+---
+value:
+  alice: 25
+  bob: 26
+password: this a very secret secret and may never be exposed to unauthorized people
+decrypted: 
+  alice: 25
+  bob: 26
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("encrypts templates", func() {
+			source := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+value:
+  <<: (( &template &temporary ))
+  alice: 25
+  bob: 26
+encrypted: (( &temporary(encrypt(value, password)) ))
+decrypted: (( asyaml(decrypt(encrypted, password)) == asyaml(value) ))
+    
+`)
+			resolved := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+decrypted: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("encrypts lambdas", func() {
+			source := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+value: (( &temporary(|x|-> x + 1) ))
+encrypted: (( &temporary(encrypt(value, password)) ))
+decrypted: (( asyaml(decrypt(encrypted, password)) == asyaml(value)))
+    
+`)
+			resolved := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+decrypted: true
 `)
 			Expect(source).To(FlowAs(resolved))
 		})

@@ -88,6 +88,7 @@ Contents:
 		- [(( hash(string) ))](#-hashstring-)
 		- [(( bcrypt("password", 10) ))](#-bcryptpassword-10-)
 		- [(( bcrypt_check("password", hash) ))](#-bcrypt_checkpassword-hash-)
+		- [(( decrypt("secret") ))](#-decryptsecret-)
 		- [(( rand("[:alnum:]", 10) ))](#-randalnum-10-)
 		- [(( type(foobar) ))](#-typefoobar-)
 		- [(( defined(foobar) ))](#-definedfoobar-)
@@ -1760,14 +1761,15 @@ valid: true
 
 ### `(( decrypt("secret") ))`
 
-This function ca be used to store encrypted secrets in a spiff yaml file.
+This function can be used to store encrypted secrets in a spiff yaml file.
 The processed result will then contain the decrypted value.
+All node types can be encrypted and decrypted, including complete maps and lists.
 
-The password for the descryption can either be given as second argument, or
+The password for the decryption can either be given as second argument, or
 (the preferred way) it can be specified by the environment variable
 `SPIFF_ENCRYPTION_KEY`. 
 
-An optional last argument may select the encryptio method. The only method
+An optional last argument may select the encryption method. The only method
 supported so far is `3DES`. Other methods may be added for dedicated
 spiff versions by using the encryption method registration offered by the spiff
 library.

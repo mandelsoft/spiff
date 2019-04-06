@@ -39,10 +39,10 @@ func func_read(cached bool, arguments []interface{}, binding Binding) (interface
 	if err != nil {
 		return info.Error("read: %s", err)
 	}
-	return parse(file, data, t, binding)
+	return ParseData(file, data, t, binding)
 }
 
-func parse(file string, data []byte, mode string, binding Binding) (interface{}, EvaluationInfo, bool) {
+func ParseData(file string, data []byte, mode string, binding Binding) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 	info.Source = file
 
