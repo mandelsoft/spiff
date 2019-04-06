@@ -77,13 +77,20 @@ func (e UnresolvedNodes) Error() string {
 		if msg != "" {
 			msg = "\t" + tag(node) + msg
 		}
-		switch node.Value().(type) {
+		nv := node.Value()
+		switch nv.(type) {
 		case Expression:
 			format = "%s\n\t(( %s ))\tin %s\t%s\t(%s)%s"
 		default:
 			format = "%s\n\t%s\tin %s\t%s\t(%s)%s"
+			switch nv.(type) {
+			case map[string]yaml.Node:
+				nv = "<map>"
+			case []yaml.Node:
+				nv = "<list>"
+			}
 		}
-		val := strings.Replace(fmt.Sprintf("%s", node.Value()), "\n", "\n\t", -1)
+		val := strings.Replace(fmt.Sprintf("%s", nv), "\n", "\n\t", -1)
 		message = fmt.Sprintf(
 			format,
 			message,

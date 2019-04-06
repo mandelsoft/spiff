@@ -24,6 +24,10 @@ func (c FakeBinding) GetFileContent(file string, cached bool) ([]byte, error) {
 	return nil, fmt.Errorf("no file access")
 }
 
+func (c FakeBinding) GetState() State {
+	return nil
+}
+
 func (c FakeBinding) Outer() Binding {
 	return nil
 }

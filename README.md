@@ -669,6 +669,11 @@ If the corresponding value is not defined, it will return nil. This then has the
 same semantics as reference expressions; a nil merge is an unresolved template.
 See [`||`](#-a--b-).
 
+**Note**: Instead of using a `<<:` insert field to place merge expressions it is
+possible now to use `<<<:`, also, which allows to use regular yaml parsers for
+spiff-like yaml documents. `<<:` is kept for backward compatibility.
+
+
 ### `<<: (( merge ))`
 
 Merging of maps or lists with the content of the same element found in some stub.
@@ -1751,6 +1756,38 @@ evaluates to
 ```yaml
 hash: $2a$10$b9RKb8NLuHB.tM9haPD3N.qrCsWrZy8iaCD4/.cCFFCRmWO4h.koe
 valid: true
+```
+
+### `(( decrypt("secret") ))`
+
+This function ca be used to store encrypted secrets in a spiff yaml file.
+The processed result will then contain the decrypted value.
+
+The password for the descryption can either be given as second argument, or
+(the preferred way) it can be specified by the environment variable
+`SPIFF_ENCRYPTION_KEY`. 
+
+An optional last argument may select the encryptio method. The only method
+supported so far is `3DES`. Other methods may be added for dedicated
+spiff versions by using the encryption method registration offered by the spiff
+library.
+
+A value can be encrypted by using the `encrypt("secret")` function.
+
+e.g.:
+
+```yaml
+password: this a very secret secret and may never be exposed to unauthorized people
+encrypted: (( encrypt("spiff is a cool tool", password) ))
+decrypted: (( decrypt(encrypted, password) ))
+```
+
+evaluated to something like
+
+```yaml
+decrypted: spiff is a cool tool
+encrypted: d889f9e4cc7ae13effcbc8bb8cd0c38d1fb2197738444f753c48796d7946083e6639e5a1bf8f77648f2a1ddf37023c65ff57d52d0519d1d92cbcf87d3e263cba
+password: this a very secret secret and may never be exposed to unauthorized people
 ```
 
 ### `(( rand("[:alnum:]", 10) ))`
@@ -3708,6 +3745,10 @@ by a marker name. If the expression is combination of markers and regular
 expressions, the expression follows the marker list enclosed in brackets
 (for example `(( &temporary( a + b ) ))`).
 
+**Note**: Instead of using a `<<:` insert field to place markers it is possible
+now to use `<<<:`, also, which allows to use regular yaml parsers for spiff-like
+yaml documents. `<<:` is kept for backward compatibility.
+
 ### `(( &temporary ))`
 
 Maps, lists or simple value nodes can be marked as *temporary*. Temporary nodes
@@ -3849,6 +3890,10 @@ It is also possible to convert a single expression value into a simple template 
 marker to the expression, for example `foo: (( &template (expression) ))`
 
 The template marker can be combined with the [temporary marker](#-temporary-) to omit templates from the final output.
+
+**Note**: Instead of using a `<<:` insert field to place the template marker it is
+possible now to use `<<<:`, also, which allows to use regular yaml parsers for
+spiff-like yaml documents. `<<:` is kept for backward compatibility.
 
 ### `(( *foo.bar ))`
 

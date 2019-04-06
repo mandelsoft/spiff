@@ -7139,7 +7139,7 @@ result: (( parse( json, "template" ) ))
 json: |
     { "alice": 25 }
 result:
-    <<: (( &template ))
+    <<<: (( &template ))
     alice: 25
 `))
 				Expect(source).To(FlowAs(resolved))
@@ -7162,9 +7162,9 @@ yaml: |
     ---
     { "bob": 26 }
 result:
-  - <<: (( &template ))
+  - <<<: (( &template ))
     alice: 25
-  - <<: (( &template ))
+  - <<<: (( &template ))
     bob: 26
 `))
 				Expect(source).To(FlowAs(resolved))
@@ -7661,6 +7661,24 @@ value:
 `)
 				Expect(source).To(FlowAs(resolved))
 			})
+		})
+	})
+
+	Describe("encryption", func() {
+		It("parses created certs", func() {
+			source := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+encrypted: (( &temporary(encrypt("spiff is a cool tool", password)) ))
+decrypted: (( decrypt(encrypted, password) ))
+    
+`)
+			resolved := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+decrypted: spiff is a cool tool
+`)
+			Expect(source).To(FlowAs(resolved))
 		})
 	})
 })

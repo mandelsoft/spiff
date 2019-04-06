@@ -136,27 +136,31 @@ func PathComponent(step string) string {
 	return step
 }
 
-func UnresolvedListEntryMerge(node Node) (Node, bool) {
+func UnresolvedListEntryMerge(node Node) (Node, string, bool) {
 	subMap, ok := node.Value().(map[string]Node)
 	if ok {
 		if len(subMap) == 1 {
 			inlineNode, ok := subMap["<<"]
 			if ok {
-				return inlineNode, true
+				return inlineNode, "<<", true
+			}
+			inlineNode, ok = subMap[MERGEKEY]
+			if ok {
+				return inlineNode, MERGEKEY, true
 			}
 		}
 	}
-	return nil, false
+	return nil, "", false
 }
 
 func IsMapResolved(m map[string]Node) bool {
-	return m["<<"] == nil
+	return m["<<"] == nil && m[MERGEKEY] == nil
 }
 
 func IsListResolved(l []Node) bool {
 	for _, val := range l {
 		if val != nil {
-			_, ok := UnresolvedListEntryMerge(val)
+			_, _, ok := UnresolvedListEntryMerge(val)
 			if ok {
 				return false
 			}

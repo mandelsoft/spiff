@@ -238,13 +238,18 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 	sortedKeys := getSortedKeys(rootMap)
 
 	debug.Debug("HANDLE MAP %v\n", env.Path())
+	mergefound := false
 
 	// iteration order matters for the "<<" operator, it must be the first key in the map that is handled
 	for i := range sortedKeys {
 		key := sortedKeys[i]
 		val := rootMap[key]
 
-		if key == "<<" {
+		if key == "<<" || key == yaml.MERGEKEY {
+			if mergefound {
+				return yaml.IssueNode(root, true, true, yaml.NewIssue("multiple merge keys not allowed"))
+			}
+			mergefound = true
 			_, initial := val.Value().(string)
 			base := flow(val, env, false)
 			if base.Undefined() {
@@ -498,7 +503,7 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 			continue
 		}
 
-		inlineNode, ok := yaml.UnresolvedListEntryMerge(val)
+		inlineNode, qual, ok := yaml.UnresolvedListEntryMerge(val)
 		if ok {
 			debug.Debug("*** %+v\n", inlineNode.Value())
 			_, initial := inlineNode.Value().(string)
@@ -527,7 +532,7 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 					}
 				}
 				newMap := make(map[string]yaml.Node)
-				newMap["<<"] = result
+				newMap[qual] = result
 				val = yaml.SubstituteNode(newMap, orig)
 				process = false
 			} else {

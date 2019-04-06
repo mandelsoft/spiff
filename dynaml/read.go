@@ -133,14 +133,22 @@ func asTemplate(n yaml.Node, binding Binding) TemplateValue {
 
 	switch v := orig.Value().(type) {
 	case map[string]yaml.Node:
-		if _, ok := v["<<"]; !ok {
-			v["<<"] = NewNode("(( &template ))", n)
+		if _, ok := v[yaml.MERGEKEY]; !ok {
+			v[yaml.MERGEKEY] = NewNode("(( &template ))", n)
+		} else {
+			if _, ok := v["<<"]; !ok {
+				v["<<"] = NewNode("(( &template ))", n)
+			}
 		}
 	case []yaml.Node:
 		found := false
 		for _, e := range v {
 			if m, ok := e.Value().(map[string]yaml.Node); ok {
-				if e, ok := m["<<"]; ok {
+				e, ok := m[yaml.MERGEKEY]
+				if !ok {
+					e, ok = m["<<"]
+				}
+				if ok {
 					s := yaml.EmbeddedDynaml(e)
 					if s != nil && templ_pattern.MatchString(*s) {
 						found = true
@@ -150,7 +158,7 @@ func asTemplate(n yaml.Node, binding Binding) TemplateValue {
 			}
 		}
 		if !found {
-			new := []yaml.Node{NewNode(map[string]yaml.Node{"<<": NewNode("(( &template ))", n)}, n)}
+			new := []yaml.Node{NewNode(map[string]yaml.Node{yaml.MERGEKEY: NewNode("(( &template ))", n)}, n)}
 			new = append(new, v...)
 			orig = NewNode(new, n)
 		}
