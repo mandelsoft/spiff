@@ -28,6 +28,10 @@ func RegisterEncryption(name string, e Encoding) {
 	encodings[name] = e
 }
 
+func GetEncoding(name string) Encoding {
+	return encodings[name]
+}
+
 func func_decrypt(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 	if len(arguments) < 1 || len(arguments) > 3 {
@@ -41,8 +45,9 @@ func func_decrypt(arguments []interface{}, binding Binding) (interface{}, Evalua
 
 	key := binding.GetState().GetEncryptionKey()
 	method := TRIPPLEDES
+	v := ""
 	if len(arguments) > 1 {
-		key, err = StringValue(fmt.Sprintf("%s: 2nd argument", F_Decrypt), arguments[1])
+		v, err = StringValue(fmt.Sprintf("%s: 2nd argument", F_Decrypt), arguments[1])
 		if err != nil {
 			return info.Error(err)
 		}
@@ -50,8 +55,10 @@ func func_decrypt(arguments []interface{}, binding Binding) (interface{}, Evalua
 
 	switch len(arguments) {
 	case 2:
-		if encodings[key] != nil {
-			method = key
+		if encodings[v] != nil {
+			method = v
+		} else {
+			key = v
 		}
 	case 3:
 		m, err := StringValue(fmt.Sprintf("%s: method", F_Decrypt), arguments[2])
@@ -90,8 +97,9 @@ func func_encrypt(arguments []interface{}, binding Binding) (interface{}, Evalua
 
 	key := binding.GetState().GetEncryptionKey()
 	method := TRIPPLEDES
+	v := ""
 	if len(arguments) > 1 {
-		key, err = StringValue(fmt.Sprintf("%s: 2nd argument", F_Encrypt), arguments[1])
+		v, err = StringValue(fmt.Sprintf("%s: 2nd argument", F_Encrypt), arguments[1])
 		if err != nil {
 			return info.Error(err)
 		}
@@ -99,8 +107,10 @@ func func_encrypt(arguments []interface{}, binding Binding) (interface{}, Evalua
 
 	switch len(arguments) {
 	case 2:
-		if encodings[key] != nil {
-			method = key
+		if GetEncoding(v) != nil {
+			method = v
+		} else {
+			key = v
 		}
 	case 3:
 		m, err := StringValue(fmt.Sprintf("%s: method", F_Encrypt), arguments[2])
@@ -110,7 +120,7 @@ func func_encrypt(arguments []interface{}, binding Binding) (interface{}, Evalua
 		method = m
 	}
 
-	e := encodings[method]
+	e := GetEncoding(method)
 	if e == nil {
 		return info.Error("invalid encyption method %q", method)
 	}

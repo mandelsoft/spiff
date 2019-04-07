@@ -254,6 +254,19 @@ $ bosh deployment deployment.yml
 $ bosh deploy
 ```
 
+### `spiff encrypt secret.yaml`
+
+The `encrypt` sub command can be used to encrypt or decrypt data
+according to the [`encrypt`](#-decryptsecret-) dynaml function.
+The password can be given as second argument or it is taken from the
+environment variable `SPIFF_ENCRYPTION_KEY`. The last argument can be used
+to pass the encryption method (see [`encrypt` function](#-decryptsecret-))
+
+The data is taken from the specified file. If `-` is given, it is read from
+stdin.
+
+If the option `-d` is given, the data is decrypted, otherwise the data is
+read as yaml document and the encrypted result is printed. 
 
 # dynaml Templating Language
 

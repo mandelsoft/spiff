@@ -38,9 +38,9 @@ func (e des1) Decode(text string, key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	r := DecodeString(text, c)
+	r, err := DecodeString(text, c)
 	if r == "" {
-		return "", fmt.Errorf("invalid key")
+		return "", fmt.Errorf("invalid key: %s", err)
 	}
 	return r, nil
 }
@@ -57,18 +57,18 @@ func GetCipher(key string) (cipher.Block, error) {
 	return des.NewTripleDESCipher(tripleDESKey)
 }
 
-func DecodeString(text string, c cipher.Block) string {
+func DecodeString(text string, c cipher.Block) (string, error) {
 
 	ciphertext, _ := hex.DecodeString(text)
 
 	if len(ciphertext) < c.BlockSize() {
-		panic("ciphertext too short")
+		return "", fmt.Errorf("ciphertext too short")
 	}
 	iv := ciphertext[:c.BlockSize()]
 	ciphertext = ciphertext[c.BlockSize():]
 
 	if len(ciphertext)%c.BlockSize() != 0 {
-		panic("ciphertext is not a multiple of the block size")
+		return "", fmt.Errorf("ciphertext is not a multiple of the block size")
 	}
 
 	mode := cipher.NewCBCDecrypter(c, iv)
@@ -82,14 +82,14 @@ func DecodeString(text string, c cipher.Block) string {
 
 	//fmt.Printf("len: %d, pad: %d, eff: %d\n",len(ciphertext),int(ciphertext[len(ciphertext)-1]),l)
 	if m > len(ciphertext) || m <= 0 || l <= 0 || pad < 1 {
-		return ""
+		return "", nil
 	}
 
 	message := ciphertext[:l]
 	if !CheckMAC(message, ciphertext[l:m], []byte(SECRET)) {
-		return ""
+		return "", nil
 	}
-	return string(message)
+	return string(message), nil
 }
 
 func EncodeString(text string, c cipher.Block) string {
