@@ -1,7 +1,6 @@
 package passwd
 
 import (
-	"C"
 	"crypto/rand"
 	"fmt"
 	"io"
