@@ -13,7 +13,7 @@ func value(node yaml.Node) interface{} {
 	return node.Value()
 }
 
-func node(val interface{}, src SourceProvider) yaml.Node {
+func NewNode(val interface{}, src SourceProvider) yaml.Node {
 	source := ""
 
 	if src == nil || len(src.SourceName()) == 0 {

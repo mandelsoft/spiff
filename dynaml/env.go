@@ -71,7 +71,7 @@ func func_env(arguments []interface{}, binding Binding) (interface{}, Evaluation
 		for _, n := range args {
 			s, ok := getenv(n)
 			if ok {
-				m[n] = node(s, nil)
+				m[n] = NewNode(s, nil)
 			}
 		}
 		return m, info, true

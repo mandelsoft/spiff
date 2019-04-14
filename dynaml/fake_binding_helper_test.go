@@ -1,6 +1,7 @@
 package dynaml
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/mandelsoft/spiff/yaml"
@@ -15,12 +16,32 @@ type FakeBinding struct {
 	stubPath []string
 }
 
+func (c FakeBinding) GetTempName([]byte) (string, error) {
+	return "", fmt.Errorf("no temp names")
+}
+
+func (c FakeBinding) GetFileContent(file string, cached bool) ([]byte, error) {
+	return nil, fmt.Errorf("no file access")
+}
+
+func (c FakeBinding) GetState() State {
+	return nil
+}
+
+func (c FakeBinding) Outer() Binding {
+	return nil
+}
+
 func (c FakeBinding) Path() []string {
 	return c.path
 }
 
 func (c FakeBinding) StubPath() []string {
 	return c.stubPath
+}
+
+func (c FakeBinding) NoMerge() bool {
+	return false
 }
 
 func (c FakeBinding) SourceName() string {
@@ -54,8 +75,16 @@ func (c FakeBinding) WithSource(source string) Binding {
 	return c
 }
 
-func (c FakeBinding) GetLocalBinding() map[string]yaml.Node {
+func (c FakeBinding) WithNewRoot() Binding {
+	return c
+}
+
+func (c FakeBinding) GetStaticBinding() map[string]yaml.Node {
 	return map[string]yaml.Node{}
+}
+
+func (c FakeBinding) GetRootBinding() map[string]yaml.Node {
+	return c.FoundFromRoot
 }
 
 func (c FakeBinding) FindFromRoot(path []string) (yaml.Node, bool) {
@@ -81,6 +110,6 @@ func (c FakeBinding) Flow(source yaml.Node, shouldOverride bool) (yaml.Node, Sta
 	return nil, nil
 }
 
-func (c FakeBinding) Cascade(template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error) {
+func (c FakeBinding) Cascade(outer Binding, template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error) {
 	return nil, nil
 }

@@ -22,25 +22,25 @@ func (e UnresolvedNodes) Issue(msgfmt string, args ...interface{}) (result yaml.
 	format := ""
 	result = yaml.NewIssue(msgfmt, args...)
 	localError = false
-	failed = true
+	failed = false
 
 	for _, node := range e.Nodes {
 		issue := node.Issue()
 		msg := issue.Issue
 		if msg != "" {
-			msg = "\t" + tag(node) + msg
+			msg = tag(node) + msg
 		}
 		if node.HasError() {
 			localError = true
 		}
-		if !node.Failed() {
-			failed = false
+		if node.Failed() {
+			failed = true
 		}
 		switch node.Value().(type) {
 		case Expression:
-			format = "\t(( %s ))\tin %s\t%s\t(%s)%s"
+			format = "(( %s ))\tin %s\t%s\t(%s)%s"
 		default:
-			format = "\t%s\tin %s\t%s\t(%s)%s"
+			format = "%s\tin %s\t%s\t(%s)%s"
 		}
 		message := fmt.Sprintf(
 			format,
@@ -77,22 +77,30 @@ func (e UnresolvedNodes) Error() string {
 		if msg != "" {
 			msg = "\t" + tag(node) + msg
 		}
-		switch node.Value().(type) {
+		nv := node.Value()
+		switch nv.(type) {
 		case Expression:
 			format = "%s\n\t(( %s ))\tin %s\t%s\t(%s)%s"
 		default:
 			format = "%s\n\t%s\tin %s\t%s\t(%s)%s"
+			switch nv.(type) {
+			case map[string]yaml.Node:
+				nv = "<map>"
+			case []yaml.Node:
+				nv = "<list>"
+			}
 		}
+		val := strings.Replace(fmt.Sprintf("%s", nv), "\n", "\n\t", -1)
 		message = fmt.Sprintf(
 			format,
 			message,
-			node.Value(),
+			val,
 			node.SourceName(),
 			strings.Join(node.Context, "."),
 			strings.Join(node.Path, "."),
 			msg,
 		)
-		message += nestedIssues("\t", issue)
+		message += nestedIssues(issue)
 	}
 
 	return message
@@ -111,15 +119,22 @@ func tag(node yaml.Node) string {
 	return tag
 }
 
-func nestedIssues(gap string, issue yaml.Issue) string {
+func nestedIssues(issue yaml.Issue) string {
+	prefix := "\n"
+	gap := ""
+	if issue.Sequence {
+		prefix = "\n\t\t... "
+	} else {
+		gap = "\t\t\t"
+	}
 	message := ""
 	if issue.Nested != nil {
 		for _, sub := range issue.Nested {
-			message = message + "\n" + gap + sub.Issue
-			message += nestedIssues(gap+"\t", sub)
+			message = message + prefix + sub.Issue
+			message += nestedIssues(sub)
 		}
 	}
-	return message
+	return strings.Replace(message, "\n", "\n"+gap, -1)
 }
 
 func FindUnresolvedNodes(root yaml.Node, context ...string) (result []UnresolvedNode) {
@@ -177,12 +192,20 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (result []Unresolved
 			_, err := Parse(*s, dummy, dummy)
 			if err != nil {
 				nodes = append(nodes, UnresolvedNode{
-					Node:    yaml.IssueNode(root, true, false, yaml.Issue{Issue: fmt.Sprintf("unparseable expression")}),
+					Node:    yaml.IssueNode(root, true, false, yaml.Issue{Issue: err.Error()}),
 					Context: context,
 					Path:    []string{},
 				})
 			}
 		}
+	}
+
+	if root.Failed() {
+		nodes = append(nodes, UnresolvedNode{
+			Node:    root,
+			Context: context,
+			Path:    []string{},
+		})
 	}
 
 	for _, n := range nodes {
@@ -220,7 +243,7 @@ func ResetUnresolvedNodes(root yaml.Node) yaml.Node {
 		}
 
 	case Expression:
-		root = node(fmt.Sprintf("(( %s ))", elem), nil)
+		root = NewNode(fmt.Sprintf("(( %s ))", elem), nil)
 	}
 
 	return root
@@ -289,7 +312,7 @@ func isResolvedValue(val interface{}) bool {
 		return true
 
 	case string:
-		if yaml.EmbeddedDynaml(node(val, nil)) != nil {
+		if yaml.EmbeddedDynaml(NewNode(val, nil)) != nil {
 			return false
 		}
 		return true

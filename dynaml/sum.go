@@ -25,6 +25,7 @@ func (e SumExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluatio
 	if !ok {
 		return nil, info, false
 	}
+	inline := isInline(e.Lambda)
 	lvalue, infoe, ok := ResolveExpressionOrPushEvaluation(&e.Lambda, &resolved, nil, binding, false)
 	if !ok {
 		return nil, infoe, false
@@ -43,10 +44,10 @@ func (e SumExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluatio
 	var result interface{}
 	switch value.(type) {
 	case []yaml.Node:
-		result, info, ok = sumList(value.([]yaml.Node), lambda, initial, binding)
+		result, info, ok = sumList(inline, value.([]yaml.Node), lambda, initial, binding)
 
 	case map[string]yaml.Node:
-		result, info, ok = sumMap(value.(map[string]yaml.Node), lambda, initial, binding)
+		result, info, ok = sumMap(inline, value.(map[string]yaml.Node), lambda, initial, binding)
 
 	default:
 		return info.Error("map or list required for sum")
@@ -70,7 +71,7 @@ func (e SumExpr) String() string {
 	}
 }
 
-func sumList(source []yaml.Node, e LambdaValue, initial interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
+func sumList(inline bool, source []yaml.Node, e LambdaValue, initial interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
 	inp := make([]interface{}, len(e.lambda.Names))
 	result := initial
 	info := DefaultInfo()
@@ -87,15 +88,17 @@ func sumList(source []yaml.Node, e LambdaValue, initial interface{}, binding Bin
 		inp[0] = result
 		inp[1] = i
 		inp[len(inp)-1] = n.Value()
-		mapped, info, ok := e.Evaluate(inp, binding, false)
+		resolved, mapped, info, ok := e.Evaluate(inline, false, inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %d %+v: failed\n", i, n)
 			return nil, info, false
 		}
-
+		if !resolved {
+			return nil, info, ok
+		}
 		_, ok = mapped.(Expression)
 		if ok {
-			debug.Debug("map:  %d unresolved  -> KEEP\n")
+			debug.Debug("map:  %d unresolved  -> KEEP\n", i)
 			return nil, info, true
 		}
 		debug.Debug("map:  %d --> %+v\n", i, mapped)
@@ -104,7 +107,7 @@ func sumList(source []yaml.Node, e LambdaValue, initial interface{}, binding Bin
 	return result, info, true
 }
 
-func sumMap(source map[string]yaml.Node, e LambdaValue, initial interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
+func sumMap(inline bool, source map[string]yaml.Node, e LambdaValue, initial interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
 	inp := make([]interface{}, len(e.lambda.Names))
 	result := initial
 	info := DefaultInfo()
@@ -116,15 +119,17 @@ func sumMap(source map[string]yaml.Node, e LambdaValue, initial interface{}, bin
 		inp[0] = result
 		inp[1] = k
 		inp[len(inp)-1] = n.Value()
-		mapped, info, ok := e.Evaluate(inp, binding, false)
+		resolved, mapped, info, ok := e.Evaluate(inline, false, inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %s %+v: failed\n", k, n)
 			return nil, info, false
 		}
-
+		if !resolved {
+			return nil, info, ok
+		}
 		_, ok = mapped.(Expression)
 		if ok {
-			debug.Debug("map:  %d unresolved  -> KEEP\n")
+			debug.Debug("map:  %s unresolved  -> KEEP\n", k)
 			return nil, info, true
 		}
 		debug.Debug("map:  %s --> %+v\n", k, mapped)

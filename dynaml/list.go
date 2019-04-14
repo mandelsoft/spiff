@@ -25,7 +25,7 @@ func (e ListExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	nodes := []yaml.Node{}
 	for i, _ := range values {
-		nodes = append(nodes, node(values[i], binding))
+		nodes = append(nodes, NewNode(values[i], binding))
 	}
 	return nodes, info, true
 }

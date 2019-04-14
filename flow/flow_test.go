@@ -2375,16 +2375,50 @@ bar: false
 			Expect(source).To(FlowAs(resolved))
 		})
 
-		It("evaluates ==", func() {
+		It("evaluates == of int", func() {
 			source := parseYAML(`
 ---
 foo: (( 5 ))
 bar: (( foo == 5))
+fail: (( foo == 6 ))
 `)
 			resolved := parseYAML(`
 ---
 foo: 5
 bar: true
+fail: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates == of bool", func() {
+			source := parseYAML(`
+---
+foo: (( false ))
+bar: (( foo == false))
+fail: (( foo == true ))
+`)
+			resolved := parseYAML(`
+---
+foo: false
+bar: true
+fail: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("evaluates == of strings", func() {
+			source := parseYAML(`
+---
+foo: alice
+bar: (( foo == "alice"))
+fail: (( foo == "bob" ))
+`)
+			resolved := parseYAML(`
+---
+foo: alice
+bar: true
+fail: false
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
@@ -2396,6 +2430,7 @@ foo:
   - alice
   - bob
 bar: (( foo == [ "alice","bob" ] ))
+fail: (( foo == [ "alice" ] ))
 `)
 			resolved := parseYAML(`
 ---
@@ -2403,6 +2438,7 @@ foo:
   - alice
   - bob
 bar: true
+fail: false
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
@@ -2437,6 +2473,7 @@ comp:
   b: 2
 
 bar: (( foo == comp ))
+fail: (( foo == { "a"=1, "c"=3 } ))
 `)
 			resolved := parseYAML(`
 ---
@@ -2449,6 +2486,7 @@ comp:
   b: 2
 
 bar: true
+fail: false
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
@@ -2806,6 +2844,34 @@ foo: failed
 	})
 
 	Describe("when splitting", func() {
+		It("splits single limited line length", func() {
+			source := parseYAML(`
+---
+foo: (( split( 4, "1234567890") ))
+`)
+			resolved := parseYAML(`
+---
+foo:
+ - "1234"
+ - "5678"
+ - "90"
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("splits single limited line length with limit", func() {
+			source := parseYAML(`
+---
+foo: (( split( 4, "1234567890", 2) ))
+`)
+			resolved := parseYAML(`
+---
+foo:
+ - "1234"
+ - "567890"
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
 		It("splits single value", func() {
 			source := parseYAML(`
 ---
@@ -2829,6 +2895,152 @@ foo: (( split( ",", "alice,bob") ))
 foo:
  - alice
  - bob
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("splits multiple values with limit", func() {
+			source := parseYAML(`
+---
+foo: (( split( ",", "alice,bob,peter", 2) ))
+`)
+			resolved := parseYAML(`
+---
+foo:
+ - alice
+ - bob,peter
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("splits characters", func() {
+			source := parseYAML(`
+---
+foo: (( split( "", "alice") ))
+`)
+			resolved := parseYAML(`
+---
+foo:
+ - a
+ - l
+ - i
+ - c
+ - e
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("splits regexp", func() {
+			source := parseYAML(`
+---
+foo: (( split_match( " *, *", "alice ,     bob") ))
+`)
+			resolved := parseYAML(`
+---
+foo:
+ - alice
+ - bob
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when changing case", func() {
+		It("it lowers", func() {
+			source := parseYAML(`
+---
+value: (( lower("AlicE") ))
+`)
+			resolved := parseYAML(`
+---
+value:  alice
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("it uppers", func() {
+			source := parseYAML(`
+---
+value: (( upper("AlicE") ))
+`)
+			resolved := parseYAML(`
+---
+value:  ALICE
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+	})
+
+	Describe("when sorting", func() {
+		It("it sorts integers", func() {
+			source := parseYAML(`
+---
+list:
+  - 5
+  - 10
+  - 4
+  - 7
+sorted: (( sort(list) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+  - 5
+  - 10
+  - 4
+  - 7
+sorted:
+  - 4
+  - 5
+  - 7
+  - 10
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("it sorts strings", func() {
+			source := parseYAML(`
+---
+list:
+  - foo
+  - alice
+  - bar
+  - bob
+sorted: (( sort(list) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+  - foo
+  - alice
+  - bar
+  - bob
+sorted:
+  - alice
+  - bar
+  - bob
+  - foo
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("it sorts by lambda", func() {
+			source := parseYAML(`
+---
+list:
+  - foobar
+  - bob
+  - alice
+sorted: (( sort(list, |a,b|->length(a) < length(b)) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+  - foobar
+  - bob
+  - alice
+sorted:
+  - bob
+  - alice
+  - foobar
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
@@ -3006,6 +3218,24 @@ data:
 			resolved := parseYAML(`
 ---
 age: 24
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("handles string list arg", func() {
+			source := parseYAML(`
+---
+age: (( stub(["data","alice"]) ))
+`)
+			stub := parseYAML(`
+---
+data:
+  alice: "24"
+`)
+
+			resolved := parseYAML(`
+---
+age: "24"
 `)
 			Expect(source).To(FlowAs(resolved, stub))
 		})
@@ -3496,28 +3726,119 @@ index: -1
 	})
 
 	Describe("when replacing", func() {
-		It("replaces unlimited", func() {
-			source := parseYAML(`
+		Context("regular strings", func() {
+			It("replaces unlimited", func() {
+				source := parseYAML(`
 ---
 result: (( replace("foobar","o", "u") ))
 `)
-			resolved := parseYAML(`
+				resolved := parseYAML(`
 ---
 result: fuubar
 `)
-			Expect(source).To(FlowAs(resolved))
-		})
+				Expect(source).To(FlowAs(resolved))
+			})
 
-		It("replaces limited", func() {
-			source := parseYAML(`
+			It("replaces empty", func() {
+				source := parseYAML(`
+---
+result: (( replace("foobar","", "u") ))
+`)
+				resolved := parseYAML(`
+---
+result: ufuououbuauru
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("replaces limited", func() {
+				source := parseYAML(`
 ---
 result: (( replace("foobar","o", "u", 1) ))
 `)
-			resolved := parseYAML(`
+				resolved := parseYAML(`
 ---
 result: fuobar
 `)
-			Expect(source).To(FlowAs(resolved))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("replaces with lambda", func() {
+				source := parseYAML(`
+---
+sep: "-"
+result: (( replace("foobar","o", |m|->m[0] sep m[0]) ))
+`)
+				resolved := parseYAML(`
+---
+sep: "-"
+result: fo-oo-obar
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("regexps", func() {
+			It("replaces unlimited", func() {
+				source := parseYAML(`
+---
+result: (( replace_match("foobaro","o+", "u") ))
+`)
+				resolved := parseYAML(`
+---
+result: fubaru
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("replaces empty match", func() {
+				source := parseYAML(`
+---
+result: (( replace_match("foobar","o*", "u") ))
+`)
+				resolved := parseYAML(`
+---
+result: ufubuauru
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("replaces limited", func() {
+				source := parseYAML(`
+---
+result: (( replace_match("foobaro","o+", "u", 1) ))
+`)
+				resolved := parseYAML(`
+---
+result: fubaro
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("replaces with placeholder", func() {
+				source := parseYAML(`
+---
+result: (( replace_match("fooobar","o(o*)", "${0}-${1}") ))
+`)
+				resolved := parseYAML(`
+---
+result: fooo-oobar
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("replaces with lambda", func() {
+				source := parseYAML(`
+---
+sep: "-"
+result: (( replace_match("fooobar","o(o*)", |m|->join(sep,m)) ))
+`)
+				resolved := parseYAML(`
+---
+sep: "-"
+result: fooo-oobar
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
 	})
 
@@ -4220,6 +4541,187 @@ map:
 mapped:
   - alice25
   - bob24
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("for a map to a map", func() {
+			It("maps simple expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+mapped: (( map{map|x|->x} ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+mapped:
+  alice: 25
+  bob: 24
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("filters empty expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: ~
+mapped: (( map{map|x|->x} ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: ~
+mapped:
+  alice: 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("maps value expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+mapped: (( map{map|y,x|->x + length(y)} ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+mapped:
+  alice: 30
+  bob: 27
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("for a selection of map entries", func() {
+			It("maps simple expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+mapped: (( select{map|x|->x > 24} ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+mapped:
+  alice: 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("filters empty expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: ~
+mapped: (( select{map|x|->x} ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: ~
+mapped:
+  alice: 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("for a list selection of map entries", func() {
+			It("maps simple expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+mapped: (( select[map|x|->x > 24] ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 24
+mapped:
+  - 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("filters empty expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: ~
+mapped: (( select[map|x|->x] ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: ~
+mapped:
+  - 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("for a list selection of list entries", func() {
+			It("maps simple expression", func() {
+				source := parseYAML(`
+---
+list:
+  - 25
+  - 24
+mapped: (( select[list|x|->x > 24] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - 25
+  - 24
+mapped:
+  - 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("filters empty expression", func() {
+				source := parseYAML(`
+---
+list:
+  - 25
+  - ~
+mapped: (( select[list|x|->x] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - 25
+  - ~
+mapped:
+  - 25
 `)
 				Expect(source).To(FlowAs(resolved))
 			})
@@ -5336,6 +5838,20 @@ foo:
 			Expect(source).To(FlowAs(resolved))
 		})
 
+		It("checks for ~~ value", func() {
+			source := parseYAML(`
+---
+foo: (( ~~ || "not set" ))
+`)
+
+			resolved := parseYAML(`
+---
+foo: not set
+`)
+
+			Expect(source).To(FlowAs(resolved))
+		})
+
 		It("meets docu", func() {
 			source := parseYAML(`
 ---
@@ -5460,6 +5976,98 @@ data:
 			})
 		})
 
+		Context("for range literal", func() {
+			It("handles positive increasing indices", func() {
+				source := parseYAML(`
+---
+value: (( [1..3] ))
+`)
+				resolved := parseYAML(`
+---
+value:
+  - 1
+  - 2
+  - 3
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handled mixed increasing indices", func() {
+				source := parseYAML(`
+---
+value: (( [-1..1] ))
+`)
+				resolved := parseYAML(`
+---
+value:
+  - -1
+  - 0
+  - 1
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("handled mixed decreasing indices", func() {
+				source := parseYAML(`
+---
+value: (( [1..-1] ))
+`)
+				resolved := parseYAML(`
+---
+value:
+  - 1
+  - 0
+  - -1
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("for direct index", func() {
+			It("it extracts a non-negative index", func() {
+				source := parseYAML(`
+---
+value: (( data.[1] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value: b
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it extracts a negative index", func() {
+				source := parseYAML(`
+---
+value: (( data.[-1] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value: c
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
 		Context("for range index", func() {
 			It("it extracts a slice for non-negative range", func() {
 				source := parseYAML(`
@@ -5510,6 +6118,54 @@ data:
 				Expect(source).To(FlowAs(resolved))
 			})
 
+			It("it extracts a slice for non-negative start range", func() {
+				source := parseYAML(`
+---
+value: (( data.[1..] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value:
+  - b
+  - c
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it extracts a slice for non-negative end range", func() {
+				source := parseYAML(`
+---
+value: (( data.[..1] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value:
+  - a
+  - b
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
 			It("it extracts a slice for negative range", func() {
 				source := parseYAML(`
 ---
@@ -5538,6 +6194,54 @@ data:
 				source := parseYAML(`
 ---
 value: (( data.[-3..-1] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value:
+  - a
+  - b
+  - c
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it extracts a slice for negative start range", func() {
+				source := parseYAML(`
+---
+value: (( data.[-1..] ))
+
+data:
+  - a
+  - b
+  - c
+`)
+				resolved := parseYAML(`
+---
+value:
+  - c
+
+data:
+  - a
+  - b
+  - c
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it extracts a slice for negative end range", func() {
+				source := parseYAML(`
+---
+value: (( data.[..-1] ))
 
 data:
   - a
@@ -5940,6 +6644,147 @@ next: 10.1.2.32/28
 		})
 	})
 
+	Describe("when requesting no merge", func() {
+		It("keeps map", func() {
+			source := parseYAML(`
+---
+map:
+  <<: (( merge none ))
+  value: not merged
+`)
+			stub := parseYAML(`
+---
+map:
+  value: merged
+`)
+
+			resolved := parseYAML(`
+---
+map:
+  value: not merged
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("keeps lists", func() {
+			source := parseYAML(`
+---
+list:
+  - <<: (( merge none ))
+  - name: alice
+    value: not merged
+`)
+			stub := parseYAML(`
+---
+list:
+  - name: alice
+    value: merged
+`)
+
+			resolved := parseYAML(`
+---
+list:
+  - name: alice
+    value: not merged
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("keeps values", func() {
+			source := parseYAML(`
+---
+value: (( merge none // "not merged" ))
+`)
+			stub := parseYAML(`
+---
+value: merged
+`)
+
+			resolved := parseYAML(`
+---
+value: not merged
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("is aggregatable", func() {
+			source := parseYAML(`
+---
+map:
+  <<: (( merge none ))
+  value: (( "alice and " stub() ))
+`)
+			stub := parseYAML(`
+---
+map:
+  value: bob
+`)
+
+			resolved := parseYAML(`
+---
+map:
+  value: alice and bob
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("keeps deep map", func() {
+			source := parseYAML(`
+---
+map:
+  <<: (( merge none ))
+  nested:
+     foo: not merged
+`)
+			stub := parseYAML(`
+---
+map:
+  nested:
+    foo: merged
+`)
+
+			resolved := parseYAML(`
+---
+map:
+  nested:
+     foo: not merged
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("restarts deep map", func() {
+			source := parseYAML(`
+---
+map:
+  <<: (( merge none ))
+  nested:
+     foo: not merged
+     bar:
+      <<: (( merge map.nested.bar ))
+      bar: not merged
+`)
+			stub := parseYAML(`
+---
+map:
+  nested:
+    foo: merged
+    bar: 
+      bar: merged
+`)
+
+			resolved := parseYAML(`
+---
+map:
+  nested:
+     foo: not merged
+     bar:
+       bar: merged
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+	})
+
 	Describe("regression test for fixed errors", func() {
 		It("nexted expressions for template markers", func() {
 			source := parseYAML(`
@@ -5971,9 +6816,61 @@ value: dGVzdA==
 `)
 				Expect(source).To(FlowAs(resolved))
 			})
+
+			It("it encodes a string with limit", func() {
+				source := parseYAML(`
+---
+value: (( base64("alice+bob", 5 ) ))
+`)
+				resolved := parseYAML(`
+---
+value: |-
+  YWxpY
+  2UrYm
+  9i
+
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it encodes a string with limit string", func() {
+				source := parseYAML(`
+---
+value: (( base64("alice+bob", "5" ) ))
+`)
+				resolved := parseYAML(`
+---
+value: |-
+  YWxpY
+  2UrYm
+  9i
+
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
 		Context("doing decoding", func() {
 			It("it decodes a string", func() {
+				source := parseYAML(`
+---
+data: |-
+  YWxpY
+  2UrYm
+  9i
+value: (( base64_decode(data) ))
+`)
+				resolved := parseYAML(`
+---
+data: |-
+  YWxpY
+  2UrYm
+  9i
+value: alice+bob
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it decodes a multi-line string", func() {
 				source := parseYAML(`
 ---
 value: (( base64_decode("dGVzdA==") ))
@@ -5987,15 +6884,94 @@ value: test
 		})
 	})
 
-	Describe("when calling md5", func() {
-		It("it encodesgenerates md5 hash of a string", func() {
+	Describe("when calling hash", func() {
+		It("it encodesgenerates hashes of a string", func() {
 			source := parseYAML(`
 ---
-value: (( md5("test") ))
+data: alice
+hash:
+  deprecated: (( md5(data) ))
+  md4: (( hash(data,"md4") ))
+  md5: (( hash(data,"md5") ))
+  md5: (( hash(data,"md5") ))
+  sha1: (( hash(data,"sha1") ))
+  sha224: (( hash(data,"sha224") ))
+  sha256: (( hash(data,"sha256") ))
+  sha384: (( hash(data,"sha384") ))
+  sha512: (( hash(data,"sha512") ))
+  sha512_224: (( hash(data,"sha512/224") ))
+  sha512_256: (( hash(data,"sha512/256") ))
 `)
 			resolved := parseYAML(`
 ---
-value: 098f6bcd4621d373cade4e832627b4f6
+data: alice
+hash:
+  deprecated: 6384e2b2184bcbf58eccf10ca7a6563c
+  md4: 616c69636531d6cfe0d16ae931b73c59d7e0c089c0
+  md5: 6384e2b2184bcbf58eccf10ca7a6563c
+  sha1: 522b276a356bdf39013dfabea2cd43e141ecc9e8
+  sha224: 38b7e5d5651aaf85694a7a7c6d5db1275af86a6df93a36b8a4a2e771
+  sha256: 2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90
+  sha384: 96a5353e625adc003a01bdcd9b21b21189bdd9806851829f45b81d3dfc6721ee21f6e0e98c4dd63bc559f66c7a74233a
+  sha512: 408b27d3097eea5a46bf2ab6433a7234a33d5e49957b13ec7acc2ca08e1a13c75272c90c8d3385d47ede5420a7a9623aad817d9f8a70bd100a0acea7400daa59
+  sha512_224: c3b8cfaa37ae15922adf3d21606e3a9836ba2a9d7838b040b7c96fd7
+  sha512_256: ad0a339b08dc090fe3b16eae376f7e162836e8728da9c45466842e19508d7627
+
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling bcrypt", func() {
+		It("it crypts and validates a password", func() {
+			source := parseYAML(`
+---
+value: (( bcrypt_check("test", bcrypt("test", 10)) ))
+`)
+			resolved := parseYAML(`
+---
+value: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling rand", func() {
+		It("it generates a random number in given range", func() {
+			source := parseYAML(`
+---
+value: (( rand(2) < 2  ))
+`)
+			resolved := parseYAML(`
+---
+value: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("it generates a random string of given length", func() {
+			source := parseYAML(`
+---
+value: (( length(rand("[:alnum:]", 10)) == 10  ))
+`)
+			resolved := parseYAML(`
+---
+value: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("it generates a random string of given charset", func() {
+			source := parseYAML(`
+---
+value: (( sort(uniq(split("",rand("a-c", 1000))))  ))
+`)
+			resolved := parseYAML(`
+---
+value:
+  - a
+  - b
+  - c
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
@@ -6071,6 +7047,711 @@ value: s
 `)
 				Expect(source).To(FlowAs(resolved))
 			})
+		})
+	})
+
+	Describe("when calling keys", func() {
+		It("it handles maps", func() {
+			source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 26
+value: (( keys(map) ))
+`)
+			resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 26
+value:
+  - alice
+  - bob
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("yaml and json", func() {
+		Context("parsing", func() {
+			It("it parses json", func() {
+				source := parseYAML(`
+---
+json: |
+    { "alice": 25 }
+
+result: (( parse( json ) ))
+`)
+				resolved := parseYAML(`
+---
+json: |
+    { "alice": 25 }
+result:
+    alice: 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("it transforms json", func() {
+				source := parseYAML(`
+---
+data:
+    alice: 25
+
+result: (( asjson( data ) ))
+`)
+				resolved := parseYAML(`
+---
+data:
+    alice: 25
+result: '{"alice":25}'
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("it transforms yaml", func() {
+				source := parseYAML(`
+---
+data:
+    alice: 25
+
+result: (( asyaml( data ) ))
+`)
+				resolved := parseYAML(`
+---
+data:
+    alice: 25
+result: |+
+    alice: 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+		Context("evaluating", func() {
+			It("it parses template", func() {
+				source := parseYAML(`
+---
+json: |
+    { "alice": 25 }
+
+result: (( parse( json, "template" ) ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+json: |
+    { "alice": 25 }
+result:
+    <<<: (( &template ))
+    alice: 25
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("it parses templates", func() {
+				source := parseYAML(`
+---
+yaml: |
+    { "alice": 25 }
+    ---
+    { "bob": 26 }
+
+result: (( parse( yaml, "templates" ) ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+yaml: |
+    { "alice": 25 }
+    ---
+    { "bob": 26 }
+result:
+  - <<<: (( &template ))
+    alice: 25
+  - <<<: (( &template ))
+    bob: 26
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
+	Describe("catch", func() {
+		Context("failed expressions", func() {
+			It("provide error message", func() {
+				source := parseYAML(`
+---
+fail: (( catch( 1 / 0 ) ))
+`)
+				resolved := parseYAML(`
+---
+fail:
+    error: division by zero
+    valid: false
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+		Context("valid expressions", func() {
+			It("provide value", func() {
+				source := parseYAML(`
+---
+fail: (( catch( 5 * 5 ) ))
+`)
+				resolved := parseYAML(`
+---
+fail:
+    error: ""
+    valid: true
+    value: 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
+	Describe("sync function", func() {
+		Context("succeeded", func() {
+			It("yields value", func() {
+				source := parseYAML(`
+---
+data:
+  alice: 25
+result: (( sync( data, defined(value.alice), value.alice) ))
+`)
+				resolved := parseYAML(`
+---
+data:
+  alice: 25
+result: 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+		Context("timeout", func() {
+			It("stops for succeeded evaluation", func() {
+				source := parseYAML(`
+---
+data:
+  alice: 25
+result: (( catch(sync( data, defined(value.bob), value.bob, 1)) ))
+`)
+				resolved := parseYAML(`
+---
+data:
+  alice: 25
+result:
+  error: sync timeout reached
+  valid: false
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("stops for failed evaluation", func() {
+				source := parseYAML(`
+---
+data:
+  alice: 25
+result: (( catch(sync( data.bob, defined(value.bob), value.bob, 1)) ))
+`)
+				resolved := parseYAML(`
+---
+data:
+  alice: 25
+result:
+  error: "'data.bob' not found"
+  valid: false
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
+	Describe("sync expr", func() {
+		Context("succeeded", func() {
+			It("yields value", func() {
+				source := parseYAML(`
+---
+data:
+  alice: 25
+result: (( sync[data|v|->defined(v.alice), v.alice] ))
+`)
+				resolved := parseYAML(`
+---
+data:
+  alice: 25
+result: 25
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+		Context("timeout", func() {
+			It("stops for succeeded evaluation", func() {
+				source := parseYAML(`
+---
+data:
+  alice: 25
+result: (( catch[sync[ data|v,e|-> defined(v.bob), v.bob| 1]|v,e|->e] ))
+`)
+				resolved := parseYAML(`
+---
+data:
+  alice: 25
+result: sync timeout reached
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("stops for failed evaluation", func() {
+				source := parseYAML(`
+---
+data:
+  alice: 25
+result: (( catch[sync[data.bob|v|->defined(v.bob)|v|->v.bob| 1]|v,e|->e] ))
+`)
+				resolved := parseYAML(`
+---
+data:
+  alice: 25
+result: "'data.bob' not found"
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
+	Describe("scoped expressions", func() {
+		Context("in normal expressions", func() {
+			It("accepts empty scopes", func() {
+				source := parseYAML(`
+---
+alice: 1
+bob: 2
+scoped: (( () alice + bob ))
+`)
+				resolved := parseYAML(`
+---
+alice: 1
+bob: 2
+scoped: 3
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("resolve scope fields", func() {
+				source := parseYAML(`
+---
+alice: 1
+bob: 2
+scoped: (( ( $alice = 25, "bob" = 26 ) alice + bob ))
+`)
+				resolved := parseYAML(`
+---
+alice: 1
+bob: 2
+scoped: 51
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+		Context("in template expressions", func() {
+			It("resolve scope fields in map templates", func() {
+				source := parseYAML(`
+---
+alice: 1
+template:
+  <<: (( &template ))
+  sum: (( alice + bob ))
+scoped: (( ( $alice = 25, "bob" = 26 ) *template ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+alice: 1
+template:
+  <<: (( &template ))
+  sum: (( alice + bob ))
+scoped:
+  sum: 51
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("resolve scope fields in value templates", func() {
+				source := parseYAML(`
+---
+alice: 1
+template: (( &template ( alice + bob ) ))
+scoped: (( ( $alice = 25, "bob" = 26 ) *template ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+alice: 1
+template: (( &template ( alice + bob ) ))
+scoped: 51
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("resolve scope fields in list templates", func() {
+				source := parseYAML(`
+---
+alice: 1
+template: 
+ - <<: (( &template ))
+ - (( alice + bob ))
+scoped: (( ( $alice = 25, "bob" = 26 ) *template ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+alice: 1
+template:
+template: 
+ - <<: (( &template ))
+ - (( alice + bob ))
+scoped:
+  - 51
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("resolve flowed scope fields in map templates", func() {
+				source := parseYAML(`
+---
+spec:
+  local: (( zzz.value ))
+  templ:
+    <<: (( &template ))
+    value: (( _.local ))
+
+inst:
+  inst: (( *spec.templ ))
+
+zzz:
+  value: "alice"
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+spec:
+  local: (( zzz.value ))
+  templ:
+    <<: (( &template ))
+    value: (( _.local ))
+
+inst:
+  inst:
+    value: alice
+
+zzz:
+  value: "alice"
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("resolve flowed scope fields in map templates", func() {
+				source := parseYAML(`
+---
+spec:
+  local: (( zzz.value ))
+  templ:
+    - <<: (( &template ))
+    - value: (( _.local ))
+
+inst:
+  inst: (( *spec.templ ))
+
+zzz:
+  value: "alice"
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+spec:
+  local: (( zzz.value ))
+  templ:
+    - <<: (( &template ))
+    - value: (( _.local ))
+
+inst:
+  inst:
+    - value: alice
+
+zzz:
+  value: "alice"
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("resolve flowed scope fields in map templates", func() {
+				source := parseYAML(`
+---
+spec:
+  local: (( zzz.value ))
+  templ: (( &template(_.local) ))
+
+inst:
+  inst: (( *spec.templ ))
+
+zzz:
+  value: "alice"
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+spec:
+  local: (( zzz.value ))
+  templ: (( &template(_.local) ))
+
+inst:
+  inst: alice
+
+zzz:
+  value: "alice"
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
+	Describe("temp_file and read", func() {
+		It("cleans temp marker", func() {
+			source := parseYAML(`
+---
+data: alice
+read: (( read(tempfile(data)) ))
+`)
+			resolved := parseYAML(`
+---
+data: alice
+read: alice
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("node scope", func() {
+		Context("in expressions", func() {
+			It("finds node local direct entry", func() {
+				source := parseYAML(`
+---
+bob: root
+data:
+  foo: (( ($bob="local") __.bob ))
+  bob: static
+`)
+				resolved := parseYAML(`
+---
+bob: root
+data:
+  foo: static
+  bob: static
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("finds node local upper entry", func() {
+				source := parseYAML(`
+---
+bob: root
+data:
+  foo: (( ($bob="local") __.bob ))
+`)
+				resolved := parseYAML(`
+---
+bob: root
+data:
+  foo: root
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("in templates", func() {
+			It("finds node local direct entry", func() {
+				source := parseYAML(`
+---
+templates:
+  <<: (( &temporary ))
+  templ:
+    <<: (( &template ))
+    bob: root
+    data:
+      foo: (( ($bob="local") __.bob ))
+      bob: static
+result: (( *templates.templ ))
+`)
+				resolved := parseYAML(`
+---
+result:
+  bob: root
+  data:
+    foo: static
+    bob: static
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("finds node local upper entry", func() {
+				source := parseYAML(`
+---
+templates:
+  <<: (( &temporary ))
+  templ:
+    <<: (( &template ))
+    bob: root
+    data:
+      foo: (( ($bob="local") __.bob ))
+result: (( *templates.templ ))
+`)
+				resolved := parseYAML(`
+---
+result:
+  bob: root
+  data:
+    foo: root
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
+	Describe("x509 expressions", func() {
+		Context("certs and keys", func() {
+			It("parses created certs", func() {
+				source := parseYAML(`
+---
+data:
+  <<: (( &temporary ))
+  spec:
+    commonName: test
+    organization: org
+    validity: 100
+    isCA: true
+    privateKey: (( gen.key ))
+    hosts:
+      - localhost
+      - 127.0.0.1
+  
+    usage:
+     - ServerAuth
+     - ClientAuth
+     - CertSign
+  
+  gen:
+    key: (( x509genkey() ))
+    cert: (( x509cert(spec) ))
+  cert: (( x509parsecert(gen.cert) ))
+
+value:
+  commonName: (( data.cert.commonName ))
+  organization: (( data.cert.organization ))
+  validity: (( data.cert.validity ))
+  isCA: (( data.cert.isCA ))
+  public: (( data.cert.publicKey == x509publickey(data.gen.key) ))
+  hosts: (( data.cert.hosts ))
+  dnsNames: (( data.cert.dnsNames ))
+  ipAddresses:  (( data.cert.ipAddresses ))
+    
+`)
+				resolved := parseYAML(`
+---
+value:
+  commonName: test
+  organization:
+  - org
+  validity: 99
+  isCA: true
+  public: true
+  dnsNames:
+    - localhost
+  ipAddresses:
+    - 127.0.0.1
+  hosts:
+    - 127.0.0.1
+    - localhost
+    
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
+	Describe("encryption", func() {
+		It("encrypts strings", func() {
+			source := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+encrypted: (( &temporary(encrypt("spiff is a cool tool", password)) ))
+decrypted: (( decrypt(encrypted, password) ))
+    
+`)
+			resolved := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+decrypted: spiff is a cool tool
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("encrypts ints", func() {
+			source := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+encrypted: (( &temporary(encrypt(20, password)) ))
+decrypted: (( decrypt(encrypted, password) ))
+    
+`)
+			resolved := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+decrypted: 20
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("encrypts maps", func() {
+			source := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+value:
+  alice: 25
+  bob: 26
+encrypted: (( &temporary(encrypt(value, password)) ))
+decrypted: (( decrypt(encrypted, password) ))
+    
+`)
+			resolved := parseYAML(`
+---
+value:
+  alice: 25
+  bob: 26
+password: this a very secret secret and may never be exposed to unauthorized people
+decrypted: 
+  alice: 25
+  bob: 26
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("encrypts templates", func() {
+			source := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+value:
+  <<: (( &template &temporary ))
+  alice: 25
+  bob: 26
+encrypted: (( &temporary(encrypt(value, password)) ))
+decrypted: (( asyaml(decrypt(encrypted, password)) == asyaml(value) ))
+    
+`)
+			resolved := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+decrypted: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("encrypts lambdas", func() {
+			source := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+value: (( &temporary(|x|-> x + 1) ))
+encrypted: (( &temporary(encrypt(value, password)) ))
+decrypted: (( asyaml(decrypt(encrypted, password)) == asyaml(value)))
+    
+`)
+			resolved := parseYAML(`
+---
+password: this a very secret secret and may never be exposed to unauthorized people
+decrypted: true
+`)
+			Expect(source).To(FlowAs(resolved))
 		})
 	})
 })

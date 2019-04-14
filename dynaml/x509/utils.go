@@ -30,6 +30,8 @@ func publicKey(priv interface{}) interface{} {
 		return &k.PublicKey
 	case *ecdsa.PrivateKey:
 		return &k.PublicKey
+	case *x509.Certificate:
+		return k.PublicKey
 	default:
 		return nil
 	}
@@ -70,7 +72,7 @@ func pemBlockForPublicKey(priv interface{}) *pem.Block {
 func ParsePublicKey(data string) (interface{}, error) {
 	block, _ := pem.Decode([]byte(data))
 	if block == nil {
-		return nil, fmt.Errorf("invalid private key format (expected pem block)")
+		return nil, fmt.Errorf("invalid public key format (expected pem block)")
 	}
 	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
@@ -149,6 +151,28 @@ func (this _keyUsage) String() string {
 	}
 }
 
+var _keyUsages = []x509.KeyUsage{
+	x509.KeyUsageDigitalSignature,
+	x509.KeyUsageContentCommitment,
+	x509.KeyUsageKeyEncipherment,
+	x509.KeyUsageDataEncipherment,
+	x509.KeyUsageKeyAgreement,
+	x509.KeyUsageCertSign,
+	x509.KeyUsageCRLSign,
+	x509.KeyUsageEncipherOnly,
+	x509.KeyUsageDecipherOnly,
+}
+
+func KeyUsages(usages x509.KeyUsage) []string {
+	result := []string{}
+	for _, u := range _keyUsages {
+		if usages&u != 0 {
+			result = append(result, (_keyUsage(u)).String())
+		}
+	}
+	return result
+}
+
 type _extKeyUsage x509.ExtKeyUsage
 
 func (this _extKeyUsage) AddTo(cert *x509.Certificate) {
@@ -193,6 +217,14 @@ func (this _extKeyUsage) String() string {
 	default:
 		return "UnknownExtKeyUsage"
 	}
+}
+
+func ExtKeyUsages(usages []x509.ExtKeyUsage) []string {
+	result := []string{}
+	for _, u := range usages {
+		result = append(result, (_extKeyUsage(u)).String())
+	}
+	return result
 }
 
 func ParseKeyUsage(name string) KeyUsage {

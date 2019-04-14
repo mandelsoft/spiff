@@ -26,8 +26,8 @@ resource:
   description: (( "This document describes a " name " located at " url ))
 ```
 
-Hybrid mean that the template processing is not restricted to the template itself. Additionally
-*spiff* is able to merge the template with information from additional yaml files, so-called stubs, that again may contain template expressions.
+spiff is a command line tool and declarative YAML templating system, specially designed for generating deployment
+manifests (for example BOSH or [kubernetes](https://github.com/kubernetes) manifests).
 
 Contents:
 - [Installation](#installation)
@@ -40,6 +40,7 @@ Contents:
 	- [(( "foo" ))](#-foo--1)
 	- [(( [ 1, 2, 3 ] ))](#--1-2-3--)
 	- [(( { "alice" = 25 } ))](#--alice--25--)
+	- [(( ( "alice" = 25 ) alice ))](#--alice--25---alice-)
 	- [(( foo bar ))](#-foo-bar-)
 		- [(( "foo" bar ))](#-foo-bar--1)
 		- [(( [1,2] bar ))](#-12-bar-)
@@ -59,6 +60,7 @@ Contents:
 		- [<<: (( merge foo ))](#--merge-foo-)
 			- [merging maps](#merging-maps-3)
 			- [merging lists](#merging-lists-3)
+		- [<<: (( merge none ))](#--merge-none-)
 	- [(( a || b ))](#-a--b-)
 	- [(( 1 + 2 * foo ))](#-1--2--foo-)
 	- [(( "10.10.10.10" - 11 ))](#-10101010---11-)
@@ -76,36 +78,59 @@ Contents:
 		- [(( contains(list, "foobar") ))](#-containslist-foobar-)
 		- [(( index(list, "foobar") ))](#-indexlist-foobar-)
 		- [(( lastindex(list, "foobar") ))](#-lastindexlist-foobar-)
+		- [(( sort(list) ))](#-sortlist-)
 		- [(( replace(string, "foo", "bar") ))](#-replacestring-foo-bar-)
 		- [(( substr(string, 1, 3) ))](#-substrstring-1-3-)
 		- [(( match("(f.*)(b.*)", "xxxfoobar") ))](#-matchfb-xxxfoobar-)
+		- [(( keys(map) ))](#-keysmap-)
 		- [(( length(list) ))](#-lengthlist-)
 		- [(( base64(string) ))](#-base64string-)
-		- [(( md5(string) ))](#-md5string-)
+		- [(( hash(string) ))](#-hashstring-)
+		- [(( bcrypt("password", 10) ))](#-bcryptpassword-10-)
+		- [(( bcrypt_check("password", hash) ))](#-bcrypt_checkpassword-hash-)
+		- [(( decrypt("secret") ))](#-decryptsecret-)
+		- [(( rand("[:alnum:]", 10) ))](#-randalnum-10-)
+		- [(( type(foobar) ))](#-typefoobar-)
 		- [(( defined(foobar) ))](#-definedfoobar-)
 		- [(( valid(foobar) ))](#-validfoobar-)
 		- [(( require(foobar) ))](#-requirefoobar-)
 		- [(( stub(foo.bar) ))](#-stubfoobar-)
-		- [(( exec( "command", arg1, arg2) ))](#-exec-command-arg1-arg2-)
-		- [(( eval( foo "." bar ) ))](#-eval-foo--bar--)
-		- [(( env( "HOME" ) ))](#-env-HOME--)
-		- [(( read("file.yml") ))](#-readfileyml-)
+		- [(( eval(foo "." bar ) ))](#-evalfoo--bar--)
+		- [(( env( HOME" ) ))](#-envHOME--)
 		- [(( static_ips(0, 1, 3) ))](#-static_ips0-1-3-)
 		- [(( ipset(ranges, 3, 3,4,5,6) ))](#-ipsetranges-3-3456-)
 		- [(( list_to_map(list, "key") ))](#-list_to_maplist-key-)
 		- [(( makemap(fieldlist) ))](#-makemapfieldlist-)
 		- [(( makemap(key, value) ))](#-makemapkey-value-)
 		- [(( merge(map1, map2) ))](#-mergemap1-map2-)
+		- [(( parse(yamlorjson) ))](#-parseyamlorjson-)
+		- [(( asjson(expr) ))](#-asjsonexpr-)
+		- [(( asyaml(expr) ))](#-asjsonexpr-)
+		- [(( catch(expr) ))](#-catchexpr-)
+		- [(( validate(value,"dnsdomain") ))](#-validatevaluednsdomain-)
+		- [Accessing External Content](#accessing-external-content)
+		    - [(( read("file.yml") ))](#-readfileyml-)
+		    - [(( exec("command", arg1, arg2) ))](#-execcommand-arg1-arg2-)
+            - [(( pipe(data, "command", arg1, arg2) ))](#-pipedata-command-arg1-arg2-)
+		    - [(( write("file.yml", data) ))](#-writefileyml-data-)
+		    - [(( tempfile("file.yml", data) ))](#-tempfilefileyml-data-)
+		    - [(( lookup_file("file.yml", data) ))](#-lookup_filefileyml-list-)
+		    - [(( list_files(".") ))](#-list_files-)
+		    - [(( archive(files, "tar") ))](#-archivefiles-tar-)
 		- [X509 Functions](#x509-functions)
 		    - [(( x509genkey(spec) ))](#-x509genkeyspec-)
 		    - [(( x509publickey(key) ))](#-x509publickeykey-)
 		    - [(( x509cert(spec) ))](#-x509certspec-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
-	- [(( &temporary ))](#-temporary-)
+	- [(( catch[expr|v,e|->v] ))](#-catchexprve-v-)
+	- [(( sync[expr|v,e|->defined(v.field),v.field|10] ))](#-syncexprve-definedvfieldvfield10-)
 	- [Mappings](#mappings)
 		- [(( map[list|elem|->dynaml-expr] ))](#-maplistelem-dynaml-expr-)
 		- [(( map[list|idx,elem|->dynaml-expr] ))](#-maplistidxelem-dynaml-expr-)
 		- [(( map[map|key,value|->dynaml-expr] ))](#-mapmapkeyvalue-dynaml-expr-)
+		- [(( map{map|elem|->dynaml-expr} ))](#-mapmapelem-dynaml-expr-)
+		- [(( select[expr|elem|->dynaml-expr] ))](#-selectexprelem-dynaml-expr-)
+		- [(( select{map|elem|->dynaml-expr} ))](#-selectmapelem-dynaml-expr-)
 	- [Aggregations](#aggregations)
 		- [(( sum[list|initial|sum,elem|->dynaml-expr] ))](#-sumlistinitialsumelem-dynaml-expr-)
 		- [(( sum[list|initial|sum,idx,elem|->dynaml-expr] ))](#-sumlistinitialsumidxelem-dynaml-expr-)
@@ -113,9 +138,18 @@ Contents:
 	- [Projections](#projections)
 	    - [(( expr.[*].value ))](#-exprvalue-)
 		- [(( list.[1..2].value ))](#-list12value-)
+	- [Markers](#markers)
+	    - [(( &temporary ))](#-temporary-)
+	    - [(( &local ))](#-local-)
+    	- [(( &inject ))](#-inject-)
+    	- [(( &state ))](#-state-)
 	- [Templates](#templates)
 		- [<<: (( &template ))](#--template-)
 		- [(( *foo.bar ))](#-foobar-)
+	- [Scope References](#scope-references)
+	    - [_](#_)
+	    - [__](#__)
+	    - [__ctx.OUTER](#__ctxouter)
 	- [Special Literals](#special-literals)
 	- [Access to evaluation context](#access-to-evaluation-context)
 	- [Operation Priorities](#operation-priorities)
@@ -145,10 +179,6 @@ Example:
 spiff merge cf-release/templates/cf-deployment.yml my-cloud-stub.yml
 ```
 
-The ` merge` command offers the option `--partial`. If this option is
-given spiff handles incomplete expression evaluation. All errors are ignored
-and the unresolvable parts of the yaml document are returned as strings.
-
 It is possible to read one file from standard input by using the file
 name `-`. It may be used only once. This allows using spiff as part of a
 pipeline to just process a single stream or to process a stream based on
@@ -160,6 +190,38 @@ Each YAML document will be processed independently with the given stub files.
 The result is the stream of processed documents in the same order.
 For example, this can be used to generate *kubernetes* manifests to be used
 by `kubectl`.
+
+The ` merge` command offers several options:
+
+- The option `--partial`. If this option is
+  given spiff handles incomplete expression evaluation. All errors are ignored
+  and the unresolvable parts of the yaml document are returned as strings.
+  
+- With the option `--json` the output will be in JSON format instead of YAML.
+
+- The Option `--path <path>` can be used to output a nested path, instead of the 
+  the complete processed document.
+  
+- If the output is a list, the option `--split` outputs every list element as
+  separate documen. The _yaml_ format uses as usual `---` as separator line.
+  The _json_ format outputs a sequence of _json_ documents, one per line.
+  
+- With `--select <field path>` is is possible to select a dedicated field of the
+  processed document for the output
+  
+- The option `--state <path>` enables the state support of _spiff_. If the
+  given file exists it is put on top of the configured stub list for the
+  merge processing. Additionally to the output of the processed document
+  it is filtered for nodes marked with the [`&state` marker](#-state-).
+  This filtered document is then stored under the denoted file, saving the old
+  state file with the `.bak` suffix. This can be used together with a manual
+  merging as offered by the [state](libraries/state/README.md) utility library.
+  
+
+The folder [libraries](libraries/README.md) offers some useful
+utility libraries. They can also be used as an example for the power
+of this templating engine.
+
 
 ### `spiff diff manifest.yml other-manifest.yml`
 
@@ -192,6 +254,19 @@ $ bosh deployment deployment.yml
 $ bosh deploy
 ```
 
+### `spiff encrypt secret.yaml`
+
+The `encrypt` sub command can be used to encrypt or decrypt data
+according to the [`encrypt`](#-decryptsecret-) dynaml function.
+The password can be given as second argument or it is taken from the
+environment variable `SPIFF_ENCRYPTION_KEY`. The last argument can be used
+to pass the encryption method (see [`encrypt` function](#-decryptsecret-))
+
+The data is taken from the specified file. If `-` is given, it is read from
+stdin.
+
+If the option `-d` is given, the data is decrypted, otherwise the data is
+read as yaml document and the encrypted result is printed. 
 
 # dynaml Templating Language
 
@@ -202,8 +277,11 @@ Every dynaml node is guaranteed to resolve to a YAML node. It is *not*
 string interpolation. This keeps developers from having to think about how
 a value will render in the resulting template.
 
-A dynaml node appears in the .yml file as an expression surrounded by two
-parentheses. They can be used as the value of a map or an entry in a list.
+A dynaml node appears in the .yml file as a string denoting an expression
+surrounded by two parentheses `(( <dynaml> ))`. They can be used as the
+value of a map or an entry in a list. The expression might span multiple
+lines. In any case the yaml string value *must not* end with a newline
+(for example using `|-`)
 
 The following is a complete list of dynaml expressions:
 
@@ -247,18 +325,21 @@ hi:
 
 ## `(( foo.bar.[1].baz ))`
 
-Look for the nearest 'foo' key, and from there follow through to .bar.baz.
+Look for the nearest 'foo' key, and from there follow through to `.bar.[1].baz`.
 
 A path is a sequence of steps separated by dots. A step is either a word for
-maps, or digits surrounded by brackets for list indexing.
+maps, or digits surrounded by brackets for list indexing. The index might be negative (a minus followed by digits). Negative indices are taken from then end
+of the list (effective index = index + length(list)).
 
-If the path cannot be resolved, this evaluates to nil. A reference node at the
-top level cannot evaluate to nil; the template will be considered not fully
-resolved. If a reference is expected to sometimes not be provided, it should be
-used in combination with '||' (see below) to guarantee resolution.
+A path that cannot be resolved lead to an evaluation error. If a reference is
+expected to sometimes not be provided, it should be
+used in combination with '||' (see [below](#-a--b-)) to guarantee resolution.
 
-Note that references are always within the template, and order does not matter.
-You can refer to another dynamic node and presume it's resolved, and the
+**Note**: The dynaml grammer has been reworked to enable the usual index syntax,
+now. Instead of `foo.bar.[1]` it is possible now to use `foo.bar[1]`.
+
+**Note**: References are always within the template or stub, and order does not
+matter. You can refer to another dynamic node and presume it's resolved, and the
 reference node will just eventually resolve once the dependent node resolves.
 
 e.g.:
@@ -282,7 +363,7 @@ If the path starts with a dot (`.`) the path is always evaluated from the root
 of the document.
 
 List entries consisting of a map with `name` field can directly be addressed
-by their name value.
+by their name value as path component.
 
 e.g.:
 
@@ -295,6 +376,35 @@ list:
 ```
 
 can be referenced by using the path `list.alice.age`, instead of `list[0].age`.
+
+By default a field with name `name` is used as key field. If another field
+should be used as key field, it can be marked in one list entry as key by
+prefixing the field name with the keyword `key:`. This keyword is removed
+from by the processing and will not be part of the final processing result.
+
+e.g.:
+
+```yaml
+list:
+ - key:person: alice
+   age: 25
+
+alice: (( list.alice ))
+```
+
+will be resolved to
+
+```yaml
+list:
+ - person: alice
+   age: 25
+
+alice:
+  person: alice
+  age: 25
+```
+
+This new key field will also be observed during the merging of lists.
 
 ## `(( foo.[bar].baz ))`
 
@@ -315,7 +425,7 @@ properties:
   foo: (( values.[name].bar ))
   values:
     alice:
-	   bar: 42
+      bar: 42
 ```
 
 This will resolve `foo` to the value `42`. The dynamic index may also be at
@@ -337,7 +447,7 @@ properties:
   foo: (( values.[name] ))
   values:
     foo:
-	   bar: 42
+      bar: 42
 ```
 
 resolves `foo` again to the value `42`.
@@ -348,7 +458,7 @@ The slice expression can be used to extract a dedicated sub list from a list
 expression. The range *start* `..` *end* extracts a list of the length
 *end-start+1* with the elements from
 index *start* to *end*. If the start index is negative the slice is taken
-from the end of the list from *length-start* to *length-end*. If the end
+from the end of the list from *length+start* to *length+end*. If the end
 index is lower than the start index, the result is an empty array.
 
 e.g.:
@@ -361,11 +471,16 @@ list:
 foo: (( list.[1..length(list) - 1] ))
 ```
 
+The start or end index might be omitted. It is then selected according to the 
+actual size of the list. Therefore `list.[1..length(list)]` is equivalent
+to `list.[1..]`.
+
 evaluates `foo` to the list `[b,c]`.
 
 ## `(( "foo" ))`
 
-String literal. The only escape character handled currently is '"'.
+String literal. All [json string encodings](https://www.json.org/) are supported
+(for exmple `\n`, `\"` or `\uxxxx`).
 
 ## `(( [ 1, 2, 3 ] ))`
 
@@ -419,6 +534,31 @@ map:
 Another way to compose lists based on expressions are the functions
 [`makemap`](#-makemapkey-value-) and [`list_to_map`](#-list_to_maplist-key-).
 
+## `(( ( "alice" = 25 ) alice ))`
+
+Any expression may be preluded by any number of explicit _scope literals_. A
+scope literal describes a map whose values are available for relative reference 
+resolution of the expression (static scope). 
+
+A scope literal might consist of any number of field assignments separated by a
+comma `,`. The key as well as the value are given by expressions, whereas the
+key expression must evaluate to a string. All expressions are evaluated in the
+next outer scope, this means later settings in a scope _cannot_ use earlier
+settings in the same scope literal. 
+
+e.g.:
+
+```yaml
+scoped: (( ( "alice" = 25, "bob" = 26 ) alice + bob ))
+```
+
+yields
+
+```yaml
+scoped: 51
+```
+
+A field name might also be denoted by a symbol (_`$`name_).
 
 ## `(( foo bar ))`
 
@@ -541,7 +681,12 @@ returning the value from the last stub that provides it.
 
 If the corresponding value is not defined, it will return nil. This then has the
 same semantics as reference expressions; a nil merge is an unresolved template.
-See `||`.
+See [`||`](#-a--b-).
+
+**Note**: Instead of using a `<<:` insert field to place merge expressions it is
+possible now to use `<<<:`, also, which allows to use regular yaml parsers for
+spiff-like yaml documents. `<<:` is kept for backward compatibility.
+
 
 ### `<<: (( merge ))`
 
@@ -867,6 +1012,79 @@ foo:
   - 4
 ```
 
+### `<<: (( merge none ))`
+
+If the reference of an redirecting merge is set to the constant `none`,
+no merge is done at all. This expressions always yields the nil value.
+
+e.g.: for
+
+**template.yml**
+```yaml
+map:
+  <<: (( merge none ))
+  value: notmerged
+```
+
+**values.yml**
+```yaml
+map:
+  value: merged
+```
+
+`spiff merge template.yml values.yml` yields:
+
+```yaml
+map:
+  value: notmerged
+```
+
+This can be used for explicit field merging using the `stub` function
+to access dedicated parts of upstream stubs.
+
+e.g.:
+
+**template.yml**
+```yaml
+map:
+  <<: (( merge none ))
+  value: ((  "alice"  "+" stub(map.value) ))
+```
+
+**values.yml**
+```yaml
+map:
+  value: bob
+```
+
+`spiff merge template.yml values.yml` yields:
+
+```yaml
+test:
+  value: alice+bob
+```
+
+This also works for dedicated fields:
+
+**template.yml**
+```yaml
+map:
+  value: ((  merge none // "alice"  "+" stub() ))
+```
+
+**values.yml**
+```yaml
+map:
+  value: bob
+```
+
+`spiff merge template.yml values.yml` yields:
+
+```yaml
+test:
+  value: alice+bob
+```
+
 ## `(( a || b ))`
 
 Uses a, or b if a cannot be resolved.
@@ -886,6 +1104,9 @@ mything:
 
 This will try to merge in `mything.complicated_structure`, or, if it cannot be
 merged in, use the default specified in `foo.bar`.
+
+The operator `//` additionally checks, whether `a` can be solved to a valid 
+value (not equal `~`).
 
 ## `(( 1 + 2 * foo ))`
 
@@ -994,6 +1215,14 @@ name: (( age > 24 ? foo :bar ))
 
 yields the value `bob` for the property `name`.
 
+An expression is considered to be `false` if it evaluates to
+- the boolean value `false`
+- the integer value 0
+- an empty string, map or list
+
+Otherwise it is considered to be `true`
+
+
 **Remark**
 
 The use of the symbol `:` may collide with the yaml syntax, if the complete expression is not a quoted string value.
@@ -1043,11 +1272,16 @@ yields the string value `bob, foo, bar, alice, 10` for `join`.
 ### `(( split( ",", string) ))`
 
 Split a string for a dedicated separator. The result is a list.
+Instead of a separator string an integer value might be given,
+which splits the give string into list of length limited strings.
+The length is counted in runes, not bytes.
 
 e.g.:
 
 ```yaml
 list: (( split("," "alice, bob") ))
+limited: (( split(4, "1234567890") ))
+
 ```
 
 yields:
@@ -1056,7 +1290,19 @@ yields:
 list:
   - alice
   - ' bob'
+limited:
+  - "1234"
+  - "5678"
+  - "90"
+
 ```
+
+An optional 3rd argument might be specified. It limits the number of returned
+list entries. The value -1 leads to an unlimited list length.
+
+If a [regular expression](https://github.com/google/re2/wiki/Syntax) should
+be used as separator string, the function `split_match` can be used.
+
 
 ### `(( trim(string) ))`
 
@@ -1238,6 +1484,64 @@ yields `3`.
 
 The function `lastindex` works like [`index`](#-indexlist-foobar-) but the index of the last occurence is returned.
 
+### `(( sort(list) ))
+
+The function `sort` can be used to sort integer or string lists. The sort
+operation is stable.
+
+e.g.:
+
+```yaml
+list:
+  - alice
+  - foobar
+  - bob
+
+sorted: (( sort(list) ))
+
+```
+
+yields for `sorted`
+
+```yaml
+- alice
+- bob
+- foobar
+
+```
+
+If other types should be sorted, especially complex types like lists or maps, or
+a different comparison rule is required, a
+compare function can be specified as an optional second argument. The compare
+function must be a lambda expression taking two arguments. The result type
+must be `integer`or `bool`  indicating whether _a_ is less then _b_. If an
+integer is returned it should be
+- negative, if _a<b_
+- zero, if _a==b_ and
+- positive if _a>b_
+
+e.g.:
+
+```yaml
+list:
+  - alice
+  - foobar
+  - bob
+
+sorted: (( sort(list, |a,b|->length(a) < length(b)) ))
+
+```
+
+yields for `sorted`
+
+```yaml
+- bob
+- alice
+- foobar
+
+```
+
+
 ### `(( replace(string, "foo", "bar") ))`
 
 Replace all occurences of a sub string in a string by a replacement string. With an optional
@@ -1250,6 +1554,31 @@ string: (( replace("foobar", "o", "u") ))
 ```
 
 yields `fuubar`.
+
+If a regular expression should be used as search string the function 
+`replace_match` can be used. Here the search string is evaluated as [regular
+expression](https://github.com/google/re2/wiki/Syntax). It may conatain sub expressions.
+These matches can be used in the [replacement string](https://golang.org/pkg/regexp/#Regexp.Expand)
+
+e.g.:
+
+```yaml
+string: (( replace_match("foobar", "(o*)b", "b${1}") ))
+```
+
+yields `fbooar`.
+
+The replacement argument might also be a lambda function. In this case, for
+every match the function is called to determine the replacement value.
+The single input argument is a list of actual sub expression matches.
+
+e.g.:
+
+```yaml
+string: (( replace_match("foobar-barfoo", "(o*)b", |m|->upper(m.[1]) "b" ) ))
+```
+
+yields `fOObar-barfoo`.
 
 ### `(( substr(string, 1, 2) ))`
 
@@ -1276,7 +1605,11 @@ range: ooba
 
 ### `(( match("(f.*)(b.*)", "xxxfoobar") ))`
 
-Returns the match of a regular expression for a given string value. The match is a list of the matched values for the sub expressions contained in the regular expression. Index 0 refers to the match of the complete regular expression. If the string value does not match an empty list is returned.
+Returns the match of a [regular expression](https://github.com/google/re2/wiki/Syntax)
+for a given string value. The match is a list of the matched values for the sub
+expressions contained in the regular expression. Index 0 refers to the match of
+the complete regular expression. If the string value does not match an empty
+list is returned.
 
 e.g.:
 
@@ -1291,6 +1624,30 @@ matches:
 - foobar
 - foo
 - bar
+```
+
+### `(( keys(map) ))`
+
+Determine the sorted list of keys used in a map.
+
+e.g.:
+
+```yaml
+map:
+  alice: 25
+  bob: 25
+keys: (( keys(map) ))
+```
+
+yields:
+
+```yaml
+map:
+  alice: 25
+  bob: 25
+keys:
+  - alice
+  - bob
 ```
 
 ### `(( length(list) ))`
@@ -1333,20 +1690,192 @@ base54: dGVzdA==
 test: test
 ```
 
-### `(( md5(string) ))`
+An optional second argument can be used to specify the maximum line length.
+In this case the result will be multi-line string.
 
-The function `md5` generates an md5 hash for the given string.
+### `(( hash(string) ))`
+
+The function `hash` generates several kinds of hashes for the given string.
+By default as `sha256` hash is generated. An optional second argument specifies
+the hash type. Possible types are `md4`, `md5`, `sha1`, `sha224`, `sha256`, 
+`sha384`, `sha2512`, `sha512/224`or `sha512/256`.
+
+`md5`hashes can still be generated by the deprecated finctio `md5(string)`.
 
 e.g.:
 
 ```yaml
-hash: (( md5("test") ))
+data: alice
+
+hash:
+  deprecated: (( md5(data) ))
+  md4: (( hash(data,"md4") ))
+  md5: (( hash(data,"md5") ))
+  sha1: (( hash(data,"sha1") ))
+  sha224: (( hash(data,"sha224") ))
+  sha256: (( hash(data,"sha256") ))
+  sha384: (( hash(data,"sha384") ))
+  sha512: (( hash(data,"sha512") ))
+  sha512_224: (( hash(data,"sha512/224") ))
+  sha512_256: (( hash(data,"sha512/256") ))
 ```
 
 evaluates to
 
 ```yaml
-hash: 098f6bcd4621d373cade4e832627b4f6
+data: alice
+hash:
+  deprecated: 6384e2b2184bcbf58eccf10ca7a6563c
+  md4: 616c69636531d6cfe0d16ae931b73c59d7e0c089c0
+  md5: 6384e2b2184bcbf58eccf10ca7a6563c
+  sha1: 522b276a356bdf39013dfabea2cd43e141ecc9e8
+  sha224: 38b7e5d5651aaf85694a7a7c6d5db1275af86a6df93a36b8a4a2e771
+  sha256: 2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90
+  sha384: 96a5353e625adc003a01bdcd9b21b21189bdd9806851829f45b81d3dfc6721ee21f6e0e98c4dd63bc559f66c7a74233a
+  sha512: 408b27d3097eea5a46bf2ab6433a7234a33d5e49957b13ec7acc2ca08e1a13c75272c90c8d3385d47ede5420a7a9623aad817d9f8a70bd100a0acea7400daa59
+  sha512_224: c3b8cfaa37ae15922adf3d21606e3a9836ba2a9d7838b040b7c96fd7
+  sha512_256: ad0a339b08dc090fe3b16eae376f7e162836e8728da9c45466842e19508d7627
+```
+
+### `(( bcrypt("password", 10) ))`
+
+The function `bcrypt` generates a bcrypt password hash for the given string
+using the specified cost factor (defaulted to 10, if missing).
+
+e.g.:
+
+```yaml
+hash: (( bcrypt("password", 10) ))
+```
+
+evaluates to
+
+```yaml
+hash: $2a$10$b9RKb8NLuHB.tM9haPD3N.qrCsWrZy8iaCD4/.cCFFCRmWO4h.koe
+```
+
+### `(( bcrypt_check("password", hash) ))`
+
+The function `bcrypt_check` validates a password against a given bcrypt hash.
+
+e.g.:
+
+```yaml
+hash: $2a$10$b9RKb8NLuHB.tM9haPD3N.qrCsWrZy8iaCD4/.cCFFCRmWO4h.koe
+valid: (( bcrypt_check("password", hash) ))
+```
+
+evaluates to
+
+```yaml
+hash: $2a$10$b9RKb8NLuHB.tM9haPD3N.qrCsWrZy8iaCD4/.cCFFCRmWO4h.koe
+valid: true
+```
+
+### `(( decrypt("secret") ))`
+
+This function can be used to store encrypted secrets in a spiff yaml file.
+The processed result will then contain the decrypted value.
+All node types can be encrypted and decrypted, including complete maps and lists.
+
+The password for the decryption can either be given as second argument, or
+(the preferred way) it can be specified by the environment variable
+`SPIFF_ENCRYPTION_KEY`. 
+
+An optional last argument may select the encryption method. The only method
+supported so far is `3DES`. Other methods may be added for dedicated
+spiff versions by using the encryption method registration offered by the spiff
+library.
+
+A value can be encrypted by using the `encrypt("secret")` function.
+
+e.g.:
+
+```yaml
+password: this a very secret secret and may never be exposed to unauthorized people
+encrypted: (( encrypt("spiff is a cool tool", password) ))
+decrypted: (( decrypt(encrypted, password) ))
+```
+
+evaluated to something like
+
+```yaml
+decrypted: spiff is a cool tool
+encrypted: d889f9e4cc7ae13effcbc8bb8cd0c38d1fb2197738444f753c48796d7946083e6639e5a1bf8f77648f2a1ddf37023c65ff57d52d0519d1d92cbcf87d3e263cba
+password: this a very secret secret and may never be exposed to unauthorized people
+```
+
+### `(( rand("[:alnum:]", 10) ))`
+
+The function `rand` generates random values. The first argument 
+decides what kind of values are requested. With no argument it generates
+a positive random number in the `int64` range.
+
+| argument type | result |
+| ------------- | ------ |
+| int | integer value in the range [0,_n_) for positive _n_ and (_n_,0] for negative _n_ |
+| bool | boolean value |
+| string | one rune string, where the rune is in the given character range, any combination of character classes or character ranges usable for [regexp](https://github.com/google/re2/wiki/Syntax) can be used. If an additional length argument is specified the resulting string will have the given length.
+
+e.g.:
+
+```yaml
+int:   (( rand() ))
+int10: (( rand(10) ))
+neg10:   (( rand(-10) ))
+bool: (( rand(true) ))
+string: (( rand("[:alpha:][:digit:]-", 10) ))
+upper: (( rand("A-Z", 10) ))
+punct: (( rand("[:punct:]", 10) ))
+alnum: (( rand("[:alnum:]", 10) ))
+```
+
+evaluates to
+
+```yaml
+int: 8037669378456096839
+int10: 7
+neg10: -5
+bool: true
+string: ghhjAYPMlD
+upper: LBZQFRSURL
+alnum: 0p6KS7EhAj
+punct: '&{;,^])"(#'
+```
+
+### `(( type(foobar) ))`
+
+The function `type` yields a string denoting the type of the given expression.
+
+e.g.:
+
+```yaml
+template:
+  <<: (( &template ))
+  
+types:
+  - int: (( type(1) ))
+  - bool: (( type(true) ))
+  - string: (( type("foobar") ))
+  - list:   (( type([]) ))
+  - map:    (( type({}) ))
+  - lambda: (( type(|x|->x) ))
+  - template: (( type(.template) ))
+  - nil: (( type(~) ))
+  - undef: (( type(~~) ))
+```
+
+evaluates types to
+
+```yaml
+types:
+- int: int
+- bool: bool
+- string: string
+- list: list
+- map: map
+- lambda: lambda
+- template: template
 ```
 
 ### `(( defined(foobar) ))`
@@ -1429,7 +1958,8 @@ alice: default
 
 ### `(( stub(foo.bar) ))`
 
-The function `stub` yields the value of a dedicated field found in the first upstream stub defining it.
+The function `stub` yields the value of a dedicated field found in the first
+upstream stub defining it.
 
 e.g.:
 
@@ -1451,45 +1981,14 @@ evaluates to
 value: foobar
 ```
 
-The argument passed to this function must either be a reference literal or an expression evaluating to a string denoting a reference. If no argument is given, the actual field path is used.
+The argument passed to this function must either be a reference literal or
+an expression evaluating to either a string denoting a reference or a string
+list denoting the list of path elements for the reference.
+If no argument is given, the actual field path is used.
 
 Alternatively the `merge` operation could be used, for example `merge foo.bar`. The difference is that `stub` does not merge, therefore the field will still be merged (with the original path in the document).
 
-
-### `(( exec( "command", arg1, arg2) ))`
-
-Execute a command. Arguments can be any dynaml expressions including reference expressions evaluated to lists or maps. Lists or maps are passed as single arguments containing a yaml document with the given fragment.
-
-The result is determined by parsing the standard output of the command. It might be a yaml document or a single multi-line string or integer value. A yaml document must start with the document prefix `---`. If the command fails the expression is handled as undefined.
-
-e.g.
-
-```yaml
-arg:
-  - a
-  - b
-list: (( exec( "echo", arg ) ))
-string: (( exec( "echo", arg.[0] ) ))
-
-```
-
-yields
-
-```yaml
-arg:
-- a
-- b
-list:
-- a
-- b
-string: a
-```
-
-Alternatively `exec` can be called with a single list argument completely describing the command line.
-
-The same command will be executed once, only, even if it is used in multiple expressions.
-
-### `(( eval( foo "." bar ) ))`
+### `(( eval(foo "." bar ) ))`
 
 Evaluate the evaluation result of a string expression again as dynaml expression. This can, for example, be used to realize indirections.
 
@@ -1517,28 +2016,94 @@ bar: bob
 status: married
 ```
 
-### `(( env( "HOME" ) ))`
+### `(( env("HOME" ) ))`
 
 Read the value of an environment variable whose name is given as dynaml expression. If the environment variable is not set the evaluation fails.
 
 In a second flavor the function `env` accepts multiple arguments and/or list arguments, which are joined to a single list. Every entry in this list is used as name of an environment variable and the result of the function is a map of the given given variables as yaml element. Hereby non-existent environment variables are omitted.
 
-### `(( read("file.yml") ))`
+### `(( parse(yamlorjson) ))`
 
-Read a file and return its content. There is support for two content types: `yaml` files and `text` files.
-If the file suffix is `.yml`, by default the yaml type is used. An optional second parameter can be used
-to explicitly specifiy the desired return type: `yaml` or `text`.
+Parse a yaml or json string and return the content as yaml value. It can therefore be used for
+further dynaml evaluation.
 
-#### yaml documents
+e.g.:
 
-A yaml document will be parsed and the tree is returned. The  elements of the tree can be accessed by regular dynaml expressions.
+```yaml
 
-Additionally the yaml file may again contain dynaml expressions. All included dynaml expressions will be evaluated in the context of the reading expression. This means that the same file included at different places in a yaml document may result in different sub trees, depending on the used dynaml expressions.
+json: |
+   { "alice": 25 }
+result: (( parse( json ).alice ))
+```
 
-If the read type is set to `import`, the file content is read as yaml document and the root node is used to substitute the expression. Potential dynaml expressions contained in the document will not be evaluated with the actual binding of the expression but as it would have been part of the original file.
+yields the value `25` for the field `result`.
 
-#### text documents
-A text document will be returned as single string.
+The function `parse` supports an optional second argument, the _parse mode_.
+Here the same modes are possible as for the [read function](#-readfileyml-).
+The default parsing mode is `import`, the content is just parsed and there is
+no further evaluation during this step.
+
+### `(( asjson(expr) ))`
+
+This function transforms a yaml value given by its argument to a _json_ string.
+The corresponding function `asyaml` yields the yaml value as _yaml document_ string.
+
+e.g.:
+
+```yaml
+data:
+  alice: 25
+
+mapped:
+  json: (( asjson(.data) ))
+  yaml: (( asyaml(.data) ))
+```
+
+resolves to
+
+```yaml
+data:
+  alice: 25
+
+mapped:
+  json: '{"alice":25}'
+  yaml: |+
+    alice: 25
+```
+
+### `(( catch(expr) ))`
+
+This function executes an expression and yields some evaluation info map.
+It always succeeds, even if the expression fails. The map includes the 
+following fields:
+
+| name  | type   | meaning |
+| ----- | ------ | ------- |
+| `valid` | bool   | expression is valid |
+| `error` | string | the error message text of the evaluation |
+| `value` | any    | the value of the expression, if evaluation was successful |
+
+
+e.g.:
+
+```yaml
+data:
+  fail: (( catch(1 / 0) ))
+  valid: (( catch( 5 * 5) ))
+```
+
+resolves to 
+
+```yaml
+data:
+  fail:
+    error: division by zero
+    valid: false
+  valid:
+    error: ""
+    valid: true
+    value: 25
+```
 
 ### `(( static_ips(0, 1, 3) ))`
 
@@ -1889,6 +2454,447 @@ result:
   bob: 100
 ```
 
+Instead of multiple arguments a single list argument can be given. The list
+must contain the maps to be merged.
+
+Nested merges have access to all outer bindings. Relative references are first
+searched in the actual document. If they are not found there all outer bindings
+are used to lookup the reference, from inner to outer bindings. Additionally the
+[context (`__ctx`)](#access-to-evaluation-context) offers a field `OUTER`,
+which is a list of all outer documents of the nested merges, which can be used
+to lookup absolute references.
+
+e.g.:
+
+```yaml
+data:
+  alice:
+    age: 24
+
+template:
+  <<: (( &template ))
+  bob:  25
+  outer1: (( __ctx.OUTER.[0].data )) # absolute access to outer context
+  outer2: (( data.alice.age ))       # relative access to outer binding
+  sum: (( .bob + .outer2 ))
+
+merged: (( merge(template) ))
+```
+
+resolves `merged` to
+
+```yaml
+merged:
+  bob: 25
+  outer1:
+    alice:
+      age: 24
+  outer2: 24
+  sum: 49
+```
+
+### `(( validate(value,"dnsdomain") ))`
+
+The function `validate` validates an expression using a set of validators.
+The first argument is the value to validate and all other arguments are
+validators that must succeed to accept the value. If at least one validator
+fails an appropriate error message is generated that explains the fail reason.
+
+A validator is denoted by a string or a list containing the validator type
+as string and its arguments. A validator can be negated with a preceeding
+`!` in its name.
+
+The following validators are available:
+
+| Type | Arguments | Meaning |
+| ---- | --------- | ------- |
+| `empty` | none | empty list, map or string |
+| `dnsdomain` | none | dns domain name |
+| `wildcarddnsdomain` | none | wildcard dns domain name |
+| `dnslabel` | none | dns label |
+| `dnsname` | none | dns domain or wildcard domain |
+| `ip` | none | ip address |
+| `cidr` | none | cidr | 
+| `publickey` | none | public key in pem format |
+| `privatekey` | none | private key in pem format |
+| `certificate` | none | certificate in pem format |
+| `ca`|  none | certificate for CA |
+| `type`| list of accepted type keys | at least one [type key](#-typefoobar-) must match |
+| `valueset` | list argument with values | possible values |
+| `match` | regular expression | string value matching regular expression |
+| `list` | optional list of entry validators | is list and entries match given validators |
+| `map` | [[ &lt;key validator&gt;, ] &lt;entry validator&gt; ] | is map and keys and entries match given validators |
+| `mapfield` | &lt;field name&gt; [ , &lt;validator&gt;] | required entry in map |
+| `optionalfield` | &lt;field name&gt; [ , &lt;validator&gt;] | optional entry in map |
+| `and` | list of validators | all validators must succeed |
+| `or` | list of validators | at least one validator must succeed |
+| `not` or `!` | validator | negate the validator argument(s) |
+
+If the validation succeeds the value is returned.
+
+e.g.:
+
+```yaml
+dnstarget: (( validate("192.168.42.42", [ "or", "ip", "dnsdomain" ]) ))
+```
+
+evaluates to
+
+```yaml
+dnstarget: 192.168.42.42
+```
+
+If the validation fails an error explaining the failure reason is generated.
+
+e.g.:
+
+```yaml
+dnstarget: (( validate("alice+bob", [ "or", "ip", "dnsdomain" ]) ))
+```
+
+yields the following error:
+
+```
+*condition 1 failed: (is no ip address: alice+bob and is no dns domain: [a DNS-1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')]) 
+```
+
+A validator might also be a lambda expression taking at least one argument and returning
+a boolean value. This way it is possible to provide own validators as part
+of the yaml document.
+
+e.g.:
+
+```yaml
+val: (( validate( 0, |x|-> x > 1 ) ))
+```
+
+If more than one parameter is declared the additional arguments
+must be specified as validator arguments. The first argument is always
+the value to check.
+
+e.g.:
+
+```yaml
+val: (( validate( 0, [|x,m|-> x > m, 5] ) ))
+```
+
+The lambda function may return a list with 1, 2 or 3 elements, also.
+This can be used to provide appropriate messages.
+
+| Index | Meaning |
+| ----- | ------- | 
+| 0 | the first index always is the match result, it must be evaluatable as boolean |
+| 1 | if two elements are given, the second index is the message describing the actual result |
+| 2 | here index 1 decribes the success message and 2 the failure message |
+
+e.g.:
+
+```yaml
+val: (( validate( 6, [|x,m|-> [x > m, "is larger than " m, "is less than or equal to " m], 5] ) ))
+```
+
+Just to mention, the validator specification might be given inline as shown
+in the examples above, but as reference expressions, also. The `and` and `or`
+validators accept deeply nested validator specifications.
+
+e.g.:
+
+```yaml
+dnsrecords:
+   domain: 1.2.3.4
+validator:
+  - map
+  - - or                              # key validator
+    - dnsdomain
+    - wildcarddnsdomain
+  - ip                                # entry validator
+
+val: (( validate( map, validator)  ))
+```
+
+### Accessing External Content
+
+_Spiff_ supports access to content outside of the template and sub files. It is
+possible to read files, execute commands and pipelines. All those functions exist
+in two flavors.
+- A cached flavor executes the operation ones and caches the result
+  for subsequent identical operations. This speeds up the processing, especially
+  for command executions.
+- If the result evolves over time, it might be useful to always get the latest 
+  content. This is the case if the [`sync`](#-syncexpr-condition.value-10-) 
+  function is used, which is intended to synchronize the template processing
+  with a dedicate state (provided by external content). Here the caching 
+  operations would not be useful, therefore there is a second uncached flavor.
+  Every function is available with the suffix `_uncached` (for example 
+  `read_uncached()`)
+
+#### `(( read("file.yml") ))`
+
+Read a file and return its content. There is support for three content types:
+`yaml` files,`text` files and `binary` files. Reading in binary mode will
+result in a base64 encoded multi-line string.
+
+If the file suffix is `.yml`, `.yaml` or `.json`,
+by default the yaml type is used. If the file should be read as `text`, this
+type must be explicitly specified.
+In all other cases the default is `text`, therefore reading a binary file
+(for example an archive) urgently requires specifying the `binary` mode.
+  
+An optional second parameter can be used to explicitly specifiy the desired
+return type: `yaml` or `text`. For _yaml_ documents some addtional 
+types are supported: `multiyaml`, `template`, `templates`, `import` and
+`importmulti`.
+
+##### yaml documents
+
+A yaml document will be parsed and the tree is returned. The  elements of the
+tree can be accessed by regular dynaml expressions.
+
+Additionally the yaml file may again contain dynaml expressions. All included
+dynaml expressions will be evaluated in the context of the reading expression.
+This means that the same file included at different places in a yaml document
+may result in different sub trees, depending on the used dynaml expressions.
+
+If is poassible to read a multi-document yaml, also. If the type `multiyaml`
+is given, a list node with the yaml document root nodes is returned.
+
+The yaml or json document can also read as _template_ by specifying the type
+`template`. Here the result will be a template value, that can be used like
+regular inline templates. If `templates` is specified, a multi-document is
+mapped to a list of templates.
+
+If the read type is set to `import`, the file content is read as yaml document
+and the root node is used to substitute the expression. Potential dynaml
+expressions contained in the document will not be evaluated with the actual
+binding of the expression together with the read call,
+but as it would have been part of the original file.
+Therefore this mode can only be used, if there is no further processing
+of the read result or the delivered values are unprocessed.
+
+This can be used together with a chained reference
+ (for examle `(( read(...).selection ))`) to delect a dedicated fragment of
+the imported document. Then, the evaluatio will be done for the selected
+portion, only. Expressions and references in the other parts are not
+evalauted and at all and cannot lead to error.
+
+e.g.: 
+
+**template.yaml**
+
+```yaml
+ages:
+  alice: 25
+
+data: (( read("import.yaml", "import").first ))
+``` 
+
+**import.yaml**
+
+```yaml
+first:
+  age: (( ages.alice ))
+
+second:
+  age: (( ages.bob ))
+```
+
+will not fail, because the `second` section is never evaluated.
+
+This mode should be taken with caution, because it often leads to unexpected
+results.
+
+The read type `importmulti` can be used to import multi document yaml files as a 
+list of nodes.
+
+##### text documents
+
+A text document will be returned as single string.
+
+##### binary documents
+
+It is possible to read binary documents, also. The content cannot be used
+as a string (or yaml document), directly. Therefore the read mode `binary` has
+to be specified. The content is returned as a base64 encoded multi-line string
+value.
+
+#### `(( exec("command", arg1, arg2) ))`
+
+Execute a command. Arguments can be any dynaml expressions including reference expressions evaluated to lists or maps. Lists or maps are passed as single arguments containing a yaml document with the given fragment.
+
+The result is determined by parsing the standard output of the command. It might be a yaml document or a single multi-line string or integer value. A yaml document should start with the document prefix `---`. If the command fails the expression is handled as undefined.
+
+e.g.
+
+```yaml
+arg:
+  - a
+  - b
+list: (( exec( "echo", arg ) ))
+string: (( exec( "echo", arg.[0] ) ))
+
+```
+
+yields
+
+```yaml
+arg:
+- a
+- b
+list:
+- a
+- b
+string: a
+```
+
+Alternatively `exec` can be called with a single list argument completely describing the command line.
+
+The same command will be executed once, only, even if it is used in multiple expressions.
+
+#### `(( pipe(data, "command", arg1, arg2) ))`
+
+Execute a command and feed its standard input with dedicated data. 
+The command argument must be a string. Arguments
+for the command can be any dynaml expressions including reference expressions
+evaluated to lists or maps. Lists or maps are passed as single arguments
+containing a yaml document with the given fragment.
+
+The input stream is generated from the given data. If this is a simple type its
+string representation is used. Otherwise a yaml document is generated from the
+input data. The result is determined by parsing the standard output of the
+command. It might be a yaml document or a single multi-line string or integer
+value. A yaml document should start with the document prefix `---`. If
+the command fails the expression is handled as undefined.
+
+e.g.
+
+```yaml
+data:
+  - a
+  - b
+list: (( pipe( data, "tr", "a", "z") ))
+```
+
+yields
+
+```yaml
+arg:
+- a
+- b
+list:
+- z
+- b
+```
+
+Alternatively `pipe` can be called with data and a list argument completely describing the command line.
+
+The same command will be executed once, only, even if it is used in multiple expressions.
+
+#### `(( write("file.yml", data) ))`
+
+Write a file and return its content. If the result can be parsed as yaml document,
+the document is returned. An optional 3rd argument can be used to pass the
+write options.
+The option arguments might be an integer denoting file permissions (default is `0644`)
+or a comma separated string with options. Supported options are
+- `binary`: data is base64 decoded before writing
+- _integer_ string: file permissions, a leading `0` is indicating an octal value.
+
+#### `(( tempfile("file.yml", data) ))`
+
+Write a a temporary file and return its path name. An optional 3rd argument can
+be used to pass write options. It basically behavies
+like [`write`](#-writefileyml-data-) 
+
+_Attention_: A temporary file only exists during the merge processing. It will
+be deleted afterwards. 
+
+It can be used, for example, to provide a temporary file argument for the
+[`exec`](#-execcommand-arg1-arg2-) function.
+
+#### `(( lookup_file("file.yml", list) ))`
+
+Lookup a file is a list of directories. The result is a list of existing
+files. With `lookup_dir` it is possible to lookup a directory, instead.
+
+If no existing files can be found the empty list is returned.
+
+It is possible to pass multiple list or string arguments to compose the
+search path.
+
+#### `(( list_files(".") ))`
+
+List files in a directory. The result is a list of existing
+files. With `list_dirs` it is possible to list directories, instead.
+
+#### `(( archive(files, "tar") ))`
+
+Create an archive of the given type (default is `tar`) containing the listed
+files. The result is the base64 encoded archive.
+
+Supported archive types are `tar` and `targz`.
+
+`files` might be a list or map of file entries. In case of a map, the map key
+is used as default for the file path. A file entry is a map with the 
+following fields:
+
+| field | type | meaning |
+|-------|------|---------|
+| `path`| string | optional for maps, the file path in the archive, defaulted by the map key |
+| `mode` | int or int string | file mode or write options. It basically behavies like the option argument for [`write`](#-writefileyml-data-). |
+| `data` | any | file content, yaml will be marshalled as yaml document. If `mode` indicates binary mode, a string value will be base64 decoded. |
+| `base64` | string | base64 encoded binary data |
+
+e.g.:
+
+```yaml
+yaml:
+  alice: 26
+  bob: 27
+
+files:
+  "data/a/test.yaml":
+    data: (( yaml ))
+  "data/b/README.md":
+    data: |+
+      ### Test Docu
+
+      **Note**: This is a test
+
+archive: (( archive(files,"targz") ))
+
+content: (( split("\n", exec_uncached("tar", "-tvf", tempfile(archive,"binary"))) ))
+```
+
+yields:
+
+```yaml
+archive: |-
+  H4sIAAAAAAAA/+zVsQqDMBAG4Mx5igO3gHqJSQS3go7tUHyBqIEKitDEoW9f
+  dLRDh6KlJd/yb8ll+HOd8SY1qbfOJw8zDmQHiIhayjURcZuIQhOeSZlphVwL
+  glwsAXvM8mJ23twJ4qfnbB/3I+I4pmboW1uA0LSZmgJETr89VXCUtf9Neq1O
+  5blKxm6PO972X/FN/7nKVej/EaIogto6D+XUzpQydpm8ZayA+tY76B0YWHYD
+  DV9CEATBf3kGAAD//5NlAmIADAAA
+content:
+- -rw-r--r-- 0/0              22 2019-03-18 09:01 data/a/test.yaml
+- -rw-r--r-- 0/0              41 2019-03-18 09:01 data/b/README.md
+
+files:
+  data/a/test.yaml:
+    data:
+      alice: 26
+      bob: 27
+  data/b/README.md:
+    data: |+
+      ### Test Docu
+
+      **Note**: This is a test
+
+yaml:
+  alice: 26
+  bob: 27
+
+```
+
 ### X509 Functions
 
 spiff supports some useful functions to work with _X509_ certificates and keys.
@@ -2071,6 +3077,83 @@ cacert: |+
     Cyvds9xGtAtmZRvYNI0=
     -----END CERTIFICATE-----
 ```
+#### `(( x509parsecert(cert) ))`
+
+This function parses a certificate given in PEM format and returns a map
+of fields:
+
+| Field Name  | Type | Required | Meaning |
+| ------------| ---- | -------- | ------- |
+| `commonName` | string | optional |  Common Name field of the subject |
+| `organization` | string list | optional |  Organization field of the subject |
+| `country` | string list | optional |  Country field of the subject |
+| `isCA` | bool | always |  CA option of certificate |
+| `usage` | string list | always |  usage keys for the certificate (see below) |
+| `validity` | integer | always |  validity interval in hours |
+| `validFrom` | string | always |  start time in the format "Jan 1 01:22:31 2019" |
+| `validUntil` | string | always |  start time in the format "Jan 1 01:22:31 2019" |
+| `hosts` | string list | optional |  List of DNS names or IP addresses |
+| `dnsNames` | string list | optional |  List of DNS names |
+| `ipAddresses` | string list | optional |  List of IP addresses |
+| `publicKey` | string | always|  public key to generate the certificate for |
+
+e.g.:
+
+```yaml
+data:
+  <<: (( &temporary ))
+  spec:
+    commonName: test
+    organization: org
+    validity: 100
+    isCA: true
+    privateKey: (( gen.key ))
+    hosts:
+      - localhost
+      - 127.0.0.1
+
+    usage:
+     - ServerAuth
+     - ClientAuth
+     - CertSign
+
+  gen:
+    key: (( x509genkey() ))
+    cert: (( x509cert(spec) ))
+
+cert: (( x509parsecert(data.gen.cert) ))
+```
+
+resolves to
+
+```yaml
+cert:
+  commonName: test
+  dnsNames:
+  - localhost
+  hosts:
+  - 127.0.0.1
+  - localhost
+  ipAddresses:
+  - 127.0.0.1
+  isCA: true
+  organization:
+  - org
+  publickey: |+
+    -----BEGIN RSA PUBLIC KEY-----
+    MIIBCgKCAQEA+UIZQUTa/j+WlXC394bccBTltV+Ig3+zB1l4T6Vo36pMBmU4JIkJ
+    ...
+    TCsrEC5ey0cCeFij2FijOJ5kmm4cK8jpkkb6fLeQhFEt1qf+QqgBw3targ3LnZQf
+    uE9t5MIR2X9ycCQSDNBxcuafHSwFrVuy7wIDAQAB
+    -----END RSA PUBLIC KEY-----
+  usage:
+  - CertSign
+  - ServerAuth
+  - ClientAuth
+  validFrom: Mar 11 15:34:36 2019
+  validUntil: Mar 15 19:34:36 2019
+  validity: 99  # yepp, that's right, there has already time passed since the creation
+```
 
 ## `(( lambda |x|->x ":" port ))`
 
@@ -2109,7 +3192,7 @@ mod: lambda|x,y,m|->(lambda m)(x, y) + 3
 value: 6
 ```
 
-A lambda expression might refer to absolute or relative nodes of the actual template. Relative references are evaluated in the context of the function call. Therefore
+A lambda expression might refer to absolute or relative nodes of the actual yaml document of the call. Relative references are evaluated in the context of the function call. Therefore
 
 ```yaml
 lvalue: (( lambda |x,y|->x + y + offset ))
@@ -2121,7 +3204,10 @@ values:
 
 yields `6` for `values.value`.
 
-Besides the specified parameters, there is an implicit name (`_`), that can be used to refer to the function itself. It can be used to define self recursive function. Together with the logical and conditional operators a fibunacci function can be defined:
+Besides the specified parameters, there is an implicit name (`_`), that can be
+used to refer to the function itself. It can be used to define self recursive
+function. Together with the logical and conditional operators a fibunacci
+function can be defined:
 
 ```yaml
 fibonacci: (( lambda |x|-> x <= 0 ? 0 :x == 1 ? 1 :_(x - 2) + _( x - 1 ) ))
@@ -2130,7 +3216,52 @@ value: (( .fibonacci(5) ))
 
 yields the value `8` for the `value` property.
 
-Inner lambda expressions remember the local binding of outer lambda expressions. This can be used to return functions based an arguments of the outer function.
+By default reference expressions in a lambda expression are evaluated in the
+static scope of the lambda dedinition followed by the static yaml scope of the
+caller. Absolute references are always evalated in the document scope of the
+caller.
+
+The name `_` can also be used as an anchor to refer to the static dfinition
+scope of the lambda expression in the yaml document that was used to define
+the lambda function. Those references are always interpreted as relative
+references related to the this static yaml document scope. There is no
+denotation for accessing the root element of this definition scope.
+
+Relative names can be used to access the static 
+definition scope given inside the dynaml expression (outer scope literals and
+parameters of outer lambda parameters)
+
+e.g.:
+
+````yaml
+env:
+  func: (( |x|->[ x, scope, _, _.scope ] ))
+  scope: definition
+
+call:
+   result: (( env.func("arg") ))
+   scope: call
+````
+
+yields the `result` list:
+
+```yaml
+call:
+  result:
+  - arg
+  - call
+  - (( lambda|x|->[x, scope, _, _.scope] ))  # the lambda expression as lambda value
+  - definition
+```
+
+This also works across multiple stubs. The definition context is the stub the
+lambda expression is defined in, even if it is used in stubs down the chain.
+Therefore it is possible to use references in the lambda expression, not visible
+at the caller location, they carry the static yaml document scope of their 
+definition with them.
+
+Inner lambda expressions remember the local binding of outer lambda expressions.
+This can be used to return functions based on arguments of the outer function.
 
 e.g.:
 
@@ -2154,55 +3285,127 @@ value: (( .mult2(3) ))
 
 If a complete expression is a lambda expression the keyword `lambda` can be omitted.
 
-## `(( &temporary ))`
+## `(( catch[expr|v,e|->v] ))`
 
-Maps, lists or simple value nodes can be marked as *temporary*. Temporary nodes are removed from the final output document, but are available during merging and dynaml evaluation.
+This expression evaluates an expression (`expr`) and then
+executes a lambda function with the evaluation state of the expression.
+It always succeeds, even if the expression fails.
+The lambda function may take one or two arguments, the first
+is always the evaluated value (or `nil` in case of an error).
+The optional second argument gets the error message the evaluation of
+the expression failed (or `nil` otherwise)
 
-e.g.:
-
-```yaml
-temp:
-  <<: (( &temporary ))
-  foo: bar
-
-value: (( temp.foo ))
-```
-
-yields:
-
-```yaml
-value: bar
-```
-Adding `- <<: (( &temporary ))` to a list can be used to mark a list as temporary.
-
-The temporary marker can be combined with regular dynaml expressions to tag plain fields. Hereby the
-parenthesised expression is just appended to the marker
+The result of the function is the result of the whole
+expression. If the function fails, the complete expression fails.
 
 e.g.:
 
 ```yaml
 data:
-  alice: (( &temporary ( "bar" ) ))
-  foo: (( alice ))
+  fail: (( catch[1 / 0|v,e|->{$value=v, $error=e}] ))
+  valid: (( catch[5 * 5|v,e|->{$value=v, $error=e}] ))
 ```
 
-yields:
+resolves to 
 
 ```yaml
 data:
-  foo: bar
+  fail:
+    error: division by zero
+    value: null
+  valid:
+    error: null
+    value: 25
 ```
 
-The temporary marker can be combined with the [template marker](#templates) to omit templates from the final output.
+## `(( sync[expr|v,e|->defined(v.field),v.field|10] ))`
 
-The marker `&local` acts similar to `&temporary` but local nodes are always
-removed from a stub directly after resolving dynaml expressions. Such nodes
-are therefore not available for merging.
+If an expression `expr` may return different results for different evaluations,
+it is possible to synchronize the final output with a dedicated condition
+on the expression value. Such an expression could, for example, be an
+uncached `read`, `exec` or `pipe` call.
+
+The second element must evaluate to a lambda value, given by either a
+regular expression or by a lambda literal as shown in the title.
+It may take one or two arguments, the actual value of the value expression
+and optionally an error message in case of a failing evaluation.
+The result of the evaluation of the lamda expression decides whether 
+the state of the evaluation of the value expression is acceptable (`true`)
+or not (`false`).
+
+If the value is accepted, an optional third expression is used to determine
+the final result of the `sync[]` expression. It might be given as an expression
+evaluating to a lambda value, or by a comma separated expression using the
+same binding as the preceeding lambda literal.
+If not given, the value of the synched expression is returned. 
+
+If the value is not acceptable, the evaluation is repeated until a timeout
+applies. The timeout in seconds is given by an optional fourth expression
+(default is 5 min). Either the fourth, or the both, the
+third and the fourth elements may be omitted.
+
+The lambda values might be given as literal, or by expression, leading to the
+following flavors:
+
+- `sync[expr|v,e|->cond,value|10]`
+- `sync[expr|v,e|->cond|valuelambda|10]`
+- `sync[expr|v,e|->cond|v|->value|10]`
+- `sync[expr|condlambda|valuelambda|10]`
+- `sync[expr|condlambda|v|->value|10]`
+
+with or without the timeout expression.
+
+e.g.:
+
+```yaml
+data:
+  alice: 25
+result: (( sync[data|v|->defined(v.alice),v.alice] ))
+```
+
+resolves to 
+
+```yaml
+data:
+  alice: 25
+result: 25
+```
+
+This example is quite useless, because the sync expression is a constant. It
+just demonstrates the usage.
 
 ## Mappings
 
-Mappings are used to produce a new list from the entries of a _list_ or _map_ containing the entries processed by a dynaml expression. The expression is given by a [lambda function](#-lambda-x-x--port-). There are two basic forms of the mapping function: It can be inlined as in `(( map[list|x|->x ":" port] ))`, or it can be determined by a regular dynaml expression evaluating to a lambda function as in `(( map[list|mapping.expression))` (here the mapping is taken from the property `mapping.expression`, which should hold an approriate lambda function).
+Mappings are used to produce a new list from the entries of a _list_ or _map_,
+or a new map from entries of a _map_ containing the entries processed by a
+dynaml expression. The expression is
+given by a [lambda function](#-lambda-x-x--port-). There are two basic forms of
+the mapping function: It can be inlined as in `(( map[list|x|->x ":" port] ))`, 
+or it can be determined by a regular dynaml expression evaluating to a lambda
+function as in `(( map[list|mapping.expression))` (here the mapping is taken
+from the property `mapping.expression`, which should hold an approriate lambda
+function).
 
+The mapping comes in two target flavors: with `[]` or `{}` in the syntax. The first
+flavor always produces a _list_ from the entries of the given source. The
+second one takes only a map source and produces a filtered or transformed _map_.
+
+Additionally the mapping uses three basic mapping behaviours:
+- _transforming the values using the keyword `map`_. Here the result of the lambda
+  function is used as new value to replace the original one. Or
+- _filtering using the keywork `select`_. Here the result of the lambda
+  function is used as a boolean to decide whether the entry should be kept
+  (`true`) or omitted (`false`).
+- _composing_ using the keyword `sum`. Here always the list flavor is used,
+  but the result type and content is completely determined by the parameterization
+  of the statement by successively aggregating one entry after the other into an
+  arbitrary initial value. 
+
+**Note**: The special reference `_` is not set for inlined lambda functions as part of
+the mapping syntax. Therefore the mapping statements (and all other statements using
+inlined lambda functions as part of their syntax) can be used inside regular lambda
+functions without hampering the meaning of this special refrence for the surrounding
+explicit lambda expression.
 
 ### `(( map[list|elem|->dynaml-expr] ))`
 
@@ -2308,6 +3511,89 @@ keys:
 - alice
 - bob
 ```
+
+### `(( map{map|elem|->dynaml-expr} ))`
+
+Using `{}` instead of `[]` in the mapping syntax, the result is again a map
+with the old keys and the new entry values.
+
+```yaml
+persons:
+  alice: 27
+  bob: 26
+older: (( map{persons|x|->x + 1} ) ))
+```
+
+just increments the value of all entries by one in the field `older`:
+
+```yaml
+older:
+  alice: 28
+  bob: 27
+```
+
+**Remark**
+
+An alternate way to express the same is to use `sum[persons|{}|s,k,v|->s { k = v + 1 }]`.
+
+### `(( select[expr|elem|->dynaml-expr] ))`
+
+With `select` a map or list can be filtered by evaluating a boolean expression
+for every entry. An entry is selected if the expression evaluates to true
+equivalent value. (see [conditions](#-a--1--foo-bar-)).
+
+Basically it offers all the mapping flavors available for `map[]`
+
+e.g.
+
+```yaml
+list:
+  - name: alice
+    age: 25
+  - name: bob
+    age: 26
+
+
+selected: (( select[list|v|->v.age > 25 ] ))
+```
+
+evaluates selected to
+
+```yaml
+selected:
+- name: bob
+  age: 26
+```
+
+**Remark**
+
+An alternate way to express the same is to use `map[list|v|->v.age > 25 ? v :~]`.
+
+### `(( select{map|elem|->dynaml-expr} ))`
+
+Using `{}` instead of `[]` in the mapping syntax, the result is again a map
+with the old keys filtered by the given expression.
+
+```yaml
+persons:
+  alice: 25
+  bob: 26
+older: (( select{persons|x|->x > 25} ))
+```
+
+just keeps all entries with a value greater than 25 and omits all others:
+
+```yaml
+selected:
+  bob: 26
+```
+
+This flavor only works on _maps_.
+
+**Remark**
+
+An alternate way to express the same is to use `sum[persons|{}|s,k,v|->v > 25 ? s {k = v} :s]`.
+
 
 ## Aggregations
 
@@ -2465,6 +3751,134 @@ names:
   - peter
 ```
 
+## Markers
+
+Nodes of the yaml document can be marked to enable dedicated behaviours for this
+node. Such markers are part of the _dynaml_ syntax and may be prepended to
+any dynaml expression. They are denoted by the `&` character directly followed 
+by a marker name. If the expression is combination of markers and regular
+expressions, the expression follows the marker list enclosed in brackets
+(for example `(( &temporary( a + b ) ))`).
+
+**Note**: Instead of using a `<<:` insert field to place markers it is possible
+now to use `<<<:`, also, which allows to use regular yaml parsers for spiff-like
+yaml documents. `<<:` is kept for backward compatibility.
+
+### `(( &temporary ))`
+
+Maps, lists or simple value nodes can be marked as *temporary*. Temporary nodes
+are removed from the final output document, but are available during merging and
+dynaml evaluation.
+
+e.g.:
+
+```yaml
+temp:
+  <<: (( &temporary ))
+  foo: bar
+
+value: (( temp.foo ))
+```
+
+yields:
+
+```yaml
+value: bar
+```
+Adding `- <<: (( &temporary ))` to a list can be used to mark a list as temporary.
+
+The temporary marker can be combined with regular dynaml expressions to tag plain fields. Hereby the
+parenthesised expression is just appended to the marker
+
+e.g.:
+
+```yaml
+data:
+  alice: (( &temporary ( "bar" ) ))
+  foo: (( alice ))
+```
+
+yields:
+
+```yaml
+data:
+  foo: bar
+```
+
+The temporary marker can be combined with the [template marker](#templates) to omit templates from the final output.
+
+### `(( &local ))`
+
+The marker `&local` acts similar to `&temporary` but local nodes are always
+removed from a stub directly after resolving dynaml expressions. Such nodes
+are therefore not available for merging and they are not used for further
+merging of stubs and finally the template.
+
+
+### `(( &inject ))`
+
+This marker requests the marked item to be injected into the next stub level,
+even is the hosting element (list or map) does not requests a merge.
+This only works if the next level stub already contains the hosting element.
+
+e.g.:
+
+**template.yaml**
+```yaml
+alice:
+ foo: 1
+```
+
+**stub.yaml**
+```yaml
+alice:
+  bar: (( &inject(2) ))
+  nope: not injected
+bob:
+  <<: (( &inject ))
+  foobar: yep
+
+```
+
+is merged to
+
+```yaml
+alice:
+  foo: 1
+  bar: 2
+bob:
+  foobar: yep
+```
+
+### `(( &state ))`
+
+Nodes marked as *state* are handled during the merge processing as if the
+marker would not be present. But there will be a special handling for enabled
+state processing [(option `--state <path>`)](#usage) at the end of the
+template processing.
+Additionally to the regular output a document consisting only of state nodes
+(plus all nested nodes) will be written to a state file. This file will be used
+as top-level stub for further merge processings with enabled state support.
+
+This enables to keep state between two merge processings. For regular
+merging sich nodes are only processed during the first processing. Later
+processings will keep the state from the first one, because those nodes
+will be overiden by the state stub added to the end of the sub list.
+
+If those nodes additionally disable merging (for example using 
+`(( &state(merge none) ))`) dynaml expressions in sub level nodes may
+perform explicit merging using the function `stub()` to refer to
+values provided by already processed stubs (especially the implicitly added
+state stub). For an example please refer to the 
+[state library](libraries/state/README.md).
+
+### `(( &template ))`
+
+Nodes marked as *template* will not be evaluated at the place of their
+occurrence. Instead, they will result in a template value stored as value for
+the node. They can later be instantiated inside a _dynaml_ expression
+(see [below](#templates)).
+
 ## Templates
 
 A map can be tagged by a dynaml expression to be used as template. Dynaml expressions in a template are not evaluated at its definition location in the document, but can be inserted at other locations using dynaml.
@@ -2492,9 +3906,13 @@ marker to the expression, for example `foo: (( &template (expression) ))`
 
 The template marker can be combined with the [temporary marker](#-temporary-) to omit templates from the final output.
 
+**Note**: Instead of using a `<<:` insert field to place the template marker it is
+possible now to use `<<<:`, also, which allows to use regular yaml parsers for
+spiff-like yaml documents. `<<:` is kept for backward compatibility.
+
 ### `(( *foo.bar ))`
 
-The dynaml expression `*<refernce expression>` can be used to evaluate a template somewhere in the yaml document.
+The dynaml expression `*<reference expression>` can be used to evaluate a template somewhere in the yaml document.
 Dynaml expressions in the template are evaluated in the context of this expression.
 
 e.g.:
@@ -2531,6 +3949,138 @@ use:
 
 verb: hates
 ```
+
+## Scope References
+
+### `_`
+
+The special reference `_` (_self_) can be used inside of _lambda functions_
+and _templates_. They refer to the containing element (the lambda function or
+template).
+
+Additionally it can be used to lookup relative reference expressions
+starting with the defining document scope of the element skipping intermediate
+scopes.
+
+e.g.:
+
+```yaml
+node:
+  data:
+    scope: data
+  funcs:
+    a: (( |x|->scope ))
+    b: (( |x|->_.scope ))
+    c: (( |x|->_.data.scope ))
+    scope: funcs
+
+call:
+  scope: call
+
+  a: (( node.funcs.a(1) ))
+  b: (( node.funcs.b(1) ))
+  c: (( node.funcs.c(1) ))
+
+```
+
+evaluates `call` to
+
+```yaml
+call:
+  a: call
+  b: funcs
+  c: data
+  scope: call
+```
+
+### `__`
+
+The special reference `__` can be used to lookup references as relative
+references starting with the document node hosting the actually evaluated
+_dynaml_ expression skipping intermediate scopes.
+ 
+This can, for example be
+used to relatively access a lambda value field besides the actual field in
+a map. The usage of plain function names is reserved for builtin functions
+and are not used as relative references.
+
+This special reference is also available in expressions in _templates_ and
+refer to the map node in the template hosting the actually evaluated expression.
+
+e.g.:
+
+```yaml
+templates:
+  templ:
+    <<: (( &template ))
+    self: (( _ ))
+    value: (( ($self="value") __.self ))
+    result: (( scope ))
+    templ: (( _.scope ))
+
+  scope: templates
+
+
+result:
+  inst: (( *templates.templ ))
+  scope: result
+```
+
+evaluates `result` to
+
+```yaml
+result:
+  inst:
+    result: result
+    templ: templates
+    
+    self:
+      <<: (( &template ))
+      result: (( scope ))
+      self: (( _ ))
+      templ: (( _.scope ))
+      value: (( ($self="value") __.self ))
+    value:
+      <<: (( &template ))
+      result: (( scope ))
+      self: (( _ ))
+      templ: (( _.scope ))
+      value: (( ($self="value") __.self ))
+  scope: result
+```
+
+or with referencing upper nodes:
+
+```yaml
+templates:
+  templ:
+    <<: (( &template ))
+    alice: root
+    data:
+      foo: (( ($bob="local") __.bob ))
+      bar: (( ($alice="local") __.alice ))
+      bob: static
+
+
+result: (( *templates.templ ))
+```
+
+evaluates `result`  to
+
+```yaml
+result:
+  alice: root
+  data:
+    bar: root
+    foo: static
+    
+    bob: static
+```
+
+### `__ctx.OUTER`
+
+The context field `OUTER` is used for nested [merges](#-mergemap1-map2-). 
+It is a list of documents, index 0 is the next outer document, and so on.
 
 ## Special Literals
 
@@ -2578,6 +4128,7 @@ The following fields are supported:
 | `RESOLVED_DIR`  | string | name of directory of actually processed template file with resolved symbolic links |
 | `PATHNAME` | string | path name of actually processed field |
 | `PATH` | list[string] | path name as component list |
+| `OUTER` | yaml doc | outer documents for nested [merges](#-mergemap1-map2-), index 0 is the next outer document  |
 
 e.g.:
 
@@ -2613,7 +4164,7 @@ Dynaml expressions are evaluated obeying certain priority levels. This means ope
 
 The following levels are supported (from low priority to high priority)
 
-1. `||`
+1. `||`, `//`
 2. White-space separated sequence as concatenation operation (`foo bar`)
 3. `-or`, `-and`
 4. `==`, `!=`, `<=`, `<`, `>`, `>=`
@@ -3046,6 +4597,34 @@ networks:
       bob: loves alice
   ```
 
+- _Scopes can be used to parameterize templates_
+
+  Scope literals are also considered when instantiating templates. Therefore
+  they can be used to set explicit values for relative reference expressions
+  used in templates.
+
+  e.g.:
+
+  ```yaml
+  alice: 1
+  template:
+    <<: (( &template ))
+    sum: (( alice + bob ))
+  scoped: (( ( $alice = 25, "bob" = 26 ) *template ))
+  ```
+
+  evaluates to
+
+  ```yaml
+  alice: 1
+  template:
+    <<: (( &template ))
+    sum: (( alice + bob ))
+  scoped:
+    sum: 51
+  ```
+
+
 - _Aggregations may yield complex values by using templates_
 
   The expression of an aggregation may return complex values by returning inline lists or instantiated templates. The binding of the function will be available (as usual) for the evaluation of the template. In the example below the aggregation provides a map with both the sum and the product of the list entries containing the integers from 1 to 4.
@@ -3306,6 +4885,173 @@ networks:
   The merge then generates a rootca and some TLS certificate signed with
   this CA.
   
+- Generating, Deploying and Accessing Status for Kubernetes Resources
+
+  The [`sync`](#-syncexpr-condition-value-10-) function offers the possibility
+  to synchronize the template processing with external content. This can also
+  be the output of a command execution. Therefore the template processing
+  can not only be used to generate a deployment manifest, but also for
+  applying this to a target system and retrieving deployment status values
+  for the further processing.
+  
+  A typical scenario of this kind could be a kubernetes setup including
+  a service of type _LoadBalancer_. Once deployed it gets assigned
+  status information about the IP address or hostname of the assigned
+  load balancer. This information might be required for some other deployment
+  manifest.
+  
+  A simple template for such a deployment could like this:
+  
+  ```yaml
+  service:
+    apiVersion: v1
+    kind: Service
+    metadata:
+      annotations:
+        dns.mandelsoft.org/dnsnames: echo.test.garden.mandelsoft.org
+        dns.mandelsoft.org/ttl: "500"
+      name: test-service
+      namespace: default
+    spec:
+      ports:
+      - name: http
+        port: 80
+        protocol: TCP
+        targetPort: 8080
+      sessionAffinity: None
+      type: LoadBalancer
+  
+  deployment:
+     testservice: (( sync[pipe_uncached(service, "kubectl", "apply", "-f", "-", "-o", "yaml")|value|->defined(value.status.loadBalancer.ingress)] ))
+  
+  
+  otherconfig:
+     lb: (( deployment.testservice.status.loadBalancer.ingress ))
+  
+  ```
+- Crazy Shit: Graph Analysis with _spiff_
+
+  It is easy to describe a simple graph with knots and edges (for example 
+  for a set of components and their dependencies) just by using a map of lists.
+  
+  <details><summary><b>graph.yaml</b></summary>
+  
+  ```yaml
+  graph:
+    a:
+    - b
+    - c
+    b: []
+    c:
+    - b
+    - a
+    d:
+    - b
+    e:
+    - d
+    - b
+  ```
+  </details>
+  
+  Now it would be useful to figure out whether there are dependency cycles or
+  to determine ordered transitive dependencies for a component.
+  
+  Let's say something like this:
+  
+  <details><summary><b>closures.yaml</b></summary>
+
+  ```yaml
+  graph:
+  utilities:
+
+  closures: (( utilities.graph.evaluate(graph) ))
+  cycles: (( utilities.graph.cycles(closures) ))
+  ```
+  </details>
+  
+  Indeed, this can be done with spiff. The only thing required is
+  a _"small utilities stub"_.
+  
+  <details><summary><b>utilities.yaml</b></summary>
+  
+  ```yaml
+  utilities:
+    <<: (( &temporary ))
+    graph:
+      _dep: (( |model,comp,closure|->contains(closure,comp) ? { $deps=[], $err=closure [comp]} :($deps=_._deps(model,comp,closure [comp]))($err=sum[deps|[]|s,e|-> length(s) >= length(e.err) ? s :e.err]) { $deps=_.join(map[deps|e|->e.deps]), $err=err} ))
+      _deps: (( |model,comp,closure|->map[model.[comp]|dep|->($deps=_._dep(model,dep,closure)) { $deps=[dep] deps.deps, $err=deps.err }] ))
+      join: (( |lists|->sum[lists|[]|s,e|-> s e] ))
+      min: (( |list|->sum[list|~|s,e|-> s ? e < s ? e :s :e] ))
+  
+      normcycle: (( |cycle|->($min=_.min(cycle)) min ? sum[cycle|cycle|s,e|->s.[0] == min ? s :(s.[1..] [s.[1]])] :cycle  ))
+      cycle: (( |list|->list ? ($elem=list.[length(list) - 1]) _.normcycle(sum[list|[]|s,e|->s ? s [e] :e == elem ? [e] :s]) :list ))
+      norm: (( |deps|->{ $deps=_.reverse(uniq(_.reverse(deps.deps))), $err=_.cycle(deps.err) } ))
+      reverse: (( |list|->sum[list|[]|s,e|->[e] s] ))
+  
+      evaluate: (( |model|->sum[model|{}|s,k,v|->s { k=_.norm(_._dep(model,k,[]))}] ))
+      cycles: (( |result|->uniq(sum[result|[]|s,k,v|-> v.err ? s [v.err] :s]) ))
+  ```
+  </details>
+  
+  And magically _spiff_ does the work just by calling
+  ```bash
+  spiff merge closure.yaml graph.yaml utilities.yaml
+  ```
+  
+  <details><summary>And the result is</summary>
+  
+  ```yaml
+     closures:
+       a:
+         deps:
+         - c
+         - b
+         - a
+         err:
+         - a
+         - c
+         - a
+       b:
+         deps: []
+         err: []
+       c:
+         deps:
+         - a
+         - b
+         - c
+         err:
+         - a
+         - c
+         - a
+       d:
+         deps:
+         - b
+         err: []
+       e:
+         deps:
+         - d
+         - b
+         err: []
+     cycles:
+     - - a
+       - c
+       - a
+     graph:
+       a:
+       - b
+       - c
+       b: []
+       c:
+       - b
+       - a
+       d:
+       - b
+       e:
+       - d
+       - b
+  ```
+  </details>
+  
 # Error Reporting
 
 The evaluation of dynaml expressions may fail because of several reasons:
@@ -3322,11 +5068,12 @@ If a dynaml expression cannot be resolved to a value, it is reported by the
 	(( <failed expression> ))	in <file>	<path to node>	(<referred path>)	<tag><issue>
 ```
 
-e.g.:
+<details><summary><b>Example</b></summary>
 
 ```
 	(( min_ip("10") ))	in source.yml	node.a.[0]	()	*CIDR argument required
 ```
+</details>
 
 Cyclic dependencies are detected by iterative evaluation until the document is unchanged after a step.
 Nodes involved in a cycle are therefore typically reported just as unresolved node without a specific issue.
@@ -3343,4 +5090,32 @@ tag. The following tags are used (in reporting order):
 Problems occuring during inline template processing are reported as nested problems. The classification is
 propagated to the outer node.
 
+If a problem occurs in nested lamba calls the call stack together with the lamba function and is 
+local binding is listed.
+
+<details><summary><b>Example</b></summary>
+
+```text
+	(( 2 + .func(2) ))	in local/err.yaml	value	()	*evaluation of lambda expression failed: lambda|x|->x > 0 ? _(x - 1) : *(template): {x: 2}
+		... evaluation of lambda expression failed: lambda|x|->x > 0 ? _(x - 1) : *(template): {x: 1}
+		... evaluation of lambda expression failed: lambda|x|->x > 0 ? _(x - 1) : *(template): {x: 0}
+		... resolution of template 'template' failed
+			(( z ))	in local/err.yaml	val	()*'z' not found 
+
+```
+</details>
+
+In case of parsing errors in dynaml expressions, the error location is shown now.
+If it is a multi line expression the line a character/symbol number in that line
+is show, otherwise the line numer is omitted.
+
+<details><summary><b>Example</b></summary>
+
+```text
+	((
+	  2 ++ .func(2)
+	))	in local/err.yaml	faulty	()	*parse error near line 2 symbol 2 - line 2 symbol 3: " " 
+
+```
+</details>
 

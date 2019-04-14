@@ -29,7 +29,7 @@ func (e CreateMapExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 		if !ok || !resolved {
 			return e, info, ok
 		}
-		newMap[kstr] = node(val, binding)
+		newMap[kstr] = NewNode(val, binding)
 	}
 	return newMap, DefaultInfo(), true
 }

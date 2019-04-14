@@ -40,6 +40,14 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		}
 	}
 
+	info.Cleanup()
+	if !okf {
+		debug.Debug("failed to resolve function: %s\n", info.Issue.Issue)
+		return nil, info, false
+	}
+
+	cleaned := false
+
 	switch funcName {
 	case "defined":
 		return e.defined(binding)
@@ -49,14 +57,13 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		return e.valid(binding)
 	case "stub":
 		return e.stub(binding)
+	case "catch":
+		return e.catch(binding)
+	case "sync":
+		return e.sync(binding)
 	}
 
 	values, info, ok := ResolveExpressionListOrPushEvaluation(&e.Arguments, &resolved, nil, binding, false)
-
-	if !okf {
-		debug.Debug("failed to resolve function: %s\n", info.Issue)
-		return nil, info, false
-	}
 
 	if !ok {
 		debug.Debug("call args failed\n")
@@ -73,16 +80,21 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	switch funcName {
 	case "":
 		debug.Debug("calling lambda function %#v\n", value)
-		result, sub, ok = value.(LambdaValue).Evaluate(values, binding, false)
+		resolved, result, sub, ok = value.(LambdaValue).Evaluate(false, true, values, binding, false)
 
 	case "static_ips":
 		result, sub, ok = func_static_ips(e.Arguments, binding)
+		if ok && result == nil {
+			resolved = false
+		}
 
 	case "join":
 		result, sub, ok = func_join(values, binding)
 
 	case "split":
 		result, sub, ok = func_split(values, binding)
+	case "split_match":
+		result, sub, ok = func_splitMatch(values, binding)
 
 	case "trim":
 		result, sub, ok = func_trim(values, binding)
@@ -110,12 +122,26 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "replace":
 		result, sub, ok = func_replace(values, binding)
+	case "replace_match":
+		result, sub, ok = func_replaceMatch(values, binding)
 
 	case "match":
 		result, sub, ok = func_match(values, binding)
+	case "sort":
+		result, sub, ok = func_sort(values, binding)
 
 	case "exec":
-		result, sub, ok = func_exec(values, binding)
+		result, sub, ok = func_exec(true, values, binding)
+		cleaned = true
+	case "exec_uncached":
+		result, sub, ok = func_exec(false, values, binding)
+		cleaned = true
+	case "pipe":
+		result, sub, ok = func_pipe(true, values, binding)
+		cleaned = true
+	case "pipe_uncached":
+		result, sub, ok = func_pipe(false, values, binding)
+		cleaned = true
 
 	case "eval":
 		result, sub, ok = func_eval(values, binding, locally)
@@ -123,8 +149,28 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "env":
 		result, sub, ok = func_env(values, binding)
 
+	case "rand":
+		result, sub, ok = func_rand(values, binding)
+
 	case "read":
-		result, sub, ok = func_read(values, binding)
+		result, sub, ok = func_read(true, values, binding)
+		cleaned = true
+	case "read_uncached":
+		result, sub, ok = func_read(false, values, binding)
+		cleaned = true
+	case "write":
+		result, sub, ok = func_write(values, binding)
+		cleaned = true
+	case "lookup_file":
+		result, sub, ok = func_lookup(false, values, binding)
+	case "lookup_dir":
+		result, sub, ok = func_lookup(true, values, binding)
+	case "list_files":
+		result, sub, ok = func_listFiles(false, values, binding)
+	case "list_dirs":
+		result, sub, ok = func_listFiles(true, values, binding)
+	case "tempfile":
+		result, sub, ok = func_tempfile(values, binding)
 
 	case "format":
 		result, sub, ok = func_format(values, binding)
@@ -160,9 +206,37 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "md5":
 		result, sub, ok = func_md5(values, binding)
+	case "hash":
+		result, sub, ok = func_hash(values, binding)
+
+	case "bcrypt":
+		result, sub, ok = func_bcrypt(values, binding)
+
+	case "bcrypt_check":
+		result, sub, ok = func_bcrypt_check(values, binding)
+
+	case "asjson":
+		result, sub, ok = func_as_json(values, binding)
+	case "asyaml":
+		result, sub, ok = func_as_yaml(values, binding)
+	case "parse":
+		result, sub, ok = func_parse_yaml(values, binding)
 
 	case "substr":
 		result, sub, ok = func_substr(values, binding)
+	case "lower":
+		result, sub, ok = func_lower(values, binding)
+	case "upper":
+		result, sub, ok = func_upper(values, binding)
+
+	case "keys":
+		result, sub, ok = func_keys(values, binding)
+
+	case "archive":
+		result, sub, ok = func_archive(values, binding)
+
+	case "validate":
+		resolved, result, sub, ok = func_validate(values, binding)
 
 	case "type":
 		if info.Undefined {
@@ -180,7 +254,10 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		result, sub, ok = f(values, binding)
 	}
 
-	if ok && (result == nil || isExpression(result)) {
+	if cleaned {
+		info.Cleanup()
+	}
+	if ok && (!resolved || isExpression(result)) {
 		return e, sub.Join(info), true
 	}
 	return result, sub.Join(info), ok

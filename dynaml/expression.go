@@ -14,9 +14,17 @@ type SourceProvider interface {
 	SourceName() string
 }
 
+type State interface {
+	GetTempName(data []byte) (string, error)
+	GetFileContent(file string, cached bool) ([]byte, error)
+	GetEncryptionKey() string
+}
+
 type Binding interface {
 	SourceProvider
-	GetLocalBinding() map[string]yaml.Node
+	GetStaticBinding() map[string]yaml.Node
+	GetRootBinding() map[string]yaml.Node
+
 	FindFromRoot([]string) (yaml.Node, bool)
 	FindReference([]string) (yaml.Node, bool)
 	FindInStubs([]string) (yaml.Node, bool)
@@ -25,13 +33,24 @@ type Binding interface {
 	WithLocalScope(step map[string]yaml.Node) Binding
 	WithPath(step string) Binding
 	WithSource(source string) Binding
+	WithNewRoot() Binding
 	RedirectOverwrite(path []string) Binding
 
+	Outer() Binding
 	Path() []string
 	StubPath() []string
+	NoMerge() bool
+
+	GetState() State
+	GetTempName(data []byte) (string, error)
+	GetFileContent(file string, cached bool) ([]byte, error)
 
 	Flow(source yaml.Node, shouldOverride bool) (yaml.Node, Status)
-	Cascade(template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error)
+	Cascade(outer Binding, template yaml.Node, partial bool, templates ...yaml.Node) (yaml.Node, error)
+}
+
+type Cleanup interface {
+	Cleanup() error
 }
 
 type EvaluationInfo struct {
@@ -44,8 +63,50 @@ type EvaluationInfo struct {
 	LocalError   bool
 	Failed       bool
 	Undefined    bool
+	Raw          bool
 	Issue        yaml.Issue
+	Cleanups     []Cleanup
 	yaml.NodeFlags
+}
+
+type EvaluationError struct {
+	resolved bool
+	EvaluationInfo
+	ok bool
+}
+
+func (e EvaluationError) Error() string {
+	return e.Issue.Issue
+}
+
+func RaiseEvaluationError(resolved bool, info EvaluationInfo, ok bool) {
+	panic(EvaluationError{resolved, info, ok})
+}
+
+func RaiseEvaluationErrorf(format string, args ...interface{}) {
+	info := DefaultInfo()
+	info.SetError(format, args...)
+	panic(EvaluationError{true, info, false})
+}
+
+func CatchEvaluationError(result *interface{}, info *EvaluationInfo, ok *bool, msgfmt string, args ...interface{}) {
+	err := recover()
+	if err != nil {
+		if eerr, my := err.(EvaluationError); my {
+			*result = nil
+			*info = eerr.EvaluationInfo
+			if msgfmt != "" {
+				(*info).SetError(msgfmt, args...)
+				(*info).Issue.Sequence = true
+				if eerr.Issue.Issue != "" {
+					(*info).Issue.Nested = []yaml.Issue{eerr.Issue}
+				}
+			}
+			*ok = eerr.ok
+		} else {
+			panic(err)
+		}
+	}
 }
 
 func (e EvaluationInfo) SourceName() string {
@@ -53,15 +114,43 @@ func (e EvaluationInfo) SourceName() string {
 }
 
 func DefaultInfo() EvaluationInfo {
-	return EvaluationInfo{nil, false, false, false, "", "", false, false, false, yaml.Issue{}, 0}
+	return EvaluationInfo{nil, false, false,
+		false, "", "",
+		false, false, false, false,
+		yaml.Issue{}, nil, 0}
 }
 
 type Expression interface {
 	Evaluate(Binding, bool) (interface{}, EvaluationInfo, bool)
 }
 
+type StaticallyScopedValue interface {
+	StaticResolver() Binding
+	SetStaticResolver(binding Binding) StaticallyScopedValue
+}
+
+func (i *EvaluationInfo) Cleanup() error {
+	var err error
+	for _, c := range i.Cleanups {
+		e := c.Cleanup()
+		if e != nil {
+			err = e
+		}
+	}
+	i.Cleanups = nil
+	return err
+}
+
 func (i *EvaluationInfo) Error(msgfmt interface{}, args ...interface{}) (interface{}, EvaluationInfo, bool) {
 	i.SetError(msgfmt, args...)
+	return nil, *i, false
+}
+
+func (i *EvaluationInfo) AnnotateError(err EvaluationInfo, msgfmt interface{}, args ...interface{}) (interface{}, EvaluationInfo, bool) {
+	i.SetError(msgfmt, args...)
+	if err.Issue.Issue != "" {
+		i.Issue.Nested = append(i.Issue.Nested, err.Issue)
+	}
 	return nil, *i, false
 }
 
@@ -80,7 +169,7 @@ func (i *EvaluationInfo) PropagateError(value interface{}, state Status, msgfmt 
 	if i.LocalError {
 		value = nil
 	}
-	return value, *i, !i.LocalError
+	return value, *i, false //!i.LocalError
 }
 
 func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {
@@ -106,6 +195,8 @@ func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {
 		i.Undefined = true
 	}
 	i.NodeFlags |= o.NodeFlags
+
+	i.Cleanups = append(i.Cleanups, o.Cleanups...)
 	return i
 }
 

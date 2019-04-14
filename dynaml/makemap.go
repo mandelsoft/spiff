@@ -54,7 +54,7 @@ func func_makemap(arguments []interface{}, binding Binding) (interface{}, Evalua
 				return info.Error("invalid type for key value of arument pair %d", i/2)
 			}
 
-			result[key] = node(arguments[i+1], binding)
+			result[key] = NewNode(arguments[i+1], binding)
 		}
 	} else {
 		return info.Error("mapentry takes one or two arguments")

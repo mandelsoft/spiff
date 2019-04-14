@@ -16,7 +16,7 @@ var _ = Describe("Node", func() {
 		Expect(ok).To(BeTrue())
 	})
 
-	Describe("Value", func() {
+	Describe("ComparableValue", func() {
 		It("returns the node value", func() {
 			subjectValue := "hello world"
 			subject := NewNode(subjectValue, "other/path")

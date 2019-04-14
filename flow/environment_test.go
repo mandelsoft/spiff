@@ -16,7 +16,7 @@ foo:
  `)
 
 		environment := DefaultEnvironment{
-			scope: newScope(nil, tree.Value().(map[string]yaml.Node)),
+			scope: newFakeScope(nil, nil, tree.Value().(map[string]yaml.Node)),
 		}
 
 		Context("when the first step is found", func() {
@@ -37,7 +37,7 @@ foos:
 `)
 
 				environment := DefaultEnvironment{
-					scope: newScope(nil, tree.Value().(map[string]yaml.Node)),
+					scope: newFakeScope(nil, nil, tree.Value().(map[string]yaml.Node)),
 				}
 
 				It("treats the name as the key", func() {
@@ -66,9 +66,9 @@ foo:
 `)
 
 			environment := DefaultEnvironment{
-				scope: newScope(newScope(newScope(nil,
-					tree.Value().(map[string]yaml.Node)),
-					tree.Value().(map[string]yaml.Node)["foo"].Value().(map[string]yaml.Node)),
+				scope: newFakeScope(newFakeScope(newFakeScope(nil, nil,
+					tree.Value().(map[string]yaml.Node)), nil,
+					tree.Value().(map[string]yaml.Node)["foo"].Value().(map[string]yaml.Node)), nil,
 					tree.Value().(map[string]yaml.Node)["foo"].Value().(map[string]yaml.Node)["bar"].Value().(map[string]yaml.Node)),
 			}
 
@@ -92,9 +92,9 @@ foo:
 `)
 
 			environment := DefaultEnvironment{
-				scope: newScope(newScope(newScope(nil,
-					tree.Value().(map[string]yaml.Node)),
-					tree.Value().(map[string]yaml.Node)["foo"].Value().(map[string]yaml.Node)),
+				scope: newFakeScope(newFakeScope(newFakeScope(nil, nil,
+					tree.Value().(map[string]yaml.Node)), nil,
+					tree.Value().(map[string]yaml.Node)["foo"].Value().(map[string]yaml.Node)), nil,
 					tree.Value().(map[string]yaml.Node)["foo"].Value().(map[string]yaml.Node)["bar"].Value().(map[string]yaml.Node)),
 			}
 
@@ -122,7 +122,7 @@ foo:
 `)
 
 		environment := DefaultEnvironment{
-			scope: newScope(nil, tree.Value().(map[string]yaml.Node)),
+			scope: newFakeScope(nil, nil, tree.Value().(map[string]yaml.Node)),
 		}
 
 		It("returns the node found by the path from the root", func() {
@@ -141,7 +141,7 @@ foo:
 `)
 
 			environment := DefaultEnvironment{
-				scope: newScope(nil, tree.Value().(map[string]yaml.Node)),
+				scope: newFakeScope(nil, nil, tree.Value().(map[string]yaml.Node)),
 			}
 
 			It("accepts [x] for following through lists", func() {

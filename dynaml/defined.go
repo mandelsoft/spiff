@@ -22,15 +22,21 @@ func (e CallExpr) valid(binding Binding) (interface{}, EvaluationInfo, bool) {
 }
 
 func (e CallExpr) defined(binding Binding) (interface{}, EvaluationInfo, bool) {
+	info := DefaultInfo()
 	pushed := make([]Expression, len(e.Arguments))
 	ok := true
 	resolved := true
 
 	copy(pushed, e.Arguments)
 	for i, _ := range pushed {
-		_, _, ok = ResolveExpressionOrPushEvaluation(&pushed[i], &resolved, nil, binding, true)
-		if resolved && !ok {
-			return false, DefaultInfo(), true
+		_, info, ok = ResolveExpressionOrPushEvaluation(&pushed[i], &resolved, nil, binding, true)
+		if resolved {
+			if !ok {
+				return false, DefaultInfo(), true
+			}
+			if info.Undefined {
+				return false, DefaultInfo(), true
+			}
 		}
 	}
 	if !resolved {

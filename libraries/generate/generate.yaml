@@ -1,0 +1,49 @@
+
+#
+# Some basic template generation functions
+#
+#
+utilities:
+  <<: (( &temporary(merge || ~) ))
+
+  generate:
+
+    #
+    # generate a list of yaml manifests taken from a multi document
+    # template file
+    #   v     is a map template or map defining some input values used as
+    #         top level stub for
+    #   stubs a set of optional stub files (stubs might be ~ or [])
+    #
+    #   file  a template file containing yaml manifests processed
+    #         using the input value merge result using the binding
+    #         `values` or `settings`
+    #
+    generateFile: (( |v,stubs,file|->_.generateFiles(v,stubs,[file]) ))
+
+    #
+    # generate a list of yaml manifests from a list of yaml template files
+    # see generateFile for parameter meaning
+    #
+    generateFiles: (( |v,stubs,files|->($values=merge( _.readFiles(stubs // [], "template") [ type(v) == "template" ? *v :v])) ($settings=values) sum[files|[]|s,file|->s read(file,"multiyaml")] ))
+
+    #
+    # generate a list of yaml manifests from yaml template files taken
+    # from a durectory
+    # see generateFile for parameter meaning
+    #
+    generateDir: (( |v,stubs,dir|->_.generateFiles(v,stubs,_.yamlFiles(dir))  ))
+
+    #
+    # generate a list of yaml manifests froma chart structure given
+    # by a chart dir
+    #
+    # a chart directory must contain a `values.yaml` file used as template
+    # for the input values. The manifest templates are takem from
+    # the sub folder `templates`.
+    # 
+    generateChart: (( |v,dir|->_.generateFiles(v,[dir "/values.yaml"],_.yamlFiles(dir "/templates"))  ))
+
+    readFiles: (( |files,mode|->map[files|f|->read(f,mode)] ))
+    yamlFiles: (( |dir|->map[list_files(dir)|f|-> match("^.*\.yaml$",f) ? dir "/" f :~] ))
+

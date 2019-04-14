@@ -12,7 +12,7 @@ type OrExpr struct {
 
 func (e OrExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	a, infoa, ok := e.A.Evaluate(binding, false)
-	if ok {
+	if ok && !infoa.Undefined {
 		if reflect.DeepEqual(a, e.A) {
 			return nil, infoa, false
 		}

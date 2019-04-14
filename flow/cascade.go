@@ -1,46 +1,56 @@
 package flow
 
 import (
+	"github.com/mandelsoft/spiff/dynaml"
 	"github.com/mandelsoft/spiff/yaml"
 )
 
-func PrepareStubs(partial bool, stubs ...yaml.Node) ([]yaml.Node, error) {
+func PrepareStubs(outer dynaml.Binding, partial bool, stubs ...yaml.Node) ([]yaml.Node, error) {
 	for i := len(stubs) - 1; i >= 0; i-- {
-		flowed, err := Flow(stubs[i], stubs[i+1:]...)
+		flowed, err := NestedFlow(outer, stubs[i], stubs[i+1:]...)
 		if !partial && err != nil {
 			return nil, err
 		}
 
-		stubs[i] = Cleanup(flowed, testLocal)
+		stubs[i] = Cleanup(flowed, discardLocal)
 	}
 	return stubs, nil
 }
 
-func Apply(template yaml.Node, prepared []yaml.Node) (yaml.Node, error) {
-	result, err := Flow(template, prepared...)
+func Apply(outer dynaml.Binding, template yaml.Node, prepared []yaml.Node) (yaml.Node, error) {
+	result, err := NestedFlow(outer, template, prepared...)
 	if err == nil {
-		result = Cleanup(result, testTemporary)
+		result = Cleanup(result, discardTemporary)
 	}
 	return result, err
 }
 
-func Cascade(template yaml.Node, partial bool, stubs ...yaml.Node) (yaml.Node, error) {
-	prepared, err := PrepareStubs(partial, stubs...)
+func Cascade(outer dynaml.Binding, template yaml.Node, partial bool, stubs ...yaml.Node) (yaml.Node, error) {
+	prepared, err := PrepareStubs(outer, partial, stubs...)
 	if err != nil {
 		return nil, err
 	}
 
-	return Apply(template, prepared)
+	return Apply(outer, template, prepared)
 }
 
-func testTemporary(node yaml.Node) bool {
-	return node.Temporary() || node.Local()
-}
-func testLocal(node yaml.Node) bool {
-	return node.Local()
+func discardTemporary(node yaml.Node) (yaml.Node, CleanupFunction) {
+	if node.Temporary() || node.Local() {
+		return nil, discardTemporary
+	}
+	return node, discardTemporary
 }
 
-func Cleanup(node yaml.Node, test func(yaml.Node) bool) yaml.Node {
+func discardLocal(node yaml.Node) (yaml.Node, CleanupFunction) {
+	if node.Local() {
+		return nil, discardLocal
+	}
+	return node, discardLocal
+}
+
+type CleanupFunction func(yaml.Node) (yaml.Node, CleanupFunction)
+
+func Cleanup(node yaml.Node, test CleanupFunction) yaml.Node {
 	if node == nil {
 		return nil
 	}
@@ -49,8 +59,8 @@ func Cleanup(node yaml.Node, test func(yaml.Node) bool) yaml.Node {
 	case []yaml.Node:
 		r := []yaml.Node{}
 		for _, e := range v {
-			if !test(e) {
-				r = append(r, Cleanup(e, test))
+			if n, t := test(e); n != nil {
+				r = append(r, Cleanup(n, t))
 			}
 		}
 		value = r
@@ -58,8 +68,8 @@ func Cleanup(node yaml.Node, test func(yaml.Node) bool) yaml.Node {
 	case map[string]yaml.Node:
 		r := map[string]yaml.Node{}
 		for k, e := range v {
-			if !test(e) {
-				r[k] = Cleanup(e, test)
+			if n, t := test(e); n != nil {
+				r[k] = Cleanup(n, t)
 			}
 		}
 		value = r

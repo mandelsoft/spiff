@@ -7,13 +7,18 @@ Prefer <- ws 'prefer' req_ws Expression
 
 MarkedExpression <- ws Marker ( req_ws SubsequentMarker )* ws MarkerExpression ? ws
 SubsequentMarker <- Marker
-Marker <- '&' ( 'template' / 'temporary' / 'local' )
+Marker <- '&' ( 'template' / 'temporary' / 'local' / 'inject' / 'state' )
 MarkerExpression <- Grouped
 
-Expression <- ws ( LambdaExpr / Level7 ) ws
+Expression <- ( Scoped / LambdaExpr / Level7 ) ws
 
-Level7 <- Level6 ( req_ws Or )*
-Or <- '||' req_ws Level6
+Scoped <- ws Scope ws Expression
+Scope <- CreateScope ws Assignments? ')'
+CreateScope <- '('
+
+Level7 <- ws Level6 ( req_ws Or )*
+Or <- OrOp req_ws Level6
+OrOp <- '||' / '//'
 
 Level6 <- Conditional / Level5
 Conditional <- Level5 ws '?' Expression ':' Expression
@@ -38,35 +43,38 @@ Multiplication <- '*' req_ws Level0
 Division <-  '/' req_ws Level0
 Modulo <-  '%' req_ws Level0
 
-Level0 <- IP / String / Integer / Boolean / Undefined / Nil / Not /
+Level0 <- IP / String / Integer / Boolean / Undefined / Nil / Symbol / Not /
           Substitution / Merge / Auto / Lambda / Chained 
 
-Chained <- ( Mapping / Sum / List / Map / Range / Grouped / Reference ) ChainedQualifiedExpression* 
-ChainedQualifiedExpression <- ChainedCall / ( '.' ( ChainedRef / ChainedDynRef / Projection) )
-ChainedRef <- ( Key / Index ) FollowUpRef
-ChainedDynRef <- '[' Expression ']'
+Chained <- ( MapMapping / Sync / Catch / Mapping / MapSelection / Selection / Sum / List / Map / Range / Grouped / Reference ) ChainedQualifiedExpression*
+ChainedQualifiedExpression <- ChainedCall / ChainedRef / ChainedDynRef / Projection
+ChainedRef <-  PathComponent FollowUpRef
+ChainedDynRef <- '.'? '[' Expression ']'
 Slice <- Range
 ChainedCall <- StartArguments ExpressionList? ')'
 StartArguments <- '(' ws
 ExpressionList <- NextExpression ( ',' NextExpression)*
 NextExpression <- Expression
 
-Projection <- ( '[*]' / Slice ) ProjectionValue ChainedQualifiedExpression*
+Projection <-  '.'? ( '[*]' / Slice ) ProjectionValue ChainedQualifiedExpression*
 ProjectionValue <- {}
 
 Substitution <- '*' Level0
 Not <- '!' ws Level0
 Grouped <- '(' Expression ')'
-Range <- '[' Expression '..' Expression ']'
+Range <- StartRange Expression? RangeOp Expression? ']'
+StartRange <- '['
+RangeOp <- '..'
 
 Integer <- '-'? [0-9] [0-9_]*
 String <- '"' ('\\"' / !'"' .)* '"'
 Boolean <- 'true' / 'false'
 Nil <- 'nil' / '~'
 Undefined <- '~~'
+Symbol <- '$' Name
 
 List <- StartList ExpressionList? ']'
-StartList <- '['
+StartList <- '[' ws
 
 Map <- CreateMap ws Assignments? '}'
 CreateMap <- '{'
@@ -81,20 +89,34 @@ Required <- 'required'
 On <- 'on' req_ws Name
 
 Auto <- 'auto'
+Default <- {}
 
-Mapping <- 'map[' Level7 ( LambdaExpr / ( '|' Expression )) ']'
-Sum <- 'sum[' Level7 '|' Level7 ( LambdaExpr / ( '|' Expression )) ']'
+Sync <- 'sync[' Level7  (( (LambdaExpr LambdaExt) / (LambdaOrExpr LambdaOrExpr))  (( '|' Expression) / Default ) / (LambdaOrExpr Default Default))  ']'
+LambdaExt <- ',' Expression
+LambdaOrExpr <- LambdaExpr / ( '|' Expression )
+
+Catch <- 'catch[' Level7 LambdaOrExpr  ']'
+MapMapping <- 'map{' Level7 LambdaOrExpr '}'
+Mapping <- 'map[' Level7 LambdaOrExpr ']'
+MapSelection <- 'select{' Level7 LambdaOrExpr '}'
+Selection <- 'select[' Level7 LambdaOrExpr ']'
+Sum <- 'sum[' Level7 '|' Level7 LambdaOrExpr ']'
+
 Lambda <- 'lambda' ( LambdaRef / LambdaExpr )
 LambdaRef <- req_ws Expression
-LambdaExpr <- ws '|' ws Name (NextName)* ws '|' ws '->' Expression
-NextName <- ws ',' ws Name
+LambdaExpr <- ws Params ws '->' Expression
+Params <- '|' StartParams ws Names? ws '|'
+StartParams <- {}
+Names <- NextName (',' NextName)*
+NextName <- ws Name ws
 Name <- [a-zA-Z0-9_]+
 
 Reference <- '.'? Key FollowUpRef
-FollowUpRef <- ( '.' ( Key / Index) )*
+FollowUpRef <- PathComponent*
+PathComponent <- ( '.' Key ) / ( '.'? Index )
 
 Key <- [a-zA-Z0-9_] [a-zA-Z0-9_\-]* ( ':' [a-zA-Z0-9_] [a-zA-Z0-9_\-]* )?
-Index <- '[' [0-9]+ ']'
+Index <- '[' '-'? [0-9]+ ']'
 IP <- [0-9]+ '.' [0-9]+ '.' [0-9]+ '.' [0-9]+
 
 ws <- [ \t\n\r]*

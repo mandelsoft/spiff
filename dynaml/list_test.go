@@ -16,7 +16,7 @@ var _ = Describe("lists", func() {
 			},
 		}
 
-		Expect(expr).To(EvaluateAs([]yaml.Node{node(1, nil), node("two", nil)}, FakeBinding{}))
+		Expect(expr).To(EvaluateAs([]yaml.Node{NewNode(1, nil), NewNode("two", nil)}, FakeBinding{}))
 	})
 
 	Context("when empty", func() {

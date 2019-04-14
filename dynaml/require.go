@@ -14,8 +14,8 @@ func (e CallExpr) require(binding Binding) (interface{}, EvaluationInfo, bool) {
 		return e, info, true
 	}
 
-	if !ok {
-		return nil, info, false
+	if !ok || val == nil {
+		return info.Error("required expression %q undefined", e.Arguments[0])
 	}
 
 	return val, info, val != nil

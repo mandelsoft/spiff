@@ -1,0 +1,67 @@
+# Copyright 2019 Copyright (c) 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+#
+# maintain a state field depending on some input
+# and a template for a new value
+# if the input has changed or there is no stub value the template is
+# instantiated with the input as binding (reference input). 
+# Alternatively the new value can be given as direct value.
+# If a template is given, the template must provide a field
+# `state` which is used as new state value.
+#
+# The result is a state structure with two fields
+# - input: the input used to generate the actual value
+# - value: the effectice value
+#
+# A state field should be put into a non-merging field.
+# The actual state should be derived from this field
+# and used as stub for successive merge calls.
+#
+#
+# lambdas:
+#
+#  - utilities.state.data(input,new,forceupdate)
+#
+#    input:       any:             the input data used to generate the state
+#                                  value
+#    new:         template or and: the new value based on the input or
+#                                  a template using the `input` binding to
+#                                  generate the state value
+#    forceupdate: bool:            setting to true encorces a value update
+#
+#  - utilities.state.standard(spec,forceupdate)
+#
+#    spec:        map:             structure containing the specification
+#                                  for this state value
+#    forceupdate: bool:            setting to true encorces a value update
+#
+#    the _spec_ map must contain two fields:
+#         input: any               the input data used to generate the state
+#                                  value
+#         value: template or any   the new value based on the input or 
+#                                  a template using the `input` binding to
+#                                  generate the state value
+#
+
+utilities:
+  <<: (( &temporary(merge || ~) ))
+
+  state:
+    valuedata: (( |input,new,update|-> { $input=input, $value= ( !update -and stub().input == input ? stub().value :~) // type(new) == "template" ? (*new) :new } ))
+    data: (( |input,new,update|-> { $input=input, $value= ( !update -and stub().input == input ? stub().value :~) // type(new) == "template" ? (*new).state :new } ))
+
+    standard: (( |data,update|-> _.data(data.input, data.value,update) ))
+

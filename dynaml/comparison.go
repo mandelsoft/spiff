@@ -2,8 +2,8 @@ package dynaml
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/yaml"
@@ -41,31 +41,39 @@ func (e ComparisonExpr) Evaluate(binding Binding, locally bool) (interface{}, Ev
 	case "!=":
 		result, infor, ok = compareEquals(a, b)
 		result = !result
-	case "<=":
-		fallthrough
-	case "<":
-		fallthrough
-	case ">":
-		fallthrough
-	case ">=":
-		var va, vb int64
-		va, ok = a.(int64)
-		if !ok {
-			return infor.Error("comparision %s only for integers", e.Op)
-		}
-		vb, ok = b.(int64)
-		if !ok {
-			return infor.Error("comparision %s only for integers", e.Op)
-		}
-		switch e.Op {
-		case "<=":
-			result = va <= vb
-		case "<":
-			result = va < vb
-		case ">":
-			result = va > vb
-		case ">=":
-			result = va >= vb
+	case "<=", "<", ">", ">=":
+		switch va := a.(type) {
+		case int64:
+			vb, ok := b.(int64)
+			if !ok {
+				return infor.Error("comparision %s only for integers or strings", e.Op)
+			}
+			switch e.Op {
+			case "<=":
+				result = va <= vb
+			case "<":
+				result = va < vb
+			case ">":
+				result = va > vb
+			case ">=":
+				result = va >= vb
+			}
+
+		case string:
+			vb, ok := b.(string)
+			if !ok {
+				return infor.Error("comparision %s only for strings or integers", e.Op)
+			}
+			switch e.Op {
+			case "<=":
+				result = va <= vb
+			case "<":
+				result = va < vb
+			case ">":
+				result = va > vb
+			case ">=":
+				result = va >= vb
+			}
 		}
 	}
 	infor = info.Join(infor)
@@ -83,8 +91,20 @@ func (e ComparisonExpr) String() string {
 func compareEquals(a, b interface{}) (bool, EvaluationInfo, bool) {
 	info := DefaultInfo()
 
-	debug.Debug("compare a '%#v'\n", a)
-	debug.Debug("compare b '%#v' \n", b)
+	debug.Debug("compare a '%T'\n", a)
+	debug.Debug("compare b '%T' \n", b)
+	if a == nil {
+		if b == nil {
+			return true, info, true
+		}
+		debug.Debug("compare failed: nil vs non-nil '%v'\n", b)
+		return false, info, false
+	} else {
+		if b == nil {
+			debug.Debug("compare failed: nil vs non-nil '%v'\n", a)
+			return false, info, false
+		}
+	}
 	switch va := a.(type) {
 	case string:
 		var vb string
@@ -101,7 +121,11 @@ func compareEquals(a, b interface{}) (bool, EvaluationInfo, bool) {
 			info.Issue = yaml.NewIssue("types uncomparable")
 			return false, info, false
 		}
-		return va == vb, info, true
+		if va == vb {
+			return true, info, true
+		}
+		debug.Debug("compare failed: %v != %v\n", va, vb)
+		return false, info, true
 
 	case int64:
 		var vb int64
@@ -110,6 +134,7 @@ func compareEquals(a, b interface{}) (bool, EvaluationInfo, bool) {
 		case string:
 			vb, err = strconv.ParseInt(v, 10, 64)
 			if err != nil {
+				debug.Debug("compare failed: no int '%v'\n", v)
 				return false, info, true
 			}
 		case int64:
@@ -121,32 +146,52 @@ func compareEquals(a, b interface{}) (bool, EvaluationInfo, bool) {
 				vb = 0
 			}
 		default:
-			info.Issue = yaml.NewIssue("types uncomparable")
-			return false, info, false
+			debug.Debug("compare failed: no int '%T'\n", b)
+			return false, info, true
 		}
-		return va == vb, info, true
+		if va == vb {
+			return true, info, true
+		}
+		debug.Debug("compare failed: %v != %v\n", va, vb)
+		return false, info, true
 
-	case LambdaValue:
+	case bool:
+		var vb bool
+		var err error
 		switch v := b.(type) {
+		case bool:
+			vb = v
 		case string:
-			return va.String() == v, info, true
-		case LambdaValue:
-			return reflect.DeepEqual(va, v), info, true
+			vb, err = strconv.ParseBool(strings.ToLower(v))
+			if err != nil {
+				debug.Debug("compare failed: no bool '%v'\n", v)
+				return false, info, true
+			}
 		default:
-			info.Issue = yaml.NewIssue("types uncomparable")
-			return false, info, false
+			debug.Debug("compare failed: no bool '%T'\n", b)
+			return false, info, true
+		}
+		if va == vb {
+			return true, info, true
+		}
+		debug.Debug("compare failed: %v != %v\n", va, vb)
+		return false, info, true
+
+	case yaml.ComparableValue:
+		if vb, ok := b.(yaml.ComparableValue); ok {
+			return va.EquivalentTo(vb), info, true
 		}
 
 	case []yaml.Node:
 		vb, ok := b.([]yaml.Node)
 		if !ok || len(va) != len(vb) {
 			debug.Debug("compare list len mismatch")
-			break
+			return false, info, true
 		}
 		for i, v := range vb {
 			result, info, _ := compareEquals(va[i].Value(), v.Value())
 			if !result {
-				debug.Debug(fmt.Sprintf("compare list entry %d mismatch", i))
+				debug.Debug("compare list entry %d mismatch\n", i)
 				return false, info, true
 			}
 		}
@@ -155,18 +200,26 @@ func compareEquals(a, b interface{}) (bool, EvaluationInfo, bool) {
 	case map[string]yaml.Node:
 		vb, ok := b.(map[string]yaml.Node)
 		if !ok || len(va) != len(vb) {
-			break
+			debug.Debug("compare map len mismatch")
+			return false, info, true
 		}
 
 		for k, v := range vb {
-			result, info, _ := compareEquals(va[k].Value(), v.Value())
-			if !result {
+			vaa, ok := va[k]
+			if ok {
+				result, info, _ := compareEquals(vaa.Value(), v.Value())
+				if !result {
+					debug.Debug("compare map entry %s mismatch\n", k)
+					return false, info, true
+				}
+			} else {
+				debug.Debug("compare map entry %s not found\n", k)
 				return false, info, true
 			}
 		}
 		return true, info, true
 
 	}
-
+	debug.Debug("compare failed\n")
 	return false, info, true
 }

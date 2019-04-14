@@ -7,18 +7,19 @@ import (
 
 var _ = Describe("mapping expressions", func() {
 	It("prints mapping expression", func() {
-		desc := MapExpr{
+		desc := MappingExpr{
 			ReferenceExpr{[]string{"list"}},
 			ConcatenationExpr{
 				ReferenceExpr{[]string{"x"}},
 				StringExpr{".*"},
 			},
+			MapToListContext,
 		}.String()
 		Expect(desc).To(Equal("map[list|x \".*\"]"))
 	})
 
 	It("simplifies lambda mapping expression", func() {
-		desc := MapExpr{
+		desc := MappingExpr{
 			ReferenceExpr{[]string{"list"}},
 			LambdaExpr{
 				[]string{"x"},
@@ -27,6 +28,7 @@ var _ = Describe("mapping expressions", func() {
 					StringExpr{".*"},
 				},
 			},
+			MapToListContext,
 		}.String()
 		Expect(desc).To(Equal("map[list|x|->x \".*\"]"))
 	})

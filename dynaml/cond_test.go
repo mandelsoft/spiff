@@ -98,8 +98,8 @@ var _ = Describe("conditional operator", func() {
 
 	Context("on map condition", func() {
 		It("returns first if length != 0", func() {
-			mapNode := node(map[string]yaml.Node{
-				"bar": node("alice", nil),
+			mapNode := NewNode(map[string]yaml.Node{
+				"bar": NewNode("alice", nil),
 			}, nil)
 			expr := CondExpr{
 				C: ReferenceExpr{[]string{"foo"}},
@@ -111,7 +111,7 @@ var _ = Describe("conditional operator", func() {
 		})
 
 		It("returns second if length == 0", func() {
-			mapNode := node(map[string]yaml.Node{}, nil)
+			mapNode := NewNode(map[string]yaml.Node{}, nil)
 			expr := CondExpr{
 				C: ReferenceExpr{[]string{"foo"}},
 				T: IntegerExpr{2},

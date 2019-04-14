@@ -88,7 +88,7 @@ func generateStaticIPs(binding Binding, indices []int) (interface{}, EvaluationI
 			return nil, info, false
 		}
 
-		ips = append(ips, node(ipPool[i].String(), binding))
+		ips = append(ips, NewNode(ipPool[i].String(), binding))
 	}
 
 	if len(ips) < instanceCount {

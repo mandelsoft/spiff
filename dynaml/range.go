@@ -11,22 +11,45 @@ type RangeExpr struct {
 	End   Expression
 }
 
-func (e RangeExpr) getRange(binding Binding) (int64, int64, EvaluationInfo, bool, bool) {
+func (e RangeExpr) getRange(binding Binding, size int) (int64, int64, EvaluationInfo, bool, bool) {
 	resolved := true
+	info := EvaluationInfo{}
 
-	start, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.Start, &resolved, nil, binding, false)
-	if !ok {
+	if size < 0 && (e.Start == nil || e.End == nil) {
+		info.SetError("range expression requires start and end index")
 		return 0, 0, info, false, resolved
 	}
-	end, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.End, &resolved, &info, binding, false)
-	if !ok {
+	range_start := int64(0)
+	range_end := int64(size - 1)
+	if e.Start != nil {
+		val, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.Start, &resolved, &info, binding, false)
+		if !ok {
+			return 0, 0, info, false, resolved
+		}
+		range_start = val
+		if val < 0 && e.End == nil {
+			range_end = -1
+		}
+	}
+	if e.End != nil {
+		val, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.End, &resolved, &info, binding, false)
+		if !ok {
+			return 0, 0, info, false, resolved
+		}
+		range_end = val
+		if val < 0 && e.Start == nil {
+			range_start = -int64(size)
+		}
+	}
+	if e.Start == nil && e.End == nil {
+		info.SetError("slice operator requires start or end index")
 		return 0, 0, info, false, resolved
 	}
-	return start, end, info, true, resolved
+	return range_start, range_end, info, true, resolved
 }
 
 func (e RangeExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
-	start, end, info, ok, resolved := e.getRange(binding)
+	start, end, info, ok, resolved := e.getRange(binding, -1)
 
 	if !ok {
 		return nil, info, false
@@ -41,7 +64,7 @@ func (e RangeExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluat
 		delta = -1
 	}
 	for i := start; i*delta <= end*delta; i += delta {
-		nodes = append(nodes, node(i, binding))
+		nodes = append(nodes, NewNode(i, binding))
 	}
 
 	return nodes, info, true

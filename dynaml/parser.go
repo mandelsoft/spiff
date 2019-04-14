@@ -2,16 +2,25 @@ package dynaml
 
 import (
 	"container/list"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/mandelsoft/spiff/debug"
 )
 
-type helperNode struct{}
+type helperNode struct {
+}
 
 func (e helperNode) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	panic("not intended to be evaluated")
+}
+
+type expressionHelper struct {
+	helperNode
+	expression Expression
 }
 
 type expressionListHelper struct {
@@ -34,19 +43,100 @@ type operationHelper struct {
 	op string
 }
 
+func lineError(lines, syms, linee, syme int, txt string) string {
+	return fmt.Sprintf("parse error near symbol %v - symbol %v: '%s'", syms, syme, txt)
+}
+
+func docError(lines, syms, linee, syme int, txt string) string {
+	return fmt.Sprintf("parse error near line %v symbol %v - line %v symbol %v: '%s'", lines, syms, linee, syme, txt)
+}
+
+func (e *parseError) String() string {
+	tokens, error := []token32{e.max}, ""
+	positions, p := make([]int, 2*len(tokens)), 0
+	for _, token := range tokens {
+		positions[p], p = int(token.begin), p+1
+		positions[p], p = int(token.end), p+1
+	}
+	translations := translatePositions(e.p.buffer, positions)
+	errf := lineError
+	if strings.Index(e.p.Buffer, "\n") >= 0 {
+		errf = docError
+	}
+	for _, token := range tokens {
+		begin, end := int(token.begin), int(token.end)
+		error += errf(
+			translations[begin].line, translations[begin].symbol,
+			translations[end].line, translations[end].symbol,
+			string(e.p.buffer[begin:end]))
+	}
+
+	return error
+}
+
 func Parse(source string, path []string, stubPath []string) (Expression, error) {
 	grammar := &DynamlGrammar{Buffer: source}
 	grammar.Init()
 
 	err := grammar.Parse()
 	if err != nil {
-		return nil, err
+		return nil, errors.New(err.(*parseError).String())
 	}
 
-	return buildExpression(grammar, path, stubPath), nil
+	return buildExpression(grammar, path, stubPath)
 }
 
-func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) Expression {
+func PathComponents(ref string, leading bool) []string {
+	path := []string{}
+	comp := ""
+	for _, c := range ref {
+		switch c {
+		case '.':
+			if comp != "" || leading {
+				path = append(path, comp)
+			}
+			comp = ""
+		case '[':
+			if comp != "" {
+				path = append(path, comp)
+				comp = ""
+			}
+			fallthrough
+		default:
+			comp += string(c)
+		}
+	}
+	if comp != "" {
+		path = append(path, comp)
+	}
+	//fmt.Printf("REF '%s' -> %v\n", ref, path)
+	return path
+	//return strings.Split(contents, ".")
+}
+
+type ExpressionParseError struct {
+	*parseError
+	msg error
+}
+
+func (e ExpressionParseError) Error() string {
+	return fmt.Sprintf("%s: %s", e.parseError.String(), e.msg)
+}
+
+func NewParseError(grammar *DynamlGrammar, token token32, msg error) *ExpressionParseError {
+	return &ExpressionParseError{&parseError{grammar, token}, msg}
+}
+
+func parseString(s string, g *DynamlGrammar, t token32) (string, *ExpressionParseError) {
+	result := strings.Replace(s, `\"`, `"`, -1)
+	err := json.Unmarshal([]byte(s), &result)
+	if err != nil {
+		return "", NewParseError(g, t, err)
+	}
+	return result, nil
+}
+
+func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (Expression, error) {
 	tokens := &tokenStack{}
 
 	// flags for parsing merge options in merge expression
@@ -60,7 +150,7 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 
 		switch token.pegRule {
 		case ruleDynaml:
-			return tokens.Pop()
+			return tokens.Pop(), nil
 
 		case ruleMarker:
 			tokens.Push(newMarkerExpr(contents))
@@ -77,6 +167,8 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			tokens.Push(rhs)
 		case rulePrefer:
 			tokens.Push(PreferExpr{tokens.Pop()})
+		case ruleGrouped:
+			tokens.Push(GroupedExpr{tokens.Pop()})
 		case ruleAuto:
 			tokens.Push(AutoExpr{path})
 		case ruleMerge:
@@ -90,7 +182,11 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 		case ruleRefMerge:
 			debug.Debug("*** rule ref merge\n")
 			rhs := tokens.Pop()
-			tokens.Push(MergeExpr{rhs.(ReferenceExpr).Path, true, replace, true, keyName})
+			merge := rhs.(ReferenceExpr).Path
+			if len(merge) == 1 && merge[0] == "none" {
+				merge = []string{}
+			}
+			tokens.Push(MergeExpr{merge, true, replace, len(merge) > 0, keyName})
 		case ruleReplace:
 			replace = true
 		case ruleRequired:
@@ -99,12 +195,13 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			keyName = tokens.Pop().(nameHelper).name
 		case ruleFollowUpRef:
 		case ruleReference:
-			tokens.Push(ReferenceExpr{strings.Split(contents, ".")})
+			tokens.Push(ReferenceExpr{PathComponents(contents, true)})
 
 		case ruleChained:
 		case ruleChainedQualifiedExpression:
+		case rulePathComponent:
 		case ruleChainedRef:
-			ref := ReferenceExpr{strings.Split(contents, ".")}
+			ref := ReferenceExpr{PathComponents(contents, false)}
 			expr := tokens.Pop()
 			tokens.Push(QualifiedExpr{expr, ref})
 		case ruleChainedDynRef:
@@ -125,6 +222,9 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			})
 
 		case ruleAction0:
+		case ruleAction1:
+		case ruleAction2:
+
 		case ruleProjectionValue:
 			value := &ProjectionValue{}
 			tokens.Push(ProjectionValueExpr{value})
@@ -147,7 +247,13 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			tokens.Push(NilExpr{})
 		case ruleUndefined:
 			tokens.Push(UndefinedExpr{})
-		case ruleCreateMap:
+
+		case ruleScoped:
+			e := tokens.Pop()
+			m := tokens.Pop().(CreateMapExpr)
+			tokens.Push(ScopeExpr{m, e})
+
+		case ruleCreateMap, ruleCreateScope:
 			tokens.Push(CreateMapExpr{})
 		case ruleAssignment:
 			rhs := tokens.Pop()
@@ -159,7 +265,10 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 		case ruleBoolean:
 			tokens.Push(BooleanExpr{contents == "true"})
 		case ruleString:
-			val := strings.Replace(contents[1:len(contents)-1], `\"`, `"`, -1)
+			val, err := parseString(contents, grammar, token)
+			if err != nil {
+				return nil, err
+			}
 			tokens.Push(StringExpr{val})
 		case ruleIP:
 			tokens.Push(StringExpr{contents})
@@ -187,9 +296,17 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 
 		case ruleOr:
 			rhs := tokens.Pop()
+			op := tokens.Pop()
 			lhs := tokens.Pop()
 
-			tokens.Push(OrExpr{A: lhs, B: rhs})
+			if op.(operationHelper).op == "||" {
+				tokens.Push(OrExpr{A: lhs, B: rhs})
+			} else {
+				tokens.Push(ValidOrExpr{A: lhs, B: rhs})
+			}
+
+		case ruleOrOp:
+			tokens.Push(operationHelper{op: contents})
 
 		case ruleNot:
 			tokens.Push(NotExpr{tokens.Pop()})
@@ -235,18 +352,55 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 
 			tokens.Push(ModuloExpr{A: lhs, B: rhs})
 
+		case ruleSymbol:
+			name := tokens.Pop().(nameHelper)
+			tokens.Push(StringExpr{name.name})
+
+		case ruleStartParams:
+			tokens.Push(nameListHelper{})
 		case ruleName:
 			tokens.Push(nameHelper{name: contents})
 		case ruleNextName:
-			rhs := tokens.Pop()
-			list := tokens.PopNameList()
-			list.list = append(list.list, rhs.(nameHelper).name)
+			rhs := tokens.Pop().(nameHelper)
+			list := tokens.Pop().(nameListHelper)
+			list.list = append(list.list, rhs.name)
 			tokens.Push(list)
 
+		case ruleDefault:
+			tokens.Push(DefaultExpr{})
+
+		case ruleLambdaOrExpr:
+		case ruleLambdaExt:
+			tokens.Push(expressionHelper{expression: tokens.Pop()})
+		case ruleSync:
+			timeout := tokens.Pop()
+			value := tokens.Pop()
+			cond := tokens.Pop()
+			expr := tokens.Pop()
+			if h, ok := value.(expressionHelper); ok {
+				value = LambdaExpr{E: h.expression, Names: cond.(LambdaExpr).Names}
+			}
+			tokens.Push(SyncExpr{A: expr, Cond: cond, Value: value, Timeout: timeout})
+		case ruleCatch:
+			rhs := tokens.Pop()
+			lhs := tokens.Pop()
+			tokens.Push(CatchExpr{Lambda: rhs, A: lhs})
 		case ruleMapping:
 			rhs := tokens.Pop()
 			lhs := tokens.Pop()
-			tokens.Push(MapExpr{Lambda: rhs, A: lhs})
+			tokens.Push(MappingExpr{Lambda: rhs, A: lhs, Context: MapToListContext})
+		case ruleSelection:
+			rhs := tokens.Pop()
+			lhs := tokens.Pop()
+			tokens.Push(MappingExpr{Lambda: rhs, A: lhs, Context: SelectToListContext})
+		case ruleMapMapping:
+			rhs := tokens.Pop()
+			lhs := tokens.Pop()
+			tokens.Push(MappingExpr{Lambda: rhs, A: lhs, Context: MapToMapContext})
+		case ruleMapSelection:
+			rhs := tokens.Pop()
+			lhs := tokens.Pop()
+			tokens.Push(MappingExpr{Lambda: rhs, A: lhs, Context: SelectToMapContext})
 
 		case ruleSum:
 			rhs := tokens.Pop()
@@ -258,8 +412,8 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 
 		case ruleLambdaExpr:
 			rhs := tokens.Pop()
-			names := tokens.PopNameList().list
-			tokens.Push(LambdaExpr{Names: names, E: rhs})
+			names := tokens.Pop().(nameListHelper)
+			tokens.Push(LambdaExpr{Names: names.list, E: rhs})
 
 		case ruleLambdaRef:
 			rhs := tokens.Pop()
@@ -270,10 +424,25 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 				tokens.Push(LambdaRefExpr{Source: rhs, Path: path, StubPath: stubPath})
 			}
 
+		case ruleStartRange:
+			tokens.Push(operationHelper{op: ""})
+		case ruleRangeOp:
+			tokens.Push(operationHelper{op: contents})
+
 		case ruleRange:
 			rhs := tokens.Pop()
+			if _, ok := rhs.(operationHelper); ok {
+				rhs = nil
+			} else {
+				tokens.Pop()
+			}
 			lhs := tokens.Pop()
-			tokens.Push(RangeExpr{lhs.(Expression), rhs.(Expression)})
+			if _, ok := lhs.(operationHelper); ok {
+				lhs = nil
+			} else {
+				tokens.Pop()
+			}
+			tokens.Push(RangeExpr{lhs, rhs})
 
 		case ruleList:
 			seq := tokens.PopExpressionList()
@@ -289,12 +458,14 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) E
 			tokens.Push(expressionListHelper{})
 
 		case ruleKey, ruleIndex:
-		case ruleGrouped:
 		case ruleLevel0, ruleLevel1, ruleLevel2, ruleLevel3, ruleLevel4, ruleLevel5, ruleLevel6, ruleLevel7:
 		case ruleExpression:
 		case ruleExpressionList:
 		case ruleMap:
+		case ruleScope:
 		case ruleAssignments:
+		case ruleNames:
+		case ruleParams:
 		case rulews:
 		case rulereq_ws:
 		default:
@@ -353,13 +524,4 @@ func (s *tokenStack) Push(expr Expression) {
 
 func (s *tokenStack) PopExpressionList() []Expression {
 	return (s.Pop().(expressionListHelper)).list
-}
-
-func (s *tokenStack) PopNameList() nameListHelper {
-	lhs := s.Pop()
-	list, ok := lhs.(nameListHelper)
-	if !ok {
-		list = nameListHelper{list: []string{lhs.(nameHelper).name}}
-	}
-	return list
 }

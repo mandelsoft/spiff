@@ -303,7 +303,7 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`(foo)(1)`,
 				CallExpr{
-					ReferenceExpr{[]string{"foo"}},
+					GroupedExpr{ReferenceExpr{[]string{"foo"}}},
 					[]Expression{
 						IntegerExpr{1},
 					},
@@ -368,10 +368,10 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`("foo" - bar) - merge`,
 				SubtractionExpr{
-					SubtractionExpr{
+					GroupedExpr{SubtractionExpr{
 						StringExpr{"foo"},
 						ReferenceExpr{[]string{"bar"}},
-					},
+					}},
 					MergeExpr{},
 				},
 			)
@@ -382,25 +382,177 @@ var _ = Describe("parsing", func() {
 		It("parses simple mapping", func() {
 			parsesAs(
 				`map[list|x|->x]`,
-				MapExpr{
+				MappingExpr{
 					ReferenceExpr{[]string{"list"}},
 					LambdaExpr{
 						[]string{"x"},
 						ReferenceExpr{[]string{"x"}},
 					},
+					MapToListContext,
 				},
 			)
+		})
+
+		Describe("sync", func() {
+			It("parses simple lambda", func() {
+				parsesAs(
+					`sync[data|x|->x]`,
+					SyncExpr{
+						A: ReferenceExpr{[]string{"data"}},
+						Cond: LambdaExpr{
+							[]string{"x"},
+							ReferenceExpr{[]string{"x"}},
+						},
+						Value:   DefaultExpr{},
+						Timeout: DefaultExpr{},
+					},
+				)
+			})
+			It("parses double lambda", func() {
+				parsesAs(
+					`sync[data|x|->x,y]`,
+					SyncExpr{
+						A: ReferenceExpr{[]string{"data"}},
+						Cond: LambdaExpr{
+							[]string{"x"},
+							ReferenceExpr{[]string{"x"}},
+						},
+						Value: LambdaExpr{
+							[]string{"x"},
+							ReferenceExpr{[]string{"y"}},
+						},
+						Timeout: DefaultExpr{},
+					},
+				)
+			})
+			It("parses shared lambda, timeout", func() {
+				parsesAs(
+					`sync[data|x|->x,y|10]`,
+					SyncExpr{
+						A: ReferenceExpr{[]string{"data"}},
+						Cond: LambdaExpr{
+							[]string{"x"},
+							ReferenceExpr{[]string{"x"}},
+						},
+						Value: LambdaExpr{
+							[]string{"x"},
+							ReferenceExpr{[]string{"y"}},
+						},
+						Timeout: IntegerExpr{10},
+					},
+				)
+			})
+			It("parses double lambda, timeout", func() {
+				parsesAs(
+					`sync[data|x|->x|y|->y|10]`,
+					SyncExpr{
+						A: ReferenceExpr{[]string{"data"}},
+						Cond: LambdaExpr{
+							[]string{"x"},
+							ReferenceExpr{[]string{"x"}},
+						},
+						Value: LambdaExpr{
+							[]string{"y"},
+							ReferenceExpr{[]string{"y"}},
+						},
+						Timeout: IntegerExpr{10},
+					},
+				)
+			})
+
+			It("parses lambda cond, expression", func() {
+				parsesAs(
+					`sync[data|x|->x|value]`,
+					SyncExpr{
+						A: ReferenceExpr{[]string{"data"}},
+						Cond: LambdaExpr{
+							[]string{"x"},
+							ReferenceExpr{[]string{"x"}},
+						},
+						Value:   ReferenceExpr{[]string{"value"}},
+						Timeout: DefaultExpr{},
+					},
+				)
+			})
+
+			It("parses simple cond", func() {
+				parsesAs(
+					`sync[data|cond]`,
+					SyncExpr{
+						A:       ReferenceExpr{[]string{"data"}},
+						Cond:    ReferenceExpr{[]string{"cond"}},
+						Value:   DefaultExpr{},
+						Timeout: DefaultExpr{},
+					},
+				)
+			})
+
+			It("parses double expr", func() {
+				parsesAs(
+					`sync[data|cond|value]`,
+					SyncExpr{
+						A:       ReferenceExpr{[]string{"data"}},
+						Cond:    ReferenceExpr{[]string{"cond"}},
+						Value:   ReferenceExpr{[]string{"value"}},
+						Timeout: DefaultExpr{},
+					},
+				)
+			})
+
+			It("parses expr lambda", func() {
+				parsesAs(
+					`sync[data|cond|v|->v]`,
+					SyncExpr{
+						A:    ReferenceExpr{[]string{"data"}},
+						Cond: ReferenceExpr{[]string{"cond"}},
+						Value: LambdaExpr{
+							[]string{"v"},
+							ReferenceExpr{[]string{"v"}},
+						},
+						Timeout: DefaultExpr{},
+					},
+				)
+			})
+
+			It("parses double expr, timeout", func() {
+				parsesAs(
+					`sync[data|cond|value|10]`,
+					SyncExpr{
+						A:       ReferenceExpr{[]string{"data"}},
+						Cond:    ReferenceExpr{[]string{"cond"}},
+						Value:   ReferenceExpr{[]string{"value"}},
+						Timeout: IntegerExpr{10},
+					},
+				)
+			})
+
+			It("parses expr lambda, timeout", func() {
+				parsesAs(
+					`sync[data|cond|v|->v|10]`,
+					SyncExpr{
+						A:    ReferenceExpr{[]string{"data"}},
+						Cond: ReferenceExpr{[]string{"cond"}},
+						Value: LambdaExpr{
+							[]string{"v"},
+							ReferenceExpr{[]string{"v"}},
+						},
+						Timeout: IntegerExpr{10},
+					},
+				)
+			})
+
 		})
 
 		It("parses key/value mapping", func() {
 			parsesAs(
 				`map[list|x,y|->x]`,
-				MapExpr{
+				MappingExpr{
 					ReferenceExpr{[]string{"list"}},
 					LambdaExpr{
 						[]string{"x", "y"},
 						ReferenceExpr{[]string{"x"}},
 					},
+					MapToListContext,
 				},
 			)
 		})
@@ -408,7 +560,7 @@ var _ = Describe("parsing", func() {
 		It("parses complex mapping", func() {
 			parsesAs(
 				`map[list|x|->x ".*"]`,
-				MapExpr{
+				MappingExpr{
 					ReferenceExpr{[]string{"list"}},
 					LambdaExpr{
 						[]string{"x"},
@@ -417,6 +569,7 @@ var _ = Describe("parsing", func() {
 							StringExpr{".*"},
 						},
 					},
+					MapToListContext,
 				},
 			)
 		})
@@ -424,11 +577,12 @@ var _ = Describe("parsing", func() {
 		It("parses mapping expression", func() {
 			parsesAs(
 				`map[list|mappings.a]`,
-				MapExpr{
+				MappingExpr{
 					ReferenceExpr{[]string{"list"}},
 					ReferenceExpr{
 						[]string{"mappings", "a"},
 					},
+					MapToListContext,
 				},
 			)
 		})
@@ -436,7 +590,7 @@ var _ = Describe("parsing", func() {
 		It("parses complex mapping expression", func() {
 			parsesAs(
 				`map[list|lambda |x|->x ".*"]`,
-				MapExpr{
+				MappingExpr{
 					ReferenceExpr{[]string{"list"}},
 					LambdaExpr{
 						[]string{"x"},
@@ -445,12 +599,116 @@ var _ = Describe("parsing", func() {
 							StringExpr{".*"},
 						},
 					},
+					MapToListContext,
+				},
+			)
+		})
+
+		It("parses simple map mapping", func() {
+			parsesAs(
+				`map{list|x|->x}`,
+				MappingExpr{
+					ReferenceExpr{[]string{"list"}},
+					LambdaExpr{
+						[]string{"x"},
+						ReferenceExpr{[]string{"x"}},
+					},
+					MapToMapContext,
+				},
+			)
+		})
+
+		It("parses simple selection", func() {
+			parsesAs(
+				`select[list|x|->x]`,
+				MappingExpr{
+					ReferenceExpr{[]string{"list"}},
+					LambdaExpr{
+						[]string{"x"},
+						ReferenceExpr{[]string{"x"}},
+					},
+					SelectToListContext,
+				},
+			)
+		})
+		It("parses simple map selection", func() {
+			parsesAs(
+				`select{list|x|->x}`,
+				MappingExpr{
+					ReferenceExpr{[]string{"list"}},
+					LambdaExpr{
+						[]string{"x"},
+						ReferenceExpr{[]string{"x"}},
+					},
+					SelectToMapContext,
+				},
+			)
+		})
+	})
+
+	Describe("scopes", func() {
+		It("parses empty scope", func() {
+			parsesAs(
+				`() x`,
+				ScopeExpr{
+					CreateMapExpr{
+						nil,
+					},
+					ReferenceExpr{[]string{"x"}},
+				},
+			)
+		})
+
+		It("parses scope with one assigment", func() {
+			parsesAs(
+				`($x=5) x`,
+				ScopeExpr{
+					CreateMapExpr{
+						[]Assignment{
+							{
+								Key:   StringExpr{"x"},
+								Value: IntegerExpr{5},
+							},
+						},
+					},
+					ReferenceExpr{[]string{"x"}},
+				},
+			)
+		})
+
+		It("parses scope with two assigments", func() {
+			parsesAs(
+				`($x=5, $y="x") x`,
+				ScopeExpr{
+					CreateMapExpr{
+						[]Assignment{
+							{
+								Key:   StringExpr{"x"},
+								Value: IntegerExpr{5},
+							},
+							{
+								Key:   StringExpr{"y"},
+								Value: StringExpr{"x"},
+							},
+						},
+					},
+					ReferenceExpr{[]string{"x"}},
 				},
 			)
 		})
 	})
 
 	Describe("lambda expressions", func() {
+		It("parses expression with no parameter", func() {
+			parsesAs(
+				`lambda||->x`,
+				LambdaExpr{
+					nil,
+					ReferenceExpr{[]string{"x"}},
+				},
+			)
+		})
+
 		It("parses expression with one parameter", func() {
 			parsesAs(
 				`lambda|x|->x`,
@@ -520,6 +778,21 @@ var _ = Describe("parsing", func() {
 				ReferenceExpr{[]string{"foo", "[0]"}},
 			)
 		})
+
+		It("parses projection expression", func() {
+			val := ProjectionValue{}
+			parsesAs(
+				`foo.[0].[*].bar`,
+				ProjectionExpr{
+					ReferenceExpr{[]string{"foo", "[0]"}},
+					&val,
+					QualifiedExpr{
+						ProjectionValueExpr{&val},
+						ReferenceExpr{[]string{"bar"}},
+					},
+				},
+			)
+		})
 	})
 
 	Describe("chained calls and references", func() {
@@ -555,6 +828,20 @@ var _ = Describe("parsing", func() {
 						},
 					},
 					ReferenceExpr{[]string{"g"}},
+				},
+			)
+		})
+		It("parses function chain", func() {
+			parsesAs(
+				`a(1).b`,
+				QualifiedExpr{
+					CallExpr{
+						ReferenceExpr{[]string{"a"}},
+						[]Expression{
+							IntegerExpr{1},
+						},
+					},
+					ReferenceExpr{[]string{"b"}},
 				},
 			)
 		})
@@ -603,6 +890,85 @@ var _ = Describe("parsing", func() {
 			)
 		})
 	})
+
+	Describe("simplified indexing", func() {
+		It("parses qualified dynamic expression", func() {
+			parsesAs(
+				`foo[alice].bar`,
+				QualifiedExpr{
+					DynamicExpr{
+						ReferenceExpr{[]string{"foo"}},
+						ReferenceExpr{[]string{"alice"}},
+					},
+					ReferenceExpr{[]string{"bar"}},
+				},
+			)
+		})
+
+		It("parses indexed expression", func() {
+			parsesAs(
+				`foo[ 0 ]`,
+				DynamicExpr{
+					ReferenceExpr{[]string{"foo"}},
+					IntegerExpr{0},
+				},
+			)
+		})
+
+		It("parses regular reference expression", func() {
+			parsesAs(
+				`foo[0]`,
+				ReferenceExpr{[]string{"foo", "[0]"}},
+			)
+		})
+
+		It("parses multi level index", func() {
+			parsesAs(
+				`foo[0][1]`,
+				ReferenceExpr{[]string{"foo", "[0]", "[1]"}},
+			)
+		})
+
+		It("parses chained call and index", func() {
+			parsesAs(
+				`foo(0)[1](2)`,
+				CallExpr{
+					QualifiedExpr{
+						CallExpr{
+							ReferenceExpr{
+								[]string{"foo"},
+							},
+							[]Expression{
+								IntegerExpr{0},
+							},
+						},
+						ReferenceExpr{
+							[]string{"[1]"},
+						},
+					},
+					[]Expression{
+						IntegerExpr{2},
+					},
+				},
+			)
+		})
+
+		It("parses projection expression", func() {
+			val := ProjectionValue{}
+			parsesAs(
+				`foo[0][*].bar`,
+				ProjectionExpr{
+					ReferenceExpr{[]string{"foo", "[0]"}},
+					&val,
+					QualifiedExpr{
+						ProjectionValueExpr{&val},
+						ReferenceExpr{[]string{"bar"}},
+					},
+				},
+			)
+		})
+	})
+
 })
 
 func parsesAs(source string, expr Expression, path ...string) {

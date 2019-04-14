@@ -1,6 +1,7 @@
 package dynaml
 
 import (
+	"github.com/mandelsoft/spiff/yaml"
 	"strings"
 )
 
@@ -24,11 +25,20 @@ func (e CallExpr) stub(binding Binding) (interface{}, EvaluationInfo, bool) {
 			if !ok {
 				return val, info, ok
 			} else {
-				str, ok := val.(string)
-				if !ok {
+				switch v := val.(type) {
+				case string:
+					arg = PathComponents(v, true)
+				case []yaml.Node:
+					for _, n := range v {
+						str, ok := n.Value().(string)
+						if !ok {
+							return info.Error("stub() requires a string entries in list")
+						}
+						arg = append(arg, str)
+					}
+				default:
 					return info.Error("stub() requires a string or reference argument")
 				}
-				arg = strings.Split(str, ".")
 			}
 		} else {
 			arg = ref.Path

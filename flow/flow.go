@@ -9,19 +9,26 @@ import (
 	"github.com/mandelsoft/spiff/dynaml"
 	"github.com/mandelsoft/spiff/yaml"
 
+	_ "github.com/mandelsoft/spiff/dynaml/passwd"
 	_ "github.com/mandelsoft/spiff/dynaml/x509"
 )
 
 func Flow(source yaml.Node, stubs ...yaml.Node) (yaml.Node, error) {
-	return NewEnvironment(stubs, source.SourceName()).Flow(source, true)
+	return NestedFlow(nil, source, stubs...)
 }
 
-func get_inherited_flags(env dynaml.Binding) yaml.NodeFlags {
+func NestedFlow(outer dynaml.Binding, source yaml.Node, stubs ...yaml.Node) (yaml.Node, error) {
+	env := NewNestedEnvironment(stubs, source.SourceName(), outer)
+	defer CleanupEnvironment(env)
+	return env.Flow(source, true)
+}
+
+func get_inherited_flags(env dynaml.Binding) (yaml.NodeFlags, yaml.Node) {
 	overridden, found := env.FindInStubs(env.StubPath())
 	if found {
-		return overridden.Flags() & yaml.FLAG_TEMPORARY
+		return overridden.Flags() & (yaml.FLAG_TEMPORARY | yaml.FLAG_STATE), overridden
 	}
-	return 0
+	return 0, overridden
 }
 
 func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
@@ -41,7 +48,9 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 		env = env.RedirectOverwrite(redirect)
 	}
 
-	debug.Debug("/// FLOW %v: %+v\n", env.Path(), root)
+	debug.Debug("//{ FLOW %v: %+v\n", env.Path(), root)
+	debug.Debug("/// BIND: %+v\n", env)
+	defer debug.Debug("//}\n")
 	if !replace {
 		if _, ok := root.Value().(dynaml.Expression); !ok && merged {
 			debug.Debug("  skip handling of merged node")
@@ -74,13 +83,21 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 					}
 				}
 				debug.Debug("  value template %s", val)
-				eval = dynaml.TemplateValue{env.Path(), val, root}
+				eval = dynaml.NewTemplateValue(env.Path(), val, root, env)
 			} else {
 				eval, info, ok = val.Evaluate(env, false)
+				if err := info.Cleanup(); err != nil {
+					info.SetError("%s", err)
+					eval = nil
+					ok = false
+				}
+				if info.RedirectPath != nil {
+					debug.Debug("eval found redirect %v, %v", info.RedirectPath, ok)
+				}
 			}
 			replace = replace || info.Replace
 			flags |= info.NodeFlags
-			debug.Debug("??? ---> %+v\n", eval)
+			debug.Debug("??? ---> %t %#v\n", ok, eval)
 			if !ok {
 				root = yaml.IssueNode(root, true, false, info.Issue)
 				debug.Debug("??? failed ---> KEEP\n")
@@ -116,10 +133,11 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 					keyName = info.KeyName
 					result = yaml.KeyNameNode(result, keyName)
 				}
-				if len(info.RedirectPath) > 0 {
+				if info.RedirectPath != nil {
 					redirect = info.RedirectPath
+					debug.Debug("found redirect %v", redirect)
 				}
-				if len(redirect) > 0 {
+				if redirect != nil {
 					debug.Debug("   REDIRECT -> %v\n", redirect)
 					result = yaml.RedirectNode(result.Value(), result, redirect)
 				}
@@ -158,7 +176,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 		}
 	}
 
-	if !merged && root.StandardOverride() && shouldOverride {
+	if !merged && root.StandardOverride() && shouldOverride && !env.NoMerge() {
 		debug.Debug("/// lookup stub %v -> %v\n", env.Path(), env.StubPath())
 		overridden, found := env.FindInStubs(env.StubPath())
 		if found {
@@ -181,6 +199,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 		}
 	}
 
+	debug.Debug("result: %#v\n", root)
 	return root
 }
 
@@ -200,11 +219,16 @@ func simpleMergeCompatibilityCheck(initial bool, node yaml.Node) bool {
 
 func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 	var flags yaml.NodeFlags
-	flags = get_inherited_flags(env)
+	var stub yaml.Node
+	var err error
+	flags, stub = get_inherited_flags(env)
 	processed := true
 	template := false
+	merged := false
+	issue, failed := root.Issue(), root.Failed()
 	rootMap := root.Value().(map[string]yaml.Node)
 
+	rootEnv := env
 	env = env.WithScope(rootMap)
 
 	redirect := root.RedirectPath()
@@ -214,15 +238,23 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 	sortedKeys := getSortedKeys(rootMap)
 
 	debug.Debug("HANDLE MAP %v\n", env.Path())
+	mergefound := false
 
 	// iteration order matters for the "<<" operator, it must be the first key in the map that is handled
 	for i := range sortedKeys {
 		key := sortedKeys[i]
 		val := rootMap[key]
 
-		if key == "<<" {
+		if key == "<<" || key == yaml.MERGEKEY {
+			if mergefound {
+				return yaml.IssueNode(root, true, true, yaml.NewIssue("multiple merge keys not allowed"))
+			}
+			mergefound = true
 			_, initial := val.Value().(string)
 			base := flow(val, env, false)
+			if base.Undefined() {
+				return yaml.UndefinedNode(root)
+			}
 			debug.Debug("flow to %#v\n", base.Value())
 			_, ok := base.Value().(dynaml.Expression)
 			if ok {
@@ -234,7 +266,7 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 						debug.Debug("found temporary declaration\n")
 					}
 					if flags.Local() {
-						debug.Debug("found local declaration\n")
+						debug.Debug("found static declaration\n")
 					}
 				}
 				if ok && m.Has(dynaml.TEMPLATE) {
@@ -254,19 +286,32 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 				}
 				processed = false
 			} else {
-				baseMap, ok := base.Value().(map[string]yaml.Node)
-				if base != nil && base.RedirectPath() != nil {
-					redirect = base.RedirectPath()
-					env = env.RedirectOverwrite(redirect)
+				if base == nil {
+					debug.Debug("base is nil\n")
+				} else {
+					if base.RedirectPath() != nil {
+						debug.Debug("redirected: %v, merged %v", base.RedirectPath(), base.Merged())
+						redirect = base.RedirectPath()
+						env = env.RedirectOverwrite(redirect)
+					}
 				}
+				if base.Merged() {
+					merged = true
+				}
+
+				baseMap, ok := base.Value().(map[string]yaml.Node)
 				if ok {
 					for k, v := range baseMap {
 						newMap[k] = v
 					}
 				}
+				// still ignore non dynaml value (might be strange but compatible)
 				replace = base.ReplaceFlag()
-				if ok || base.Value() == nil || yaml.EmbeddedDynaml(base) == nil {
-					// still ignore non dynaml value (might be strange but compatible)
+				parseError := yaml.EmbeddedDynaml(base) != nil
+				if !ok && base.Value() != nil && !parseError {
+					err = fmt.Errorf("require map value for '<<' insert, found '%s'", dynaml.ExpressionType(base.Value()))
+				}
+				if ok || base.Value() == nil || !parseError {
 					if replace {
 						break
 					}
@@ -278,20 +323,36 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 		} else {
 			if processed {
 				val = flow(val, env.WithPath(key), true)
+			} else {
+				debug.Debug("skip %q flow for unprocessed indication\n", key)
 			}
 		}
 
-		debug.Debug("MAP %v (%s)%s\n", env.Path(), val.KeyName(), key)
+		debug.Debug("MAP %v (%s)%s  -> %T\n", env.Path(), val.KeyName(), key, val.Value())
 		if !val.Undefined() {
 			newMap[key] = val
 		}
 	}
 
 	debug.Debug("MAP DONE %v\n", env.Path())
+	if merged {
+		flags |= yaml.FLAG_INJECTED
+	} else {
+		if stub != nil && !flags.Injected() {
+			if m, ok := stub.Value().(map[string]yaml.Node); ok {
+				for k, v := range m {
+					if v.Flags().Inject() && newMap[k] == nil {
+						newMap[k] = v
+					}
+				}
+			}
+			flags |= yaml.FLAG_INJECTED
+		}
+	}
 	var result interface{}
 	if template {
 		debug.Debug(" as template\n")
-		result = dynaml.TemplateValue{env.Path(), yaml.NewNode(newMap, root.SourceName()), root}
+		result = dynaml.NewTemplateValue(env.Path(), yaml.NewNode(newMap, root.SourceName()), root, rootEnv)
 	} else {
 		result = newMap
 	}
@@ -300,6 +361,13 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 		node = yaml.ReplaceNode(result, root, redirect)
 	} else {
 		node = yaml.RedirectNode(result, root, redirect)
+	}
+	if err != nil {
+		node = yaml.IssueNode(node, true, true, yaml.NewIssue("%s", err))
+	} else {
+		if failed {
+			node = yaml.IssueNode(node, true, true, issue)
+		}
 	}
 	if (flags | node.Flags()) != node.Flags() {
 		node = yaml.AddFlags(node, flags)
@@ -312,12 +380,12 @@ func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
 	rootList := root.Value().([]yaml.Node)
 
 	debug.Debug("HANDLE LIST %v\n", env.Path())
-	merged, process, replaced, redirectPath, keyName, flags := processMerges(root, rootList, env)
+	merged, process, replaced, redirectPath, keyName, ismerged, flags, stub := processMerges(root, rootList, env)
 
 	if process {
 		debug.Debug("process list (key: %s) %v\n", keyName, env.Path())
 		newList := []yaml.Node{}
-		if len(redirectPath) > 0 {
+		if redirectPath != nil {
 			env = env.RedirectOverwrite(redirectPath)
 		}
 		for idx, val := range merged.([]yaml.Node) {
@@ -328,6 +396,22 @@ func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
 			}
 			if !val.Undefined() {
 				newList = append(newList, val)
+			}
+		}
+		if ismerged {
+			flags |= yaml.FLAG_INJECTED
+		} else {
+			if stub != nil && !root.Flags().Injected() {
+				if m, ok := stub.Value().([]yaml.Node); ok {
+					injected := []yaml.Node{}
+					for _, v := range m {
+						if v.Flags().Inject() {
+							injected = append(injected, v)
+						}
+					}
+					newList = append(injected, newList...)
+				}
+				flags |= yaml.FLAG_INJECTED
 			}
 		}
 
@@ -342,12 +426,13 @@ func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
 	if replaced {
 		root = yaml.ReplaceNode(merged, root, redirectPath)
 	} else {
-		if len(redirectPath) > 0 {
+		if redirectPath != nil {
 			root = yaml.RedirectNode(merged, root, redirectPath)
 		} else {
 			root = yaml.SubstituteNode(merged, root)
 		}
 	}
+
 	if (flags | root.Flags()) != root.Flags() {
 		return yaml.AddFlags(root, flags)
 	}
@@ -360,11 +445,12 @@ func flowString(root yaml.Node, env dynaml.Binding) yaml.Node {
 	if sub == nil {
 		return root
 	}
-	debug.Debug("dynaml: %v: %s\n", env.Path(), *sub)
 	expr, err := dynaml.Parse(*sub, env.Path(), env.StubPath())
 	if err != nil {
+		debug.Debug("parse dynaml: %v: %s failed: %s\n", env.Path(), *sub, err)
 		return root
 	}
+	debug.Debug("parse dynaml: %v: %s  -> %T\n", env.Path(), *sub, expr)
 
 	return yaml.SubstituteNode(expr, root)
 }
@@ -400,12 +486,14 @@ func stepName(index int, value yaml.Node, keyName string, env dynaml.Binding) (s
 	return step, true
 }
 
-func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interface{}, bool, bool, []string, string, yaml.NodeFlags) {
+func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interface{}, bool, bool, []string, string, bool, yaml.NodeFlags, yaml.Node) {
 	var flags yaml.NodeFlags
-	flags = get_inherited_flags(env)
+	var stub yaml.Node
+	flags, stub = get_inherited_flags(env)
 	spliced := []yaml.Node{}
 	process := true
 	template := false
+	merged := false
 	keyName := orig.KeyName()
 	replaced := orig.ReplaceFlag()
 	redirectPath := orig.RedirectPath()
@@ -415,7 +503,7 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 			continue
 		}
 
-		inlineNode, ok := yaml.UnresolvedListEntryMerge(val)
+		inlineNode, qual, ok := yaml.UnresolvedListEntryMerge(val)
 		if ok {
 			debug.Debug("*** %+v\n", inlineNode.Value())
 			_, initial := inlineNode.Value().(string)
@@ -444,13 +532,14 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 					}
 				}
 				newMap := make(map[string]yaml.Node)
-				newMap["<<"] = result
+				newMap[qual] = result
 				val = yaml.SubstituteNode(newMap, orig)
 				process = false
 			} else {
 				inline, ok := result.Value().([]yaml.Node)
 
 				if ok {
+					merged = true
 					inlineNew := newEntries(inline, root, keyName)
 					replaced = result.ReplaceFlag()
 					redirectPath = result.RedirectPath()
@@ -459,11 +548,16 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 						process = false
 						break
 					} else {
+						merged = true
 						spliced = append(spliced, inlineNew...)
 					}
 				}
 				if ok || result.Value() == nil || yaml.EmbeddedDynaml(result) == nil {
 					// still ignore non dynaml value (might be strange but compatible)
+					redirectPath = result.RedirectPath()
+					if result.Merged() {
+						merged = true
+					}
 					continue
 				}
 			}
@@ -479,13 +573,13 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 	var result interface{}
 	if template {
 		debug.Debug(" as template\n")
-		result = dynaml.TemplateValue{env.Path(), yaml.NewNode(spliced, orig.SourceName()), orig}
+		result = dynaml.NewTemplateValue(env.Path(), yaml.NewNode(spliced, orig.SourceName()), orig, env)
 	} else {
 		result = spliced
 	}
 
 	debug.Debug("--> %+v  proc=%v replaced=%v redirect=%v key=%s\n", result, process, replaced, redirectPath, keyName)
-	return result, process, replaced, redirectPath, keyName, flags
+	return result, process, replaced, redirectPath, keyName, merged, flags, stub
 }
 
 func ProcessKeyTag(val yaml.Node) (yaml.Node, string) {

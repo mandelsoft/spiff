@@ -15,11 +15,15 @@ type MergeExpr struct {
 
 func (e MergeExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	var info EvaluationInfo
+	info.KeyName = e.KeyName
+	debug.Debug("/// lookup %v\n", e.Path)
 	if e.Redirect {
 		info.RedirectPath = e.Path
 	}
-	info.KeyName = e.KeyName
-	debug.Debug("/// lookup %v\n", e.Path)
+	if len(e.Path) == 0 {
+		info.Merged = true
+		return nil, info, true
+	}
 	node, ok := binding.FindInStubs(e.Path)
 	if ok {
 		info.Replace = e.Replace

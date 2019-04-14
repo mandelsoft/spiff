@@ -16,8 +16,8 @@ var _ = Describe("dynamic references", func() {
 
 			binding := FakeBinding{
 				FoundReferences: map[string]yaml.Node{
-					"foo": node(map[string]yaml.Node{
-						"bar": node(42, nil),
+					"foo": NewNode(map[string]yaml.Node{
+						"bar": NewNode(42, nil),
 					}, nil),
 				},
 			}
@@ -33,7 +33,7 @@ var _ = Describe("dynamic references", func() {
 			expr := DynamicExpr{ref, idx}
 			binding := FakeBinding{
 				FoundReferences: map[string]yaml.Node{
-					"foo": node([]yaml.Node{node(1, nil), node(42, nil)}, nil),
+					"foo": NewNode([]yaml.Node{NewNode(1, nil), NewNode(42, nil)}, nil),
 				},
 			}
 

@@ -28,6 +28,8 @@ func (matcher *FlowAsMatcher) Match(source interface{}) (success bool, err error
 		return false, err
 	}
 
+	matcher.actual = Cleanup(matcher.actual, discardTemporary)
+
 	if matcher.actual.EquivalentToNode(matcher.Expected) {
 		return true, nil
 	} else {

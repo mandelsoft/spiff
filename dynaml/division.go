@@ -2,13 +2,8 @@ package dynaml
 
 import (
 	"fmt"
-	"log"
 	"net"
 )
-
-func deb(fmt string, args ...interface{}) {
-	log.Printf(fmt, args...)
-}
 
 type DivisionExpr struct {
 	A Expression

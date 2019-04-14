@@ -322,6 +322,144 @@ values:
 				Expect(template).To(CascadeAs(resolved, source))
 			})
 
+			It("supports definition scope access", func() {
+				source := parseYAML(`
+---
+env:
+  func: (( |x|->[ x, scope, _.scope ] ))
+  scope: func
+
+values:
+   value: (( env.func("arg") ))
+   scope: call
+`)
+
+				resolved := parseYAML(`
+---
+values:
+  value:
+   - arg
+   - call
+   - func
+  scope: call
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("supports relative names in definition scope access", func() {
+				source := parseYAML(`
+---
+node:
+  data:
+    scope: data
+  funcs:
+    a: (( |x|->scope ))
+    b: (( |x|->_.scope ))
+    c: (( |x|->_.data.scope ))
+    scope: funcs
+
+values:
+  scope: values
+
+  a: (( node.funcs.a(1) ))
+  b: (( node.funcs.b(1) ))
+  c: (( node.funcs.c(1) ))
+`)
+
+				resolved := parseYAML(`
+---
+values:
+  a: values
+  b: funcs
+  c: data
+  scope: values
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("supports nested calls in definition scope", func() {
+				source := parseYAML(`
+---
+util:
+  func: (( |x|-> _.ident(x) ))
+  ident: (( |v|->v ))
+
+
+values: (( util.func(2) ))
+`)
+
+				resolved := parseYAML(`
+---
+values: 2
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("supports nested definitions (map) in definition scope", func() {
+				source := parseYAML(`
+---
+util:
+  l1: (( |x|->x <= 0 ? x :map[[x]|dep|->_.l1(dep - 1)].[0] ))
+
+values: (( util.l1(1) ))
+
+`)
+
+				resolved := parseYAML(`
+---
+values: 0
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("supports nested definitions (lambda) in definition scope", func() {
+				source := parseYAML(`
+---
+util:
+  l1: (( |x|->x <= 0 ? x :(|dep|->_.l1(dep - 1))(x) ))
+
+values: (( util.l1(1) ))
+
+`)
+
+				resolved := parseYAML(`
+---
+values: 0
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("supports definition scope access accross stubs", func() {
+				source := parseYAML(`
+---
+func:
+
+values:
+   value: (( (lambda func)("arg") ))
+   scope: call
+`)
+
+				stub := parseYAML(`
+---
+env:
+  func: (( |x|->[ x, scope, _.scope ] ))
+  scope: func
+
+func: (( env.func ))
+`)
+
+				resolved := parseYAML(`
+---
+values:
+  value:
+   - arg
+   - call
+   - func
+  scope: call
+`)
+				Expect(template).To(CascadeAs(resolved, source, stub))
+			})
+
 			It("supports currying", func() {
 				source := parseYAML(`
 ---
@@ -391,6 +529,51 @@ lvalues:
 values: 3
 `)
 				Expect(template).To(CascadeAs(resolved, source, stub))
+			})
+		})
+
+		Context("lambda scopes", func() {
+			Context("in lambdas", func() {
+				It("are passed to nested lambdas", func() {
+					source := parseYAML(`
+---
+func: (( |x|->($a=100) |y|->($b=101) |z|->[x,y,z,a,b] ))
+
+values: (( .func(1)(2)(3) ))
+
+`)
+					resolved := parseYAML(`
+---
+values:
+  - 1
+  - 2
+  - 3
+  - 100
+  - 101
+`)
+					Expect(template).To(CascadeAs(resolved, source))
+				})
+			})
+			Context("in templates", func() {
+				It("are passed to nested lambdas", func() {
+					source := parseYAML(`
+---
+template:
+  <<: (( &template ))
+  func: (( |y|->{$x=x, $y=y} ))
+func: (( |x|->*template ))
+inst: (( .func("instx") ))
+
+values: (( .inst.func("insty") ))
+`)
+					resolved := parseYAML(`
+---
+values:
+  x: instx
+  "y": insty
+`)
+					Expect(template).To(CascadeAs(resolved, source))
+				})
 			})
 		})
 	})
@@ -721,6 +904,187 @@ types:
   undef: undef
 `)
 			Expect(source).To(CascadeAs(resolved))
+		})
+	})
+
+	Describe("injecting fields", func() {
+
+		Context("for maps", func() {
+			It("injects top level field", func() {
+				source := parseYAML(`
+---
+map:
+`)
+				stub := parseYAML(`
+---
+injected:
+   <<: (( &inject ))
+   foo: bar
+`)
+				resolved := parseYAML(`
+---
+map:
+injected:
+  foo: bar
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+
+			It("injects selected sub level field", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+`)
+				stub := parseYAML(`
+---
+map:
+   bob: (( &inject(27) ))
+   foo: bar
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 27
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+
+			It("injects selected sub level field and overrided others", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  tom: 26
+`)
+				stub := parseYAML(`
+---
+map:
+   bob: (( &inject(27) ))
+   foo: bar
+   tom: 28
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 27
+  tom: 28
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+
+			It("injects selected temporary sub level field", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  solution: (( alice + bob ))
+`)
+				stub := parseYAML(`
+---
+map:
+   bob: (( &inject &temporary (17) ))
+   foo: bar
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  solution: 42
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+		})
+		Context("for lists", func() {
+			It("injects top level entries", func() {
+				source := parseYAML(`
+---
+- a
+- b
+`)
+				stub := parseYAML(`
+---
+- (( &inject("c") ))
+- d
+`)
+				resolved := parseYAML(`
+---
+- c
+- a
+- b
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+			It("injects sub level entries", func() {
+				source := parseYAML(`
+---
+list:
+- a
+- b
+`)
+				stub := parseYAML(`
+---
+list:
+- (( &inject("c") ))
+- d
+`)
+				resolved := parseYAML(`
+---
+list:
+- c
+- a
+- b
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+			It("injects temporary sub level entries", func() {
+				source := parseYAML(`
+---
+list:
+- a
+- b
+`)
+				stub := parseYAML(`
+---
+list:
+- (( &inject &temporary ("c") ))
+- d
+`)
+				resolved := parseYAML(`
+---
+list:
+- a
+- b
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+			It("merges lists ony once", func() {
+				source := parseYAML(`
+---
+list:
+- <<: (( merge ))
+- a
+- b
+`)
+				stub := parseYAML(`
+---
+list:
+- (( &inject ("c") ))
+- d
+`)
+				resolved := parseYAML(`
+---
+list:
+- c
+- d
+- a
+- b
+`)
+				Expect(source).To(CascadeAs(resolved, stub))
+			})
+
 		})
 	})
 })

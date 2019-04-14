@@ -46,7 +46,7 @@ func func_x509cert(arguments []interface{}, binding Binding) (interface{}, Evalu
 	}
 	fields, ok := arguments[0].(map[string]yaml.Node)
 	if !ok {
-		return info.Error("argument for %s must be a map (found %T)", F_Cert, arguments[0])
+		return info.Error("argument for %s must be a map (found %s)", F_Cert, ExpressionType(arguments[0]))
 	}
 
 	isCA, err := getDefaultedBoolField(fields, "isCA", false)
@@ -110,7 +110,7 @@ func func_x509cert(arguments []interface{}, binding Binding) (interface{}, Evalu
 
 	if pub == nil {
 		if priv == nil {
-			return info.Error("one of 'publicKey' or 'privKey' must be given")
+			return info.Error("one of 'publicKey' or 'privateKey' must be given")
 		}
 		pub = publicKey(priv)
 	}
