@@ -43,7 +43,7 @@ func ParseMulti(sourceName string, source []byte) ([]Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		n, err := sanitize(sourceName, parsed)
+		n, err := Sanitize(sourceName, parsed)
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +52,7 @@ func ParseMulti(sourceName string, source []byte) ([]Node, error) {
 	return docs, nil
 }
 
-func sanitize(sourceName string, root interface{}) (Node, error) {
+func Sanitize(sourceName string, root interface{}) (Node, error) {
 	switch rootVal := root.(type) {
 	case time.Time:
 		return NewNode(rootVal.Format("2019-01-08T10:06:26Z"), sourceName), nil
@@ -65,7 +65,7 @@ func sanitize(sourceName string, root interface{}) (Node, error) {
 				return nil, NonStringKeyError{key}
 			}
 
-			sub, err := sanitize(sourceName, val)
+			sub, err := Sanitize(sourceName, val)
 			if err != nil {
 				return nil, err
 			}
@@ -79,7 +79,7 @@ func sanitize(sourceName string, root interface{}) (Node, error) {
 		sanitized := []Node{}
 
 		for _, val := range rootVal {
-			sub, err := sanitize(sourceName, val)
+			sub, err := Sanitize(sourceName, val)
 			if err != nil {
 				return nil, err
 			}

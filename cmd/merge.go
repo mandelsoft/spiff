@@ -59,17 +59,6 @@ func init() {
 	mergeCmd.Flags().StringArrayVar(&selection, "select", []string{}, "filter dedicated output fields")
 }
 
-func keepAll(node yaml.Node) (yaml.Node, flow.CleanupFunction) {
-	return node, keepAll
-}
-
-func discardNonState(node yaml.Node) (yaml.Node, flow.CleanupFunction) {
-	if node.State() {
-		return node, keepAll
-	}
-	return nil, discardNonState
-}
-
 func fileExists(filename string) bool {
 	info, err := os.Stat(filename)
 	if os.IsNotExist(err) {
@@ -181,7 +170,7 @@ func merge(templateFilePath string, partial bool, json, split bool,
 				flowed = node
 			}
 			if stateFilePath != "" {
-				state := flow.Cleanup(flowed, discardNonState)
+				state := flow.Cleanup(flowed, flow.DiscardNonState)
 				json := json
 				if strings.HasSuffix(stateFilePath, ".yaml") || strings.HasSuffix(stateFilePath, ".yml") {
 					json = false

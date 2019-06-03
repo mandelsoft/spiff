@@ -48,6 +48,18 @@ func discardLocal(node yaml.Node) (yaml.Node, CleanupFunction) {
 	return node, discardLocal
 }
 
+
+func keepAll(node yaml.Node) (yaml.Node, CleanupFunction) {
+	return node, keepAll
+}
+
+func DiscardNonState(node yaml.Node) (yaml.Node, CleanupFunction) {
+	if node.State() {
+		return node, keepAll
+	}
+	return nil, DiscardNonState
+}
+
 type CleanupFunction func(yaml.Node) (yaml.Node, CleanupFunction)
 
 func Cleanup(node yaml.Node, test CleanupFunction) yaml.Node {

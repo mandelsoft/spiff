@@ -23,7 +23,7 @@ func ValueToJSON(root interface{}) ([]byte, error) {
 	return json.Marshal(n)
 }
 
-func normalize(root Node) (interface{}, error) {
+func Normalize(root Node) (interface{}, error) {
 	if root.Value() == nil {
 		return nil, nil
 	}
@@ -42,7 +42,7 @@ func normalizeValue(value interface{}) (interface{}, error) {
 		normalized := map[string]interface{}{}
 
 		for key, val := range rootVal {
-			sub, err := normalize(val)
+			sub, err := Normalize(val)
 			if err != nil {
 				return nil, err
 			}
@@ -56,7 +56,7 @@ func normalizeValue(value interface{}) (interface{}, error) {
 		normalized := []interface{}{}
 
 		for _, val := range rootVal {
-			sub, err := normalize(val)
+			sub, err := Normalize(val)
 			if err != nil {
 				return nil, err
 			}
