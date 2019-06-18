@@ -10,8 +10,8 @@ import (
 func func_match(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 
-	if len(arguments) != 2 {
-		return info.Error("match takes exactly two arguments")
+	if len(arguments) < 2 || len(arguments) > 3 {
+		return info.Error("match takes two or three arguments")
 	}
 
 	pattern, ok := arguments[0].(string)
@@ -21,6 +21,25 @@ func func_match(arguments []interface{}, binding Binding) (interface{}, Evaluati
 
 	if arguments[1] == nil {
 		return false, info, true
+	}
+
+	occ := 0
+	if len(arguments) == 3 {
+		switch v := arguments[2].(type) {
+		case int64:
+			occ = int(v)
+			if occ == 0 {
+				return info.Error("repetition count may not be zero")
+			}
+		case bool:
+			if v {
+				occ = -1
+			} else {
+				occ = 1
+			}
+		default:
+			return info.Error("simple value for argument two of function match required")
+		}
 	}
 
 	elem := ""
@@ -40,10 +59,23 @@ func func_match(arguments []interface{}, binding Binding) (interface{}, Evaluati
 		return info.Error("match: %s", err)
 	}
 
-	list := re.FindStringSubmatch(elem)
+	if occ == 0 {
+		list := re.FindStringSubmatch(elem)
+		return MakeStringList(list, info), info, true
+	} else {
+		list := re.FindAllStringSubmatch(elem, occ)
+		newList := make([]yaml.Node, len(list))
+		for i, v := range list {
+			newList[i] = NewNode(MakeStringList(v, info), info)
+		}
+		return newList, info, true
+	}
+}
+
+func MakeStringList(list []string, info EvaluationInfo) []yaml.Node {
 	newList := make([]yaml.Node, len(list))
 	for i, v := range list {
 		newList[i] = NewNode(v, info)
 	}
-	return newList, info, true
+	return newList
 }

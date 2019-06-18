@@ -1626,6 +1626,10 @@ matches:
 - bar
 ```
 
+A third argument of type integer may be given to request a multi match of a
+maximum of *n* repetitions. If the value is negative all repretions are reported.
+The result is a list of all matches, each in the format described above.
+
 ### `(( keys(map) ))`
 
 Determine the sorted list of keys used in a map.
