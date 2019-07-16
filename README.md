@@ -2799,11 +2799,11 @@ or a comma separated string with options. Supported options are
 - `binary`: data is base64 decoded before writing
 - _integer_ string: file permissions, a leading `0` is indicating an octal value.
 
-#### `(( tempfile("file.yml", data) ))`
+#### `(( tempfile(data) ))`
 
-Write a a temporary file and return its path name. An optional 3rd argument can
+Write a a temporary file and return its path name. An optional 2nd argument can
 be used to pass write options. It basically behavies
-like [`write`](#-writefileyml-data-) 
+like [`write`](#-writefileyml-data-) without the first argument.
 
 _Attention_: A temporary file only exists during the merge processing. It will
 be deleted afterwards. 
