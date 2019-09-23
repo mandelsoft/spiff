@@ -24,7 +24,7 @@ func ValueToJSON(root interface{}) ([]byte, error) {
 }
 
 func Normalize(root Node) (interface{}, error) {
-	if root.Value() == nil {
+	if root == nil || root.Value() == nil {
 		return nil, nil
 	}
 	return normalizeValue(root.Value())

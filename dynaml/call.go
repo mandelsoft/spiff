@@ -211,9 +211,13 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "bcrypt":
 		result, sub, ok = func_bcrypt(values, binding)
-
 	case "bcrypt_check":
 		result, sub, ok = func_bcrypt_check(values, binding)
+
+	case "md5crypt":
+		result, sub, ok = func_md5crypt(values, binding)
+	case "md5crypt_check":
+		result, sub, ok = func_md5crypt_check(values, binding)
 
 	case "asjson":
 		result, sub, ok = func_as_json(values, binding)

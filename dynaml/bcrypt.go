@@ -10,7 +10,7 @@ func func_bcrypt(arguments []interface{}, binding Binding) (interface{}, Evaluat
 	cost := 10
 
 	if len(arguments) < 1 || len(arguments) > 2 {
-		return info.Error("brypt takes one or two arguments")
+		return info.Error("bcrypt takes one or two arguments")
 	}
 
 	str, ok := arguments[0].(string)
@@ -37,7 +37,7 @@ func func_bcrypt_check(arguments []interface{}, binding Binding) (interface{}, E
 	info := DefaultInfo()
 
 	if len(arguments) != 2 {
-		return info.Error("brypt_check takes two arguments")
+		return info.Error("bcrypt_check takes two arguments")
 	}
 
 	passwd, ok := arguments[0].(string)

@@ -3882,6 +3882,45 @@ match:
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
+
+		It("matches multiple sub expressions strings", func() {
+			source := parseYAML(`
+---
+match: (( match("(fo*)(ba*)r","foobar laber fobaar foobaar", 2) ))
+`)
+			resolved := parseYAML(`
+---
+match:
+- - foobar
+  - foo
+  - ba
+- - fobaar
+  - fo
+  - baa
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("matches all sub expressions strings", func() {
+			source := parseYAML(`
+---
+match: (( match("(fo*)(ba*)r","foobar laber fobaar foobaar", -1) ))
+`)
+			resolved := parseYAML(`
+---
+match:
+- - foobar
+  - foo
+  - ba
+- - fobaar
+  - fo
+  - baa
+- - foobaar
+  - foo
+  - baa
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
 	})
 
 	Describe("calling length", func() {
@@ -6927,6 +6966,32 @@ hash:
 			source := parseYAML(`
 ---
 value: (( bcrypt_check("test", bcrypt("test", 10)) ))
+`)
+			resolved := parseYAML(`
+---
+value: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling md5crypt", func() {
+		It("it crypts and validates a password", func() {
+			source := parseYAML(`
+---
+value: (( md5crypt_check("test", md5crypt("test")) ))
+`)
+			resolved := parseYAML(`
+---
+value: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("it validates a htpasswd password", func() {
+			source := parseYAML(`
+---
+value: (( md5crypt_check("this is a test passWord", "$apr1$UTiwZpl8$qA6qc3ykT/aB6L28BQfNg1") ))
 `)
 			resolved := parseYAML(`
 ---

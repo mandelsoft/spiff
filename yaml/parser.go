@@ -89,6 +89,19 @@ func Sanitize(sourceName string, root interface{}) (Node, error) {
 
 		return NewNode(sanitized, sourceName), nil
 
+	case map[string]interface{}:
+		sanitized := map[string]Node{}
+
+		for key, val := range rootVal {
+			sub, err := Sanitize(sourceName, val)
+			if err != nil {
+				return nil, err
+			}
+
+			sanitized[key] = sub
+		}
+
+		return NewNode(sanitized, sourceName), nil
 	case string, []byte, int64, float64, bool, nil:
 		return NewNode(rootVal, sourceName), nil
 	}

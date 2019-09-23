@@ -48,7 +48,6 @@ func discardLocal(node yaml.Node) (yaml.Node, CleanupFunction) {
 	return node, discardLocal
 }
 
-
 func keepAll(node yaml.Node) (yaml.Node, CleanupFunction) {
 	return node, keepAll
 }

@@ -88,6 +88,8 @@ Contents:
 		- [(( hash(string) ))](#-hashstring-)
 		- [(( bcrypt("password", 10) ))](#-bcryptpassword-10-)
 		- [(( bcrypt_check("password", hash) ))](#-bcrypt_checkpassword-hash-)
+		- [(( md5crypt("password") ))](#-md5cryptpassword-)
+		- [(( md5crypt_check("password", hash) ))](#-md5crypt_checkpassword-hash-)
 		- [(( decrypt("secret") ))](#-decryptsecret-)
 		- [(( rand("[:alnum:]", 10) ))](#-randalnum-10-)
 		- [(( type(foobar) ))](#-typefoobar-)
@@ -1773,6 +1775,41 @@ evaluates to
 
 ```yaml
 hash: $2a$10$b9RKb8NLuHB.tM9haPD3N.qrCsWrZy8iaCD4/.cCFFCRmWO4h.koe
+valid: true
+```
+
+### `(( md5crypt("password") ))`
+
+The function `md5crypt` generates an Apache MD5 encrypted password hash for the
+given string.
+
+e.g.:
+
+```yaml
+hash: (( md5crypt("password") ))
+```
+
+evaluates to
+
+```yaml
+hash: $apr1$3Qc1aanY$16Sb5h7U1QrcqwZbDJIYZ0
+```
+
+### `(( md5crypt_check("password", hash) ))`
+
+The function `md5crypt_check` validates a password against a given Apache MD5 encrypted hash.
+
+e.g.:
+
+```yaml
+hash: $2a$10$b9RKb8NLuHB.tM9haPD3N.qrCsWrZy8iaCD4/.cCFFCRmWO4h.koe
+valid: (( bcrypt_check("password", hash) ))
+```
+
+evaluates to
+
+```yaml
+hash: $apr1$B77VuUUZ$NkNFhkvXHW8wERSRoi74O1
 valid: true
 ```
 
