@@ -1,19 +1,19 @@
 ```
-                                        ___ _ __ (_)/ _|/ _|
-                                       / __| '_ \| | |_| |_
-                                       \__ \ |_) | |  _|  _|
-                                       |___/ .__/|_|_| |_|
-                                           |_|
+                                              _  __  __             
+                                    ___ _ __ (_)/ _|/ _|  _     _   
+                                   / __| '_ \| | |_| |_ _| |_ _| |_ 
+                                   \__ \ |_) | |  _|  _|_   _|_   _|
+                                   |___/ .__/|_|_| |_|   |_|   |_|  
+                                       |_|
 
 ```
 
 ---
 
-**NOTE**: *Active development on spiff is currently paused, including Pull Requests.  Very severe issues will be addressed, and we will still be actively responding to requests for help via Issues.*
-
+**NOTE**: *Active development on spiff is currently paused, including Pull Requests. `spiff++` is a fork of spiff that provides a compatible extension to spiff based on the latest version offering a rich set of new features not yet available in spiff. All fixes provided by the original spiff project will be incorporated into spiff++, also. Because there will be no way back to the spiff source base a new independent spiff++ repository has been created to continue development of spiff++.*
 ---
 
-*spiff* is a command line tool and declarative in-domain hybrid YAML templating system. While regular templating systems process a template file by substituting the template expressions by values taken from
+*spiff* is a command line tool and declarative in-domain hybrid YAML templating system. While regular templating systems process a template file by substituting the template expressions by values taken from 
 external data sources, in-domain means that the templating engine knows about the syntax and structure of the processed template. It therefore can take the values for the template expressions directly
 from the document processed, including those parts denoted by the template expressions itself.
 
@@ -679,7 +679,7 @@ foo:
 ```
 
 Will try to bring in `foo.bar.baz` from the first stub, or the second, etc.,
-returning the value from the first stub that provides it.
+returning the value from the last stub that provides it.
 
 If the corresponding value is not defined, it will return nil. This then has the
 same semantics as reference expressions; a nil merge is an unresolved template.
