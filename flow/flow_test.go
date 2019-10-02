@@ -7670,6 +7670,41 @@ result:
 
 	Describe("x509 expressions", func() {
 		Context("certs and keys", func() {
+			It("generates ssh public key from key", func() {
+				source := parseYAML(`
+---
+temp:
+  <<: (( &temporary ))
+  key: (( x509genkey(2048) ))
+  pub: (( x509publickey(key) ))
+values:
+  key: (( split(" ", x509publickey(temp.key, "ssh"))[0] ))
+`)
+				resolved := parseYAML(`
+---
+values:
+  key: ssh-rsa
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("generates ssh public key from public key", func() {
+				source := parseYAML(`
+---
+temp:
+  <<: (( &temporary ))
+  key: (( x509genkey(2048) ))
+  pub: (( x509publickey(key) ))
+values:
+  key: (( split(" ", x509publickey(temp.pub, "ssh"))[0] ))
+`)
+				resolved := parseYAML(`
+---
+values:
+  key: ssh-rsa
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
 			It("parses created certs", func() {
 				source := parseYAML(`
 ---

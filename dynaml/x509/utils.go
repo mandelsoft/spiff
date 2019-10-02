@@ -26,6 +26,11 @@ func privateKey(block *pem.Block) (interface{}, error) {
 
 func publicKey(priv interface{}) interface{} {
 	switch k := priv.(type) {
+	case *rsa.PublicKey:
+		return k
+	case *ecdsa.PublicKey:
+		return k
+
 	case *rsa.PrivateKey:
 		return &k.PublicKey
 	case *ecdsa.PrivateKey:

@@ -6,6 +6,9 @@ import (
 	"encoding/pem"
 	"fmt"
 	. "github.com/mandelsoft/spiff/dynaml"
+	"strings"
+
+	"golang.org/x/crypto/ssh"
 )
 
 const F_PublicKey = "x509publickey"
@@ -21,7 +24,23 @@ func func_x509publickey(arguments []interface{}, binding Binding) (interface{}, 
 	var err error
 	info := DefaultInfo()
 
-	if len(arguments) != 1 {
+	rtype := "pem"
+	switch len(arguments) {
+	case 1:
+	case 2:
+		str, ok := arguments[1].(string)
+		if !ok {
+			return info.Error("format argument for %s must be a string", F_PublicKey)
+		}
+		switch strings.ToLower(str) {
+		case "pem":
+		case "ssh":
+			rtype = str
+		default:
+			return info.Error("invalid format for %s(<privatekey>): %s", F_PublicKey, str)
+		}
+
+	default:
 		return info.Error("invalid argument count for %s(<privatekey>)", F_PublicKey)
 	}
 
@@ -32,10 +51,23 @@ func func_x509publickey(arguments []interface{}, binding Binding) (interface{}, 
 
 	key, err := ParsePrivateKey(str)
 	if err != nil {
-		return info.Error("argument for %s must be a private key in pem format: %s", F_PublicKey, err)
+		k, e := ParsePublicKey(str)
+		if e != nil {
+			return info.Error("argument for %s must be a private key in pem format: %s", F_PublicKey, err)
+		}
+		key = k
 	}
 
-	str, err = PublicKeyPEM(publicKey(key))
+	switch rtype {
+	case "pem":
+		str, err = PublicKeyPEM(publicKey(key))
+	case "ssh":
+		var pk ssh.PublicKey
+		pk, err = ssh.NewPublicKey(publicKey(key))
+		if err == nil {
+			str = string(ssh.MarshalAuthorizedKey(pk))
+		}
+	}
 
 	if err != nil {
 		return info.Error("%s", err)

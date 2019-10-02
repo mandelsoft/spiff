@@ -1629,7 +1629,7 @@ matches:
 ```
 
 A third argument of type integer may be given to request a multi match of a
-maximum of *n* repetitions. If the value is negative all repretions are reported.
+maximum of *n* repetitions. If the value is negative all repetions are reported.
 The result is a list of all matches, each in the format described above.
 
 ### `(( keys(map) ))`
@@ -3012,6 +3012,13 @@ public: |+
     1lxsoIrQf/HBsiu/5Q3M8L6klxeAUcDbYwIDAQAB
     -----END RSA PUBLIC KEY-----
 ```
+
+To generate an ssh public key an optional additional format argument can be set
+to `ssh`. The result will then be a regular publc key format usable for ssh.
+The default format is `pem` providinf the pem output format shown above.
+
+Using the format `ssh` this function can also be used to convert a pem formatted
+public key into an ssh key, 
 
 #### `(( x509cert(spec) ))`
 
