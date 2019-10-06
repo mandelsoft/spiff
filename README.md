@@ -110,6 +110,7 @@ Contents:
 		- [(( asyaml(expr) ))](#-asjsonexpr-)
 		- [(( catch(expr) ))](#-catchexpr-)
 		- [(( validate(value,"dnsdomain") ))](#-validatevaluednsdomain-)
+		- [(( error("message") ))](#-errormessage-)
 		- [Accessing External Content](#accessing-external-content)
 		    - [(( read("file.yml") ))](#-readfileyml-)
 		    - [(( exec("command", arg1, arg2) ))](#-execcommand-arg1-arg2-)
@@ -144,6 +145,7 @@ Contents:
 	    - [(( &temporary ))](#-temporary-)
 	    - [(( &local ))](#-local-)
     	- [(( &inject ))](#-inject-)
+    	- [(( &default ))](#-default-)
     	- [(( &state ))](#-state-)
 	- [Templates](#templates)
 		- [<<: (( &template ))](#--template-)
@@ -2653,6 +2655,25 @@ validator:
 val: (( validate( map, validator)  ))
 ```
 
+### `(( error("message") ))`
+
+The function `error` can be used to cause explicit evaluation failures with
+a dedicated message.
+
+This can be used, for example, to reduce a complex
+processing error to a meaningful message by appending the error function
+as default for the potentially failing comples expression.
+
+e.g.:
+
+```yaml
+value: (( <some complex potentially failing expression> || error("this was an error my friend") ))
+```
+
+Another scenario could be omitting a descriptive message for missing required
+fields by using an error expression as (default) value for a field intended to
+be defined in an upstream stub.
+
 ### Accessing External Content
 
 _Spiff_ supports access to content outside of the template and sub files. It is
@@ -3898,6 +3919,103 @@ bob:
   foobar: yep
 ```
 
+### `(( &default ))`
+
+Nodes marked as *default* will be used as default values
+for downstream stub levels. If no such entry is set there it will behave like
+`&inject` and implicitly add this node, but existing settings will not be
+overwritten.
+
+Maps (or lists) marked as *default* will be considered as values. 
+The map is used as a whole as default if no such field is defined downstream.
+
+e.g.:
+
+**template.yaml**
+```yaml
+data: { }
+```
+
+**stub.yaml**
+```yaml
+data:
+  foobar:
+    <<: (( &default ))
+    foo: claude
+    bar: peter
+```
+
+is merged to
+
+```yaml
+data:
+  foobar:
+    foo: claude
+    bar: peter
+```
+
+Their entries will neither be used for overwriting existing downstream values
+nor for defaulting non-existng fields of a not defaulted map field.
+
+e.g.:
+
+**template.yaml**
+```yaml
+data:
+  foobar:
+    bar: bob
+```
+
+**stub.yaml**
+```yaml
+data:
+  foobar:
+    <<: (( &default ))
+    foo: claude
+    bar: peter
+```
+
+is merged to
+
+```yaml
+data:
+  foobar:
+    bar: bob
+```
+
+If sub sequent defaulting is desired, the fields of a default map must again be
+marked as default.
+
+e.g.:
+
+**template.yaml**
+```yaml
+data:
+  foobar:
+    bar: bob
+```
+
+**stub.yaml**
+```yaml
+data:
+  foobar:
+    <<: (( &default ))
+    foo: (( &default ("claude") ))
+    bar: peter
+```
+
+is merged to
+
+```yaml
+data:
+  foobar:
+    foo: claude
+    bar: bob
+```
+
+**Note**: The behaviour of list entries marked as *default* is undefined.
+
+
 ### `(( &state ))`
 
 Nodes marked as *state* are handled during the merge processing as if the
@@ -4865,6 +4983,115 @@ networks:
   ...
   ```
 
+- Defaulting and Requiring Fields
+
+  Traditionally defaulting in _spiff_ is done by a downstream template where the
+  playload data file is used as stub.
+  
+  Fields with simple values can just be specified with their values.
+  They will be overwritten by stubs using the regular _spiff_ document merging
+  mechanisms.
+  
+  It is more difficult for maps or lists. If a map is specified in the
+  template only its fields will be merged (see above), but it is never
+  replaced as a whole by settings in the playload definition files.
+  And Lists are never merged.
+  
+  Therefore maps and lists that should be defaulted as a whole must be specified
+  as initial expressions (referential or inline) in the template file.
+  
+  e.g.: merging of
+  
+  **template.yaml**
+  ```yaml
+  defaults:
+    <<: (( &temporary ))
+    person:
+      name: alice
+      age: bob
+  config:
+    value1: defaultvalue
+    value2: defaultvalue
+    person: (( defaults.person ))
+  ```  
+  
+  and
+  
+  **payload.yaml**
+  ```yaml
+   config:
+     value2: configured
+     othervalue: I want this but don't get it
+  ```  
+    
+  evaluates to 
+  
+  ```yaml
+  config:
+    person:
+      age: bob
+      name: alice
+    value1: defaultvalue
+      value2: configured
+   ```
+
+  In such a scenario the structure of the resulting document is defined by the template.
+  All kinds of variable fields or sub-structures must be forseen by the template
+  by using `<<: (( merge ))` expressions in maps.
+  
+  e.g.: changing template to
+  
+  **template.yaml**
+  ```yaml
+  defaults:
+    <<: (( &temporary ))
+    person:
+      name: alice
+      age: bob
+  config:
+    <<: (( merge ))
+    value1: defaultvalue
+    value2: defaultvalue
+    person: (( defaults.person ))
+  ```  
+  
+  Known _optional_ fields can be described using the *undefined* (`~~`) expression:
+
+  **template.yaml**
+  ```yaml
+  config:
+    optional: (( ~~ ))
+  ```    
+  
+  Such fields will only be part of the final document if they are defined in
+  an upstream stub, otherwise they will be completely removed.
+ 
+  _Required_ fields can be defined with the expression `(( merge ))`. If
+  no stub contains a value for this field, the merge cannot be fullfilled and
+  an error is reported. If a dedicated message should be shown instead, the
+  merge expression can be defaulted with an error function call.
+  
+  e.g.:
+  
+  **template.yaml**
+  ```yaml
+  config:
+    password: (( merge || error("the field password is required") ))
+  ```
+
+   will produce the following error if no stub contains a value:
+   ```
+   error generating manifest: unresolved nodes:
+   	(( merge || error("the field password is required") ))	in c.yaml	config.password	()	*the field password is required 
+   ```
+   
+   This can be simplified by reducing the expression to the sole `error`
+   expression.
+
+   Besides this template based defaulting it is also possible to
+   provide defaults by upstream stubs using the [`&default` marker](#-default-).
+   Here the payload can be a downstream file.
+   
 - _X509_ and providing State
 
   When generating keys or certificates with the [X509 Functions](#x509-functions)

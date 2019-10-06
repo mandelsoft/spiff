@@ -183,7 +183,9 @@ func (e DefaultEnvironment) FindInStubs(path []string) (yaml.Node, bool) {
 	for _, stub := range e.stubs {
 		val, found := yaml.Find(stub, path...)
 		if found {
-			return val, true
+			if !val.Flags().Implied() {
+				return val, true
+			}
 		}
 	}
 

@@ -63,8 +63,10 @@ const (
 	FLAG_LOCAL     = 0x002
 	FLAG_INJECT    = 0x004
 	FLAG_STATE     = 0x008
+	FLAG_DEFAULT   = 0x010
 
 	FLAG_INJECTED = 0x040
+	FLAG_IMPLIED  = 0x080
 )
 
 type NodeFlags int
@@ -91,11 +93,37 @@ func (f *NodeFlags) SetLocal() *NodeFlags {
 }
 
 func (f NodeFlags) Inject() bool {
-	return (f & FLAG_INJECT) != 0
+	return (f & (FLAG_INJECT | FLAG_DEFAULT)) != 0
 }
 func (f *NodeFlags) SetInject() *NodeFlags {
 	*f |= FLAG_INJECT
 	return f
+}
+
+func (f NodeFlags) Default() bool {
+	return (f & (FLAG_DEFAULT | FLAG_INJECT)) == FLAG_DEFAULT
+}
+func (f *NodeFlags) SetDefault() *NodeFlags {
+	*f |= FLAG_DEFAULT
+	return f
+}
+
+func (f NodeFlags) Implied() bool {
+	return (f & (FLAG_IMPLIED | FLAG_DEFAULT)) == FLAG_IMPLIED
+}
+func (f *NodeFlags) SetImplied() *NodeFlags {
+	*f |= FLAG_IMPLIED
+	return f
+}
+func (f NodeFlags) PropagateImplied() bool {
+	return (f & (FLAG_IMPLIED | FLAG_DEFAULT)) != 0
+}
+
+func (f *NodeFlags) Overridden() NodeFlags {
+	if f.Default() {
+		return (*f | FLAG_INJECT) &^ FLAG_DEFAULT
+	}
+	return *f
 }
 
 func (f NodeFlags) State() bool {

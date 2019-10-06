@@ -179,7 +179,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 	if !merged && root.StandardOverride() && shouldOverride && !env.NoMerge() {
 		debug.Debug("/// lookup stub %v -> %v\n", env.Path(), env.StubPath())
 		overridden, found := env.FindInStubs(env.StubPath())
-		if found {
+		if found && !overridden.Flags().Default() {
 			root = overridden
 			if keyName != "" {
 				root = yaml.KeyNameNode(root, keyName)
@@ -195,7 +195,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 					}
 				}
 			}
-			root = yaml.AddFlags(root, flags)
+			root = yaml.AddFlags(root, flags.Overridden())
 		}
 	}
 
@@ -218,10 +218,8 @@ func simpleMergeCompatibilityCheck(initial bool, node yaml.Node) bool {
 }
 
 func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
-	var flags yaml.NodeFlags
-	var stub yaml.Node
 	var err error
-	flags, stub = get_inherited_flags(env)
+	flags, stub := get_inherited_flags(env)
 	processed := true
 	template := false
 	merged := false
@@ -267,6 +265,9 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 					}
 					if flags.Local() {
 						debug.Debug("found static declaration\n")
+					}
+					if flags.Default() {
+						debug.Debug("found default declaration\n")
 					}
 				}
 				if ok && m.Has(dynaml.TEMPLATE) {
@@ -330,6 +331,9 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 
 		debug.Debug("MAP %v (%s)%s  -> %T\n", env.Path(), val.KeyName(), key, val.Value())
 		if !val.Undefined() {
+			if flags.PropagateImplied() {
+				val = yaml.AddFlags(val, yaml.FLAG_IMPLIED)
+			}
 			newMap[key] = val
 		}
 	}
