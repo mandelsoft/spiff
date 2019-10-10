@@ -199,6 +199,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "merge":
 		result, sub, ok = func_merge(values, binding)
 
+	case "intersect":
+		result, sub, ok = func_intersect(values, binding)
+
 	case "base64":
 		result, sub, ok = func_base64(values, binding)
 	case "base64_decode":

@@ -105,6 +105,7 @@ Contents:
 		- [(( makemap(fieldlist) ))](#-makemapfieldlist-)
 		- [(( makemap(key, value) ))](#-makemapkey-value-)
 		- [(( merge(map1, map2) ))](#-mergemap1-map2-)
+		- [(( intersect(list1, list2) ))](#-intersectlist1-list2-)
 		- [(( parse(yamlorjson) ))](#-parseyamlorjson-)
 		- [(( asjson(expr) ))](#-asjsonexpr-)
 		- [(( asyaml(expr) ))](#-asjsonexpr-)
@@ -2534,6 +2535,50 @@ merged:
       age: 24
   outer2: 24
   sum: 49
+```
+
+### `(( intersect(list1, list2) ))`
+
+The function `intersect` intersects multiple lists. A list may contain entries
+of any type.
+
+e.g.:
+
+```yaml
+list1:
+- - a
+- - b
+- a
+- b
+- { a: b }
+- { b: c }
+- 0
+- 1
+- "0"
+- "1"
+list2:
+- - a
+- - c
+- a
+- c
+- { a: b }
+- { b: b }
+- 0
+- 2
+- "0"
+- "2"
+intersect: (( intersect(list1, list2) ))
+```
+
+resolves `intersect` to
+
+```yaml
+intersect:
+- - a
+- a
+- { a: b }
+- 0
+- "0"
 ```
 
 ### `(( validate(value,"dnsdomain") ))`
