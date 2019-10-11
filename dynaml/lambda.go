@@ -17,8 +17,9 @@ func staticScope(binding Binding) Binding {
 }
 
 type LambdaExpr struct {
-	Names []string
-	E     Expression
+	Names   []string
+	VarArgs bool
+	E       Expression
 }
 
 func isInline(e Expression) bool {
@@ -42,6 +43,9 @@ func (e LambdaExpr) Evaluate(binding Binding, locally bool) (interface{}, Evalua
 
 func (e LambdaExpr) String() string {
 	str := strings.Join(e.Names, ",")
+	if e.VarArgs {
+		str += "..."
+	}
 	return fmt.Sprintf("lambda|%s|->%s", str, e.E)
 }
 
@@ -160,7 +164,22 @@ func (e LambdaValue) MarshalYAML() (tag string, value interface{}, err error) {
 
 func (e LambdaValue) Evaluate(inline bool, curry bool, args []interface{}, binding Binding, locally bool) (bool, interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
+	required := len(e.lambda.Names)
 
+	if e.lambda.VarArgs {
+		required--
+		if len(args) > required {
+			varargs := []yaml.Node{}
+			for _, a := range args[required:] {
+				varargs = append(varargs, yaml.NewNode(a, binding.SourceName()))
+			}
+			args = append(args[:required], varargs)
+		} else {
+			if len(args) == required {
+				args = append(args, []yaml.Node{})
+			}
+		}
+	}
 	if len(args) > len(e.lambda.Names) {
 		info.Issue = yaml.NewIssue("found %d argument(s), but expects %d", len(args), len(e.lambda.Names))
 		return false, nil, info, false
@@ -180,7 +199,7 @@ func (e LambdaValue) Evaluate(inline bool, curry bool, args []interface{}, bindi
 		if curry {
 			debug.Debug("LAMBDA CALL: currying %+v\n", inp)
 			rest := e.lambda.Names[len(args):]
-			return true, LambdaValue{LambdaExpr{rest, e.lambda.E}, inp, e.resolver}, DefaultInfo(), true
+			return true, LambdaValue{LambdaExpr{rest, e.lambda.VarArgs, e.lambda.E}, inp, e.resolver}, DefaultInfo(), true
 		}
 		info.SetError("expected %d arguments, but found %d", len(e.lambda.Names), len(args))
 		return false, nil, info, false

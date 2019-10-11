@@ -23,6 +23,7 @@ var _ = Describe("mapping expressions", func() {
 			ReferenceExpr{[]string{"list"}},
 			LambdaExpr{
 				[]string{"x"},
+				false,
 				ConcatenationExpr{
 					ReferenceExpr{[]string{"x"}},
 					StringExpr{".*"},

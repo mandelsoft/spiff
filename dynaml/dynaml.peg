@@ -54,7 +54,8 @@ Slice <- Range
 ChainedCall <- StartArguments ExpressionList? ')'
 StartArguments <- '(' ws
 ExpressionList <- NextExpression ( ',' NextExpression)*
-NextExpression <- Expression
+NextExpression <- Expression VarArgs?
+VarArgs <- '...' ws
 
 Projection <-  '.'? ( '[*]' / Slice ) ProjectionValue ChainedQualifiedExpression*
 ProjectionValue <- {}
@@ -105,11 +106,12 @@ Sum <- 'sum[' Level7 '|' Level7 LambdaOrExpr ']'
 Lambda <- 'lambda' ( LambdaRef / LambdaExpr )
 LambdaRef <- req_ws Expression
 LambdaExpr <- ws Params ws '->' Expression
-Params <- '|' StartParams ws Names? ws '|'
+Params <- '|' StartParams ws Names? '|'
 StartParams <- {}
-Names <- NextName (',' NextName)*
+Names <- NextName (',' NextName)* VarParams?
 NextName <- ws Name ws
 Name <- [a-zA-Z0-9_]+
+VarParams <- '...' ws
 
 Reference <- '.'? Key FollowUpRef
 FollowUpRef <- PathComponent*

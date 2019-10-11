@@ -30,7 +30,8 @@ type expressionListHelper struct {
 
 type nameListHelper struct {
 	helperNode
-	list []string
+	list    []string
+	varargs bool
 }
 
 type nameHelper struct {
@@ -366,6 +367,11 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (
 			list.list = append(list.list, rhs.name)
 			tokens.Push(list)
 
+		case ruleVarParams:
+			list := tokens.Pop().(nameListHelper)
+			list.varargs = true
+			tokens.Push(list)
+
 		case ruleDefault:
 			tokens.Push(DefaultExpr{})
 
@@ -413,7 +419,7 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (
 		case ruleLambdaExpr:
 			rhs := tokens.Pop()
 			names := tokens.Pop().(nameListHelper)
-			tokens.Push(LambdaExpr{Names: names.list, E: rhs})
+			tokens.Push(LambdaExpr{Names: names.list, VarArgs: names.varargs, E: rhs})
 
 		case ruleLambdaRef:
 			rhs := tokens.Pop()
@@ -452,7 +458,11 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (
 			rhs := tokens.Pop()
 			list := tokens.Pop().(expressionListHelper)
 			list.list = append(list.list, rhs)
+
 			tokens.Push(list)
+		case ruleVarArgs:
+			rhs := tokens.Pop()
+			tokens.Push(VarArgsExpr{rhs})
 
 		case ruleStartList, ruleStartArguments:
 			tokens.Push(expressionListHelper{})

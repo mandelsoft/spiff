@@ -24,6 +24,7 @@ var _ = Describe("sum expressions", func() {
 			IntegerExpr{0},
 			LambdaExpr{
 				[]string{"x"},
+				false,
 				ConcatenationExpr{
 					ReferenceExpr{[]string{"x"}},
 					StringExpr{".*"},

@@ -126,8 +126,12 @@ Contents:
 		    - [(( x509publickey(key) ))](#-x509publickeykey-)
 		    - [(( x509cert(spec) ))](#-x509certspec-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
+	    - [Scopes and Lambda Expressions](#scopes-and-lambda-expressions)
+	    - [Currying](#currying)
+	    - [Variable Argument Lists](#variable-argument-lists)
 	- [(( catch[expr|v,e|->v] ))](#-catchexprve-v-)
 	- [(( sync[expr|v,e|->defined(v.field),v.field|10] ))](#-syncexprve-definedvfieldvfield10-)
+	- [Inline List Expansion](#inline-list-expansion)
 	- [Mappings](#mappings)
 		- [(( map[list|elem|->dynaml-expr] ))](#-maplistelem-dynaml-expr-)
 		- [(( map[list|idx,elem|->dynaml-expr] ))](#-maplistidxelem-dynaml-expr-)
@@ -3305,6 +3309,9 @@ lvalue: lambda |x,y|->x + y
 mod: lambda|x,y,m|->(lambda m)(x, y) + 3
 value: 6
 ```
+If a complete expression is a lambda expression the keyword `lambda` can be omitted.
+
+### Scopes and Lambda Expressions
 
 A lambda expression might refer to absolute or relative nodes of the actual yaml document of the call. Relative references are evaluated in the context of the function call. Therefore
 
@@ -3317,6 +3324,7 @@ values:
 ```
 
 yields `6` for `values.value`.
+
 
 Besides the specified parameters, there is an implicit name (`_`), that can be
 used to refer to the function itself. It can be used to define self recursive
@@ -3387,6 +3395,8 @@ value: (( .mult2(3) ))
 
 yields `6` for property `value`.
 
+### Currying
+
 If a lambda function is called with less arguments than expected, the result is a new function taking the missing arguments (currying).
 
 e.g.:
@@ -3397,7 +3407,26 @@ mult2: (( .mult(2) ))
 value: (( .mult2(3) ))
 ```
 
-If a complete expression is a lambda expression the keyword `lambda` can be omitted.
+### Variable Argument Lists
+
+The last parameter in the parameter list of a lambda expression may be a 
+_varargs_ parameter consuming additional argument in a fnction call.
+This parameter is always a list of values, one entry per additional argument.
+
+A _varargs_ parameter is denoted by a `...` following the last parameter name.
+
+e.g.:
+
+```yaml
+func: (( |a,b...|-> [a] b ))
+result: (( .func(1,2,3) ))
+```
+ 
+yields the list `[1, 2, 3]` for property `result`.
+
+If no argument is given for the _varargs_ parameter its value is the empty list.
+
+The `...` operator can also be used for [inline list expansion](#inline-list-expansion).
 
 ## `(( catch[expr|v,e|->v] ))`
 
@@ -3864,6 +3893,72 @@ names:
   - bob
   - peter
 ```
+
+## Inline List Expansion
+
+In argument lists or list literals the _list expansion operator_ (`...`) can be
+used.  It is a postfix operator on any list expression. It substituted
+the list expression by a sequence of the list members. It can be be used
+in combination with static list argument denotation.
+
+e.g.:
+
+```yaml
+list:
+  - a
+  - b
+  
+result: (( [ 1, list..., 2, list... ]  ))
+```
+
+evaluates `result` to
+
+```yaml
+result:
+  - 1
+  - a
+  - b
+  - 2
+  - a
+  - b
+```
+
+The following example demonstrates the usage in combination with the
+[_varargs_ operator](#variable_argument_lists) in functions:
+
+```yaml
+func: (( |a,b...|-> [a] b ))
+
+list:
+  - a
+  - b
+
+a: (( .func(1,2,3) ))
+b: (( .func("x",list..., "z") ))
+c: (( [ "x", .func(list...)..., "z" ] ))
+```
+
+evaluates the following results:
+
+```yaml
+a:
+- 1
+- 2
+- 3
+b:
+- x
+- a
+- b
+- z
+c:
+- x
+- a
+- b
+- z
+```
+
+Please note, that the list expansion might span multiple arguments (including the
+[_varargs_ parameter](#variable-argument-lists)) in lambda function calls.
 
 ## Markers
 
