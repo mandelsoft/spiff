@@ -4,6 +4,10 @@ import (
 	"github.com/mandelsoft/spiff/yaml"
 )
 
+func init() {
+	RegisterFunction("intersect", func_intersect)
+}
+
 func func_intersect(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
 	var result []yaml.Node
 	info := DefaultInfo()

@@ -131,9 +131,6 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "element":
 		result, sub, ok = func_element(values, binding)
 
-	case "compact":
-		result, sub, ok = func_compact(values, binding)
-
 	case "contains":
 		result, sub, ok = func_contains(values, binding)
 
@@ -221,9 +218,6 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "merge":
 		result, sub, ok = func_merge(values, binding)
-
-	case "intersect":
-		result, sub, ok = func_intersect(values, binding)
 
 	case "base64":
 		result, sub, ok = func_base64(values, binding)

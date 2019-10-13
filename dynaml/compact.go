@@ -4,6 +4,10 @@ import (
 	"github.com/mandelsoft/spiff/yaml"
 )
 
+func init() {
+	RegisterFunction("compact", func_compact)
+}
+
 func func_compact(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
 

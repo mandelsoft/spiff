@@ -107,6 +107,7 @@ Contents:
 		- [(( makemap(key, value) ))](#-makemapkey-value-)
 		- [(( merge(map1, map2) ))](#-mergemap1-map2-)
 		- [(( intersect(list1, list2) ))](#-intersectlist1-list2-)
+		- [(( reverse(list) ))](#-reverselist-)
 		- [(( parse(yamlorjson) ))](#-parseyamlorjson-)
 		- [(( asjson(expr) ))](#-asjsonexpr-)
 		- [(( asyaml(expr) ))](#-asjsonexpr-)
@@ -2591,6 +2592,36 @@ intersect:
 - { a: b }
 - 0
 - "0"
+```
+
+### `(( reverse(list) ))`
+
+The function `reverse` reverses the order of a list. The list may contain entries
+of any type.
+
+e.g.:
+
+```yaml
+list:
+- - a
+- b
+- { a: b }
+- { b: c }
+- 0
+- 1
+reverse: (( reverse(list) ))
+```
+
+resolves `reverse` to
+
+```yaml
+reverse:
+- 1
+- 0
+- { b: c }
+- { a: b }
+- b
+- - a
 ```
 
 ### `(( validate(value,"dnsdomain") ))`
