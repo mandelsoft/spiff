@@ -32,6 +32,7 @@ manifests (for example BOSH or [kubernetes](https://github.com/kubernetes) manif
 Contents:
 - [Installation](#installation)
 - [Usage](#usage)
+- [Libraries](#libraries)
 - [dynaml Templating Language](#dynaml-templating-language)
 	- [(( foo ))](#-foo-)
 	- [(( foo.bar.[1].baz ))](#-foobar1baz-)
@@ -127,7 +128,7 @@ Contents:
 		    - [(( x509cert(spec) ))](#-x509certspec-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
 	    - [Scopes and Lambda Expressions](#scopes-and-lambda-expressions)
-	    - [Parameter Defaults (( |x,y=2|-> x * y ))](#parameter-defaults)
+	    - [Optional Parameters (( |x,y=2|-> x * y ))](#optional-parameters)
 	    - [Variable Argument Lists (( |x,y...|-> x y ))](#variable-argument-lists)
 	    - [Currying (( function*(1) ))](#currying)
 	- [(( catch[expr|v,e|->v] ))](#-catchexprve-v-)
@@ -277,6 +278,12 @@ stdin.
 
 If the option `-d` is given, the data is decrypted, otherwise the data is
 read as yaml document and the encrypted result is printed. 
+
+# Libraries
+
+The [libraries](libraries/README.md) folder contains some useful _spiff_ template
+libraries. These are basically just stubs that are added to the merge file list
+to offer the utility functions for the merge processing.
 
 # dynaml Templating Language
 
@@ -3316,12 +3323,12 @@ Lambda expressions evaluate to lambda values, that are used as final values
 in yaml documents processed by _spiff_. 
 
 **Note**: If the final document still contains lambda values, they are transferred
-to a textual representation. It is not guaranteed that this representation can be 
-correctly parsed again, if the document is re-processed by _spiff_. Especially
+to a textual representation. It is not guaranteed that this representation can 
+correctly be parsed again, if the document is re-processed by _spiff_. Especially
 for complex scoped and curried functions this is not possible.
 
 Therefore function nodes should always be _temporary_ or _local_ to be available
-during processing or merging, but beeing omitted for the final document.
+during processing or merging, but being omitted for the final document.
 
 ### Scopes and Lambda Expressions
 
@@ -3407,10 +3414,11 @@ value: (( .mult2(3) ))
 
 yields `6` for property `value`.
 
-### Parameter Defaults
+### Optional Parameters
 
 Trailing parameters may be defaulted in the lambda expression by assigning
-values in the declaration.
+values in the declaration. Those parameter are then optional, it is not
+required to specify arguments for those parameters in function calls. 
 
 e.g.:
 
@@ -3425,10 +3433,14 @@ It is possible to default all parameters of a lambda expression. The function
 can then be called without arguments. There might be no non-defaulted parameters
 after a defaulted one.
 
-The expression for the default does not need to be a constant expression, it
-might refer to other nodes in the yaml document. The default expression is always
-evaluated in the scope of the lambda expression declaration at the time 
-the lambda expression is evaluated.
+A call may only omit arguments for optional parameters from right to left. If
+there should be an explicit argument for the right most parameter, arguments for
+all parameters must be specified. Cherry-picking is not possible.
+
+The expression for the default does not need to be a constant value or even
+expression, it might refer to other nodes in the yaml document. The default
+expression is always evaluated in the scope of the lambda expression declaration
+at the time the lambda expression is evaluated.
 
 e.g.:
 
@@ -3486,7 +3498,7 @@ mult2: (( .mult*(2) ))
 value: (( .mult2(3) ))
 ```
 
-Currying may be combined with [defaulted parameters](#parameter-defaults).
+Currying may be combined with [defaulted parameters](#optional-parameters).
 But the resulting function does not default the leading parameters, it
 is just a new function with less parameters pinning the specified ones.
 

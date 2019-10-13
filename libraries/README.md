@@ -26,19 +26,23 @@ the top-level node `utilities` providing an own sub-level node representing
 the package finally offering the functionality.
 
 ```
-  utilities: (( &temporary ))
+  utilities:
   
-  (( utilities.<package>.<function>(...) ))
+  usage: (( utilities.<package>.<function>(...) ))
 ```
 
+The libraries now use the _injection_ feature, therefore the `utilities`
+node is avalaible, even it is not specified in a processed yaml document.
+The `utilities` node is _temporary_ by default. This assures, that the 
+provided functions are not part of the final document.
 
 ## Library Overview
 
 ### Certificate Generation
 
 This [library](certs/README.md) offers useful lambda functions to generate
-certificates for self signed certificate authorities, and key/certificate pairs
-using the [state library](state/README.md).
+certificates for self signed certificate authorities, key/certificate pairs,
+ssh key pairs and simple secrets using the [state library](state/README.md).
 
 ### Manifest Generation
 

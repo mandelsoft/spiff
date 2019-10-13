@@ -10,7 +10,7 @@ The package name is `utilities.state`.
 To use this package a shell wrapper is required, that generates and replaces
 the state stub. An example for such an wrapper can be taken from [gen.sh](gen.sh).
 Alternatively the new [option `--state <path>`](../../README.md#usage) can be
-used.
+used ( [_spiff_ state handling support](../../README.md#-state-)).
 
 The provided lambda expressions work on two types of data:
 - an input data representing the input for generating a state value. When
@@ -117,8 +117,41 @@ It maintains state below the `state` node. In every sub-node a
 map with two fields is available: the `input` used to generate the actual
 state and the state `value` hosting the actual state. 
 
-Those fields must be stored in node with disabled auto-merge. The functions
+Those fields must be stored in nodes with disabled auto-merge. The functions
 maintain the merge from the stub on their own.
 
-A simplified certificate support can be bound in the
+A simplified certificate support can be found in the
  [`utilities.certs` package](../certs/README.md).
+ 
+## Raw State Handling
+
+```yaml
+    utilities.state.data(<input>,<new>,<update>=false)
+```
+
+- _&lt;input&gt;_: any value: the input data used to generate the state value
+- _&lt;new&gt;_: template or value: the new value based on the input or a
+  template using the `input` binding to generate the state value
+- _&lt;update&gt;_: bool: (optional) setting to true enforces a value update
+
+It generates a state map with two fields:
+
+- `input`: the input used to generate the `value`
+- `value`: the final value. If the state feature of _spiff_ is used, this value
+  will be kept until the actual input differs from the stored one.
+
+
+## Standard State Handling
+
+```yaml
+    utilities.state.standard(<spec>,<update>=false)
+```
+
+- _&lt;spec&gt;_: map: structure containing the specification for this state value
+- _&lt;update&gt;_: bool: (optional) setting to true enforces a value update
+
+This function is a wrapper for the one above.
+The _spec_ map must contain two fields:
+- `input`: any:               the input data used to generate the state value
+- `value`: template or any:   the new value based on the input or a template
+  using the `input` binding to generate the state value
