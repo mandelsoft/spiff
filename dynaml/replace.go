@@ -91,7 +91,7 @@ func LambdaExpander(lambda LambdaValue, binding Binding) Expander {
 			matches = append(matches, NewNode(string(src[match[i]:match[i+1]]), binding))
 		}
 		inp := []interface{}{matches}
-		resolved, v, info, ok := lambda.Evaluate(false, false, inp, binding, false)
+		resolved, v, info, ok := lambda.Evaluate(false, false, false, inp, binding, false)
 		if !ok {
 			return resolved, nil, fmt.Errorf("replace: %s", info.Issue.Issue)
 		}

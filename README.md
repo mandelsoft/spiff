@@ -127,11 +127,12 @@ Contents:
 		    - [(( x509cert(spec) ))](#-x509certspec-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
 	    - [Scopes and Lambda Expressions](#scopes-and-lambda-expressions)
-	    - [Currying](#currying)
-	    - [Variable Argument Lists](#variable-argument-lists)
+	    - [Parameter Defaults (( |x,y=2|-> x * y ))](#parameter-defaults)
+	    - [Variable Argument Lists (( |x,y...|-> x y ))](#variable-argument-lists)
+	    - [Currying (( function*(1) ))](#currying)
 	- [(( catch[expr|v,e|->v] ))](#-catchexprve-v-)
 	- [(( sync[expr|v,e|->defined(v.field),v.field|10] ))](#-syncexprve-definedvfieldvfield10-)
-	- [Inline List Expansion](#inline-list-expansion)
+	- [Inline List Expansion (( [a, list..., b] ))](#inline-list-expansion)
 	- [Mappings](#mappings)
 		- [(( map[list|elem|->dynaml-expr] ))](#-maplistelem-dynaml-expr-)
 		- [(( map[list|idx,elem|->dynaml-expr] ))](#-maplistidxelem-dynaml-expr-)
@@ -3311,6 +3312,17 @@ value: 6
 ```
 If a complete expression is a lambda expression the keyword `lambda` can be omitted.
 
+Lambda expressions evaluate to lambda values, that are used as final values
+in yaml documents processed by _spiff_. 
+
+**Note**: If the final document still contains lambda values, they are transferred
+to a textual representation. It is not guaranteed that this representation can be 
+correctly parsed again, if the document is re-processed by _spiff_. Especially
+for complex scoped and curried functions this is not possible.
+
+Therefore function nodes should always be _temporary_ or _local_ to be available
+during processing or merging, but beeing omitted for the final document.
+
 ### Scopes and Lambda Expressions
 
 A lambda expression might refer to absolute or relative nodes of the actual yaml document of the call. Relative references are evaluated in the context of the function call. Therefore
@@ -3395,17 +3407,46 @@ value: (( .mult2(3) ))
 
 yields `6` for property `value`.
 
-### Currying
+### Parameter Defaults
 
-If a lambda function is called with less arguments than expected, the result is a new function taking the missing arguments (currying).
+Trailing parameters may be defaulted in the lambda expression by assigning
+values in the declaration.
 
 e.g.:
 
 ```yaml
-mult: (( lambda |x,y|-> x * y ))
-mult2: (( .mult(2) ))
-value: (( .mult2(3) ))
+mult: (( lambda |x,y=2|-> x * y ))
+value: (( .mult(3) ))
 ```
+
+yields `6` for property `value`.
+
+It is possible to default all parameters of a lambda expression. The function
+can then be called without arguments. There might be no non-defaulted parameters
+after a defaulted one.
+
+The expression for the default does not need to be a constant expression, it
+might refer to other nodes in the yaml document. The default expression is always
+evaluated in the scope of the lambda expression declaration at the time 
+the lambda expression is evaluated.
+
+e.g.:
+
+**stub.yaml**
+```yaml
+default: 2
+mult: (( lambda |x,y=default * 2|-> x * y ))
+```
+
+**template.yaml**
+```yaml
+mult: (( merge ))
+scope:
+  default: 3
+  value: (( .mult(3) ))
+```
+
+evaluates `value`to 12
 
 ### Variable Argument Lists
 
@@ -3427,6 +3468,75 @@ yields the list `[1, 2, 3]` for property `result`.
 If no argument is given for the _varargs_ parameter its value is the empty list.
 
 The `...` operator can also be used for [inline list expansion](#inline-list-expansion).
+
+
+### Currying
+
+Using the _currying_ operator (`*(`) a lambda function may be transformed to
+another function with less parameters by specifying leading argument values.
+
+The result is a new function taking the missing arguments (currying) and using
+the original function body with a static binding for the specified parameters.
+
+e.g.:
+
+```yaml
+mult: (( lambda |x,y|-> x * y ))
+mult2: (( .mult*(2) ))
+value: (( .mult2(3) ))
+```
+
+Currying may be combined with [defaulted parameters](#parameter-defaults).
+But the resulting function does not default the leading parameters, it
+is just a new function with less parameters pinning the specified ones.
+
+If the original function uses a [variable argument list](#variable-argument-lists),
+the currying may span any number of the variable argument part, but once at
+least one such argument is given, the parameter for the variable part is satisfied.
+It cannot be extended by a function call of the curried function.
+
+e.g.:
+
+```yaml
+func: (( |a,b...|->join(a,b) ))
+func1: (( .func*(",","a","b")))
+#invalid: (( .func1("c") ))
+value: (( .func1() ))
+```
+
+evaluates `value` to `"a,b"`.
+
+It is also possible to use currying for builtin functions, like 
+[`join`](#-join---list-).
+
+e.g.:
+
+```yaml
+stringlist: (( join*(",") ))
+value: (( .stringlist("a", "b")  ))
+```
+
+evaluates `value` to `"a,b"`.
+
+There are several builtin functions acting on unevaluated or unevaluatable
+arguments, like [`defined`](#-definedfoobar-). For these functions currying is
+not possible.
+
+For compatibility reasons currying is also done, if a lambda function without
+defaulted parameters is called with less arguments than declared parameters.
+
+This behaviour is **deprecated** and will be removed in the future. It is
+replaced by the currying operator.
+
+e.g.:
+
+```yaml
+mult: (( lambda |x,y|-> x * y ))
+mult2: (( .mult(2) ))
+value: (( .mult2(3) ))
+```
+
+evaluates `value` to 6.
 
 ## `(( catch[expr|v,e|->v] ))`
 

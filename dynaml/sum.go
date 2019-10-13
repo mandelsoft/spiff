@@ -72,14 +72,14 @@ func (e SumExpr) String() string {
 }
 
 func sumList(inline bool, source []yaml.Node, e LambdaValue, initial interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
-	inp := make([]interface{}, len(e.lambda.Names))
+	inp := make([]interface{}, len(e.lambda.Parameters))
 	result := initial
 	info := DefaultInfo()
 
-	if len(e.lambda.Names) > 3 {
+	if len(e.lambda.Parameters) > 3 {
 		return info.Error("mapping expression take a maximum of 3 arguments")
 	}
-	if len(e.lambda.Names) < 2 {
+	if len(e.lambda.Parameters) < 2 {
 		return info.Error("mapping expression take a minimum of 2 arguments")
 	}
 
@@ -88,7 +88,7 @@ func sumList(inline bool, source []yaml.Node, e LambdaValue, initial interface{}
 		inp[0] = result
 		inp[1] = i
 		inp[len(inp)-1] = n.Value()
-		resolved, mapped, info, ok := e.Evaluate(inline, false, inp, binding, false)
+		resolved, mapped, info, ok := e.Evaluate(inline, false, false, inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %d %+v: failed\n", i, n)
 			return nil, info, false
@@ -108,7 +108,7 @@ func sumList(inline bool, source []yaml.Node, e LambdaValue, initial interface{}
 }
 
 func sumMap(inline bool, source map[string]yaml.Node, e LambdaValue, initial interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
-	inp := make([]interface{}, len(e.lambda.Names))
+	inp := make([]interface{}, len(e.lambda.Parameters))
 	result := initial
 	info := DefaultInfo()
 
@@ -119,7 +119,7 @@ func sumMap(inline bool, source map[string]yaml.Node, e LambdaValue, initial int
 		inp[0] = result
 		inp[1] = k
 		inp[len(inp)-1] = n.Value()
-		resolved, mapped, info, ok := e.Evaluate(inline, false, inp, binding, false)
+		resolved, mapped, info, ok := e.Evaluate(inline, false, false, inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %s %+v: failed\n", k, n)
 			return nil, info, false

@@ -59,7 +59,7 @@ func ValueLess(list []yaml.Node) Less {
 func LambdaLess(lambda LambdaValue, list []yaml.Node, binding Binding) Less {
 	return func(i, j int) bool {
 		inp := []interface{}{list[i].Value(), list[j].Value()}
-		resolved, v, info, ok := lambda.Evaluate(false, false, inp, binding, false)
+		resolved, v, info, ok := lambda.Evaluate(false, false, false, inp, binding, false)
 		if !ok || !resolved {
 			RaiseEvaluationError(resolved, info, ok)
 		}

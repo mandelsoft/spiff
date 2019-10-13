@@ -80,15 +80,15 @@ func (e SyncExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		} else {
 			args = append(args, nil)
 		}
-		switch len(lambda.lambda.Names) {
+		switch len(lambda.lambda.Parameters) {
 		case 1:
 		case 2:
 			debug.Debug("setting 2nd condition arg to error: %s\n", result[CATCH_ERROR].Value())
 			args = append(args, result[CATCH_ERROR].Value())
 		default:
-			return info.Error("lambda expression for sync condition must take one or two arguments, found %d", len(lambda.lambda.Names))
+			return info.Error("lambda expression for sync condition must take one or two arguments, found %d", len(lambda.lambda.Parameters))
 		}
-		resolved, result, sub, ok := lambda.Evaluate(inline, false, args, binding, locally)
+		resolved, result, sub, ok := lambda.Evaluate(inline, false, false, args, binding, locally)
 		if !resolved {
 			return e, sub, ok
 		}
@@ -146,15 +146,15 @@ func (e SyncExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 				args = append(args, nil)
 			}
 
-			switch len(lambda.lambda.Names) {
+			switch len(lambda.lambda.Parameters) {
 			case 1:
 			case 2:
 				debug.Debug("setting 2nd value arg to error: %s\n", result[CATCH_ERROR].Value())
 				args = append(args, result[CATCH_ERROR].Value())
 			default:
-				return info.Error("lambda expression for sync value must take one or two arguments, found %d", len(lambda.lambda.Names))
+				return info.Error("lambda expression for sync value must take one or two arguments, found %d", len(lambda.lambda.Parameters))
 			}
-			resolved, result, sub, ok := lambda.Evaluate(inline, false, args, binding, locally)
+			resolved, result, sub, ok := lambda.Evaluate(inline, false, false, args, binding, locally)
 			if !resolved {
 				return e, sub, ok
 			}

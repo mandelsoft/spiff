@@ -38,7 +38,7 @@ func (e CatchExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluat
 			return info.Error("catch requires a lambda value")
 		}
 
-		if len(l.lambda.Names) > 2 {
+		if len(l.lambda.Parameters) > 2 {
 			return info.Error("catch function takes a maximum of 2 arguments")
 		}
 
@@ -75,7 +75,7 @@ func (e CatchExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluat
 	// using lambda value
 
 	debug.Debug("catch using lambda: %s\n", lambda)
-	inp := make([]interface{}, len(lambda.lambda.Names))
+	inp := make([]interface{}, len(lambda.lambda.Parameters))
 	if !ok {
 		debug.Debug("catch failed: %s\n", infoe.Issue.Issue)
 		value = nil
@@ -83,7 +83,7 @@ func (e CatchExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluat
 		debug.Debug("catch succeeded: %v\n", value)
 	}
 	inp[0] = value
-	switch len(lambda.lambda.Names) {
+	switch len(lambda.lambda.Parameters) {
 	case 1:
 	case 2:
 		if ok {
@@ -94,10 +94,10 @@ func (e CatchExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluat
 			inp[1] = infoe.Issue.Issue
 		}
 	default:
-		return info.Error("lambda expression for sync condition must take one or two arguments, found %d", len(lambda.lambda.Names))
+		return info.Error("lambda expression for sync condition must take one or two arguments, found %d", len(lambda.lambda.Parameters))
 	}
 
-	resolved, mapped, info, ok := lambda.Evaluate(inline, false, inp, binding, false)
+	resolved, mapped, info, ok := lambda.Evaluate(inline, false, false, inp, binding, false)
 	if !ok {
 		debug.Debug("catch lambda failed\n")
 		return nil, info, false
