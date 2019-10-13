@@ -3331,6 +3331,165 @@ uniq:
 		})
 	})
 
+	Describe("when calling intersect", func() {
+		It("handled no arg", func() {
+			source := parseYAML(`
+---
+intersect: (( intersect() ))
+`)
+			resolved := parseYAML(`
+---
+
+intersect: []
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("handled single arg", func() {
+			source := parseYAML(`
+---
+list:
+- - a
+- a
+- { a: b }
+- 0
+- "0"
+intersect: (( intersect(list) ))
+`)
+			resolved := parseYAML(`
+---
+list:
+- - a
+- a
+- { a: b }
+- 0
+- "0"
+intersect:
+- - a
+- a
+- { a: b }
+- 0
+- "0"
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("handled multiple args", func() {
+			source := parseYAML(`
+---
+list1:
+- - a
+- - b
+- a
+- b
+- { a: b }
+- { b: c }
+- 0
+- 1
+- "0"
+- "1"
+list2:
+- - a
+- - c
+- a
+- c
+- { a: b }
+- { b: b }
+- 0
+- 2
+- "0"
+- "2"
+intersect: (( intersect(list1, list2) ))
+`)
+			resolved := parseYAML(`
+---
+list1:
+- - a
+- - b
+- a
+- b
+- { a: b }
+- { b: c }
+- 0
+- 1
+- "0"
+- "1"
+list2:
+- - a
+- - c
+- a
+- c
+- { a: b }
+- { b: b }
+- 0
+- 2
+- "0"
+- "2"
+intersect:
+- - a
+- a
+- { a: b }
+- 0
+- "0"
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("when calling reverse", func() {
+		It("handled empty list", func() {
+			source := parseYAML(`
+---
+reverse: (( reverse([]) ))
+`)
+			resolved := parseYAML(`
+---
+
+reverse: []
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("handled single entry", func() {
+			source := parseYAML(`
+---
+reverse: (( reverse([1]) ))
+`)
+			resolved := parseYAML(`
+---
+reverse:
+- 1
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("handles even entry count", func() {
+			source := parseYAML(`
+---
+reverse: (( reverse([1,2,3,4]) ))
+`)
+			resolved := parseYAML(`
+---
+reverse:
+- 4
+- 3
+- 2
+- 1
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("handles odd entry count", func() {
+			source := parseYAML(`
+---
+reverse: (( reverse([1,2,3]) ))
+`)
+			resolved := parseYAML(`
+---
+reverse:
+- 3
+- 2
+- 1
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
 	Describe("when calling compact", func() {
 		It("omits empty entries", func() {
 			source := parseYAML(`

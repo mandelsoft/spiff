@@ -13,6 +13,7 @@ const (
 	TEMPLATE  = "&template"
 	LOCAL     = "&local"
 	INJECT    = "&inject"
+	DEFAULT   = "&default"
 	STATE     = "&state"
 )
 
@@ -38,6 +39,8 @@ func (e MarkerExpr) GetFlags() yaml.NodeFlags {
 			flags.SetLocal()
 		case INJECT:
 			flags.SetInject()
+		case DEFAULT:
+			flags.SetDefault()
 		case STATE:
 			flags.SetState()
 		}

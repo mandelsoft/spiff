@@ -33,7 +33,7 @@
 #
 # lambdas:
 #
-#  - utilities.state.data(input,new,forceupdate)
+#  - utilities.state.data(input,new,forceupdate=false)
 #
 #    input:       any:             the input data used to generate the state
 #                                  value
@@ -42,7 +42,7 @@
 #                                  generate the state value
 #    forceupdate: bool:            setting to true encorces a value update
 #
-#  - utilities.state.standard(spec,forceupdate)
+#  - utilities.state.standard(spec,forceupdate=false)
 #
 #    spec:        map:             structure containing the specification
 #                                  for this state value
@@ -57,11 +57,11 @@
 #
 
 utilities:
-  <<: (( &temporary(merge || ~) ))
+  <<: (( &inject &temporary(merge || ~) ))
 
   state:
-    valuedata: (( |input,new,update|-> { $input=input, $value= ( !update -and stub().input == input ? stub().value :~) // type(new) == "template" ? (*new) :new } ))
-    data: (( |input,new,update|-> { $input=input, $value= ( !update -and stub().input == input ? stub().value :~) // type(new) == "template" ? (*new).state :new } ))
+    valuedata: (( |input,new,update=false|-> { $input=input, $value= ( !update -and stub().input == input ? stub().value :~) // type(new) == "template" ? (*new) :new } ))
+    data: (( |input,new,update=false|-> { $input=input, $value= ( !update -and stub().input == input ? stub().value :~) // type(new) == "template" ? (*new).state :new } ))
 
-    standard: (( |data,update|-> _.data(data.input, data.value,update) ))
+    standard: (( |data,update=false|-> _.data(data.input, data.value,update) ))
 

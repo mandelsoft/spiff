@@ -18,6 +18,7 @@ func RegisterFunction(name string, f Function) {
 type CallExpr struct {
 	Function  Expression
 	Arguments []Expression
+	Curry     bool
 }
 
 func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
@@ -48,19 +49,27 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	cleaned := false
 
+	var f func(binding Binding) (interface{}, EvaluationInfo, bool)
 	switch funcName {
 	case "defined":
-		return e.defined(binding)
+		f = e.defined
 	case "require":
-		return e.require(binding)
+		f = e.require
 	case "valid":
-		return e.valid(binding)
+		f = e.valid
 	case "stub":
-		return e.stub(binding)
+		f = e.stub
 	case "catch":
-		return e.catch(binding)
+		f = e.catch
 	case "sync":
-		return e.sync(binding)
+		f = e.sync
+	}
+
+	if f != nil {
+		if e.Curry {
+			return info.Error("no currying for intrinsic builtin function (%s)", e.Function)
+		}
+		return f(binding)
 	}
 
 	values, info, ok := ResolveExpressionListOrPushEvaluation(&e.Arguments, &resolved, nil, binding, false)
@@ -77,10 +86,24 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	var result interface{}
 	var sub EvaluationInfo
 
+	if funcName != "" && e.Curry {
+		params := []Parameter{Parameter{Name: "__args"}}
+		args := make([]Expression, len(values)+1)
+		for i, v := range values {
+			args[i] = ValueExpr{v}
+		}
+		args[len(values)] = VarArgsExpr{ReferenceExpr{[]string{"__args"}}}
+		expr := CallExpr{
+			Function:  ReferenceExpr{[]string{funcName}},
+			Arguments: args,
+		}
+
+		return LambdaValue{params, LambdaExpr{params, true, expr}, nil, binding}, DefaultInfo(), true
+	}
 	switch funcName {
 	case "":
 		debug.Debug("calling lambda function %#v\n", value)
-		resolved, result, sub, ok = value.(LambdaValue).Evaluate(false, true, values, binding, false)
+		resolved, result, sub, ok = value.(LambdaValue).Evaluate(false, e.Curry, true, values, binding, false)
 
 	case "static_ips":
 		result, sub, ok = func_static_ips(e.Arguments, binding)
@@ -107,9 +130,6 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "element":
 		result, sub, ok = func_element(values, binding)
-
-	case "compact":
-		result, sub, ok = func_compact(values, binding)
 
 	case "contains":
 		result, sub, ok = func_contains(values, binding)

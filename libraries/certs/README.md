@@ -26,7 +26,7 @@ when using the functions in a stateful scenario.
 ## Generate a self signed Certificate for dedicated common name
 
 ```
-    selfSignedCA(<common name>) -> state
+    selfSignedCA(<common name>,<update>=false) -> state
 ```
 
 The _value_ field provides the fields:
@@ -37,7 +37,7 @@ The _value_ field provides the fields:
 ## Generate a Key/Certificate Pair
 
 ```
-    keyCertForCA(<certspec>, <ca>, <update>) -> state
+    keyCertForCA(<certspec>, <ca>, <update>=false) -> state
 ```
 
 the certificate specification uses the format for the
@@ -54,7 +54,7 @@ The _value_ field provides the fields:
 ## Generate a Certificate with an explicitly managed Specification
 
 ```
-    keyCert(<certspec>,<update>) -> state
+    keyCert(<certspec>,<update>=false) -> state
 ```
 
 the certificate specification uses the format for the
@@ -66,10 +66,22 @@ The _value_ field provides the fields:
 - `pub` holding the public key
 - `cert` holding the certificate
 
+
+## Generate an SSH Key Pair
+
+```
+    sshKey(<length>=2048, <update>=false)  -> state
+```
+
+The _value_ field provides the fields:
+- `key` holding the private key
+- `pub` holding the public key in ssh format
+
+
 ## Generate a Random Secret with a dedicated Length
 
 ```
-    secret(<default>, <length>, <update>)  -> string
+    secret(<default>, <length>, <update>=false)  -> string
 ```
 
 If no `default` (`~`) is given a random string consisting of alphanumeric

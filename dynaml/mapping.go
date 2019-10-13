@@ -185,10 +185,10 @@ func (m *mapToMap) Result() interface{} {
 ///////////////////////////////////////////////////////////////////////////////
 
 func mapList(inline bool, source []yaml.Node, e LambdaValue, binding Binding, aggr MappingAggregation) (interface{}, EvaluationInfo, bool) {
-	inp := make([]interface{}, len(e.lambda.Names))
+	inp := make([]interface{}, len(e.lambda.Parameters))
 	info := DefaultInfo()
 
-	if len(e.lambda.Names) > 2 {
+	if len(e.lambda.Parameters) > 2 {
 		info.Error("mapping expression takes a maximum of 2 arguments")
 		return nil, info, false
 	}
@@ -196,7 +196,7 @@ func mapList(inline bool, source []yaml.Node, e LambdaValue, binding Binding, ag
 		debug.Debug("map:  mapping for %d: %+v\n", i, n)
 		inp[0] = i
 		inp[len(inp)-1] = n.Value()
-		resolved, mapped, info, ok := e.Evaluate(inline, false, inp, binding, false)
+		resolved, mapped, info, ok := e.Evaluate(inline, false, false, inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %d %+v: failed\n", i, n)
 			return nil, info, false
@@ -216,7 +216,7 @@ func mapList(inline bool, source []yaml.Node, e LambdaValue, binding Binding, ag
 }
 
 func mapMap(inline bool, source map[string]yaml.Node, e LambdaValue, binding Binding, aggr MappingAggregation) (interface{}, EvaluationInfo, bool) {
-	inp := make([]interface{}, len(e.lambda.Names))
+	inp := make([]interface{}, len(e.lambda.Parameters))
 	info := DefaultInfo()
 
 	keys := getSortedKeys(source)
@@ -225,7 +225,7 @@ func mapMap(inline bool, source map[string]yaml.Node, e LambdaValue, binding Bin
 		debug.Debug("map:  mapping for %s: %+v\n", k, n)
 		inp[0] = k
 		inp[len(inp)-1] = n.Value()
-		resolved, mapped, info, ok := e.Evaluate(inline, false, inp, binding, false)
+		resolved, mapped, info, ok := e.Evaluate(inline, false, false, inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %s %+v: failed\n", k, n)
 			return nil, info, false

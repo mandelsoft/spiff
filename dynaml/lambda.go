@@ -5,7 +5,6 @@ import (
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/yaml"
 	"reflect"
-	"strings"
 )
 
 func staticScope(binding Binding) Binding {
@@ -16,9 +15,22 @@ func staticScope(binding Binding) Binding {
 	return binding
 }
 
+type Parameter struct {
+	Name    string
+	Default Expression
+}
+
+func (p Parameter) String() string {
+	if p.Default != nil {
+		return fmt.Sprintf("%s=%s", p.Name, p.Default)
+	}
+	return p.Name
+}
+
 type LambdaExpr struct {
-	Names []string
-	E     Expression
+	Parameters []Parameter
+	VarArgs    bool
+	E          Expression
 }
 
 func isInline(e Expression) bool {
@@ -36,12 +48,46 @@ func keys(m map[string]yaml.Node) []string {
 
 func (e LambdaExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
+	var params []Parameter
+	for i, p := range e.Parameters {
+		if p.Default != nil {
+			if params == nil {
+				params = e.Parameters[:i]
+			}
+			v, info, ok := p.Default.Evaluate(binding, locally)
+			if !ok {
+				debug.Debug("failed LAMBDA Default Arg Evaluation %d: %s", i, info.Issue.Issue)
+				nested := info.Issue
+				info.SetError("evaluation of lambda call default argument %d failed: %s: %s", i, e, p.Default)
+				info.Issue.Nested = append(info.Issue.Nested, nested)
+				info.Issue.Sequence = true
+				return nil, info, ok
+			}
+			if isExpression(value) {
+				debug.Debug("delay LAMBDA expression for default argument %d", i)
+				return nil, info, ok
+			}
+			params = append(params, Parameter{p.Name, ValueExpr{v}})
+		}
+	}
+	if params == nil {
+		params = e.Parameters
+	}
+
 	debug.Debug("LAMBDA VALUE with resolver %+v\n", binding)
-	return LambdaValue{e, binding.GetStaticBinding(), staticScope(binding)}, info, true
+	return LambdaValue{params, e, binding.GetStaticBinding(), staticScope(binding)}, info, true
 }
 
 func (e LambdaExpr) String() string {
-	str := strings.Join(e.Names, ",")
+	str := ""
+	sep := ""
+	for _, p := range e.Parameters {
+		str = fmt.Sprintf("%s%s%s", str, sep, p)
+		sep = ","
+	}
+	if e.VarArgs {
+		str += "..."
+	}
 	return fmt.Sprintf("lambda|%s|->%s", str, e.E)
 }
 
@@ -78,7 +124,11 @@ func (e LambdaRefExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 			debug.Debug("no lambda expression: %T\n", expr)
 			return info.Error("'%s' is no lambda expression", v)
 		}
-		lambda = LambdaValue{lexpr, binding.GetStaticBinding(), staticScope(binding)}
+		value, info, ok := lexpr.Evaluate(binding, locally)
+		if !ok || isExpression(value) {
+			return value, info, ok
+		}
+		lambda = value.(LambdaValue)
 
 	default:
 		return info.Error("lambda reference must resolve to lambda value or string")
@@ -92,9 +142,10 @@ func (e LambdaRefExpr) String() string {
 }
 
 type LambdaValue struct {
-	lambda   LambdaExpr
-	static   map[string]yaml.Node
-	resolver Binding
+	Parameters []Parameter
+	lambda     LambdaExpr
+	static     map[string]yaml.Node
+	resolver   Binding
 }
 
 var _ StaticallyScopedValue = LambdaValue{}
@@ -135,7 +186,7 @@ func short(val interface{}, all bool) string {
 		}
 		return s + "}"
 	default:
-		return fmt.Sprintf("%v", v)
+		return fmt.Sprintf("%#v", v)
 	}
 }
 
@@ -158,11 +209,28 @@ func (e LambdaValue) MarshalYAML() (tag string, value interface{}, err error) {
 	return "", "(( " + e.lambda.String() + " ))", nil
 }
 
-func (e LambdaValue) Evaluate(inline bool, curry bool, args []interface{}, binding Binding, locally bool) (bool, interface{}, EvaluationInfo, bool) {
+func (e LambdaValue) Evaluate(inline bool, curry, autocurry bool, args []interface{}, binding Binding, locally bool) (bool, interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
+	required := len(e.lambda.Parameters)
 
-	if len(args) > len(e.lambda.Names) {
-		info.Issue = yaml.NewIssue("found %d argument(s), but expects %d", len(args), len(e.lambda.Names))
+	if e.lambda.VarArgs {
+		if required > 0 {
+			required--
+		}
+		if len(args) > required {
+			varargs := []yaml.Node{}
+			for _, a := range args[required:] {
+				varargs = append(varargs, yaml.NewNode(a, binding.SourceName()))
+			}
+			args = append(args[:required], varargs)
+		} else {
+			if len(args) == required {
+				args = append(args, []yaml.Node{})
+			}
+		}
+	}
+	if len(args) > len(e.lambda.Parameters) {
+		info.Issue = yaml.NewIssue("found %d argument(s), but expects %d", len(args), len(e.lambda.Parameters))
 		return false, nil, info, false
 	}
 	inp := map[string]yaml.Node{}
@@ -173,17 +241,31 @@ func (e LambdaValue) Evaluate(inline bool, curry bool, args []interface{}, bindi
 	debug.Debug("LAMBDA CALL: inherit local %+v\n", inp)
 	for i, v := range args {
 		//fmt.Printf("  dyn %s: %s\n", e.lambda.Names[i], ExpressionType(v))
-		inp[e.lambda.Names[i]] = NewNode(v, binding)
+		inp[e.lambda.Parameters[i].Name] = NewNode(v, binding)
 	}
 
-	if len(args) < len(e.lambda.Names) {
-		if curry {
-			debug.Debug("LAMBDA CALL: currying %+v\n", inp)
-			rest := e.lambda.Names[len(args):]
-			return true, LambdaValue{LambdaExpr{rest, e.lambda.E}, inp, e.resolver}, DefaultInfo(), true
+	if curry || (autocurry && len(args) < len(e.lambda.Parameters) && e.lambda.Parameters[len(e.lambda.Parameters)-1].Default == nil) {
+		debug.Debug("LAMBDA CALL: currying %+v\n", inp)
+		rest := []Parameter{}
+		if len(args) < len(e.lambda.Parameters) {
+			rest = e.lambda.Parameters[len(args):]
 		}
-		info.SetError("expected %d arguments, but found %d", len(e.lambda.Names), len(args))
-		return false, nil, info, false
+		return true, LambdaValue{
+			rest,
+			LambdaExpr{rest, e.lambda.VarArgs && len(rest) > 0, e.lambda.E},
+			inp,
+			e.resolver,
+		}, DefaultInfo(), true
+	}
+	if len(args) < len(e.lambda.Parameters) {
+		if e.lambda.Parameters[len(args)].Default != nil {
+			for i := len(args); i < len(e.lambda.Parameters); i++ {
+				inp[e.lambda.Parameters[i].Name] = NewNode(e.lambda.Parameters[i].Default.(ValueExpr).Value, binding)
+			}
+		} else {
+			info.SetError("expected %d arguments, but found %d", len(e.lambda.Parameters), len(args))
+			return false, nil, info, false
+		}
 	}
 	if !inline {
 		debug.Debug("LAMBDA CALL: staticScope %+v\n", e.resolver)

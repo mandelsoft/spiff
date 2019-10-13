@@ -210,7 +210,7 @@ func ResolveExpressionOrPushEvaluation(e *Expression, resolved *bool, info *Eval
 	}
 
 	if v, ok := val.(Expression); ok {
-		*e = v
+		*e = KeepVarArg(v, *e)
 		*resolved = false
 		return nil, infoe, true
 	} else {
@@ -238,6 +238,7 @@ func ResolveExpressionListOrPushEvaluation(list *[]Expression, resolved *bool, i
 	values := make([]interface{}, len(*list))
 	pushed := make([]Expression, len(*list))
 	infoe := EvaluationInfo{}
+	varargs := false
 	ok := true
 
 	copy(pushed, *list)
@@ -245,9 +246,28 @@ func ResolveExpressionListOrPushEvaluation(list *[]Expression, resolved *bool, i
 	for i, _ := range pushed {
 		values[i], infoe, ok = ResolveExpressionOrPushEvaluation(&pushed[i], resolved, info, binding, locally)
 		info = &infoe
+		varargs = varargs || IsVarArg(pushed[i])
 		if !ok {
 			return nil, infoe, false
 		}
+	}
+	if varargs {
+		vlist := []interface{}{}
+		for i, v := range values {
+			if IsVarArg(pushed[i]) {
+				list, ok := v.([]yaml.Node)
+				if !ok {
+					_, infoe, ok := infoe.Error("argument expansion required list argument")
+					return nil, infoe, ok
+				}
+				for _, e := range list {
+					vlist = append(vlist, e.Value())
+				}
+			} else {
+				vlist = append(vlist, v)
+			}
+		}
+		values = vlist
 	}
 	*list = pushed
 	return values, infoe, true

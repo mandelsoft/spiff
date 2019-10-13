@@ -460,7 +460,47 @@ values:
 				Expect(template).To(CascadeAs(resolved, source, stub))
 			})
 
-			It("supports currying", func() {
+			It("supports lambda defaults", func() {
+				source := parseYAML(`
+---
+mult: (( lambda |x,y=5|-> x * y ))
+values:
+  value: (( .mult(2) ))
+`)
+
+				resolved := parseYAML(`
+---
+values:
+  value: 10
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("evaluates lambda defaults in definition scope", func() {
+				source := parseYAML(`
+---
+default: 2
+mult: (( lambda |x,y=default * 2|-> x * y ))
+`)
+
+				stub := parseYAML(`
+---
+mult: (( merge ))
+values:
+  default: 3
+  value: (( .mult(3) ))
+`)
+
+				resolved := parseYAML(`
+---
+values:
+  default: 3
+  value: 12
+`)
+				Expect(template).To(CascadeAs(resolved, stub, source))
+			})
+
+			It("supports deprecated currying", func() {
 				source := parseYAML(`
 ---
 mult: (( lambda |x,y|-> x * y ))
@@ -473,6 +513,124 @@ values:
 ---
 values:
   value: 10
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("supports currying", func() {
+				source := parseYAML(`
+---
+mult: (( lambda |x,y|-> x * y ))
+mult2: (( .mult*(2) ))
+values:
+  value: (( .mult2(5) ))
+`)
+
+				resolved := parseYAML(`
+---
+values:
+  value: 10
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("supports currying with defaults", func() {
+				source := parseYAML(`
+---
+mult: (( lambda |x=1,y=2|-> x * y ))
+mult2: (( .mult*(2) ))
+values:
+  value: (( .mult2(5) ))
+`)
+
+				resolved := parseYAML(`
+---
+values:
+  value: 10
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("supports calls for empty currying", func() {
+				source := parseYAML(`
+---
+mult: (( lambda |x,y|-> x * y ))
+mult2: (( .mult*() ))
+values:
+  value: (( .mult2(2,5) ))
+`)
+
+				resolved := parseYAML(`
+---
+values:
+  value: 10
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("supports currying with varargs", func() {
+				source := parseYAML(`
+---
+func: (( |a,b...|->join(a,b) ))
+func1: (( .func*(",","a","b")))
+values:
+  value: (( .func1() ))
+`)
+
+				resolved := parseYAML(`
+---
+values:
+  value: a,b
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("supports calls for empty currying and defaults", func() {
+				source := parseYAML(`
+---
+mult: (( lambda |x=1,y=2|-> x * y ))
+mult2: (( .mult*() ))
+values:
+  value: (( .mult2(5) ))
+`)
+
+				resolved := parseYAML(`
+---
+values:
+  value: 10
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("supports calls for currying with defaults", func() {
+				source := parseYAML(`
+---
+mult: (( lambda |x=1,y=2|-> x * y ))
+mult2: (( .mult*(2) ))
+values:
+  value: (( .mult2() ))
+`)
+
+				resolved := parseYAML(`
+---
+values:
+  value: 4
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("supports builtin currying", func() {
+				source := parseYAML(`
+---
+func: (( join*(",") ))
+values:
+  value: (( .func("a","b") ))
+`)
+
+				resolved := parseYAML(`
+---
+values:
+  value: "a,b"
 `)
 				Expect(template).To(CascadeAs(resolved, source))
 			})

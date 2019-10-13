@@ -65,14 +65,14 @@ func _validate(value interface{}, cond interface{}, binding Binding, args ...yam
 	var err error
 	switch v := cond.(type) {
 	case LambdaValue:
-		if len(v.lambda.Names) != len(args)+1 {
-			return ValidatorErrorf("argument count mismatch for lambda %s: expected %d, found %d", v, len(v.lambda.Names), len(args)+1)
+		if len(v.lambda.Parameters) != len(args)+1 {
+			return ValidatorErrorf("argument count mismatch for lambda %s: expected %d, found %d", v, len(v.lambda.Parameters), len(args)+1)
 		}
 		vargs := []interface{}{value}
 		for _, a := range args {
 			vargs = append(vargs, a.Value())
 		}
-		valid, r, info, ok := v.Evaluate(false, false, vargs, binding, false)
+		valid, r, info, ok := v.Evaluate(false, false, false, vargs, binding, false)
 
 		if !valid {
 			if !ok {

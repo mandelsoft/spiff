@@ -32,6 +32,7 @@ manifests (for example BOSH or [kubernetes](https://github.com/kubernetes) manif
 Contents:
 - [Installation](#installation)
 - [Usage](#usage)
+- [Libraries](#libraries)
 - [dynaml Templating Language](#dynaml-templating-language)
 	- [(( foo ))](#-foo-)
 	- [(( foo.bar.[1].baz ))](#-foobar1baz-)
@@ -105,11 +106,14 @@ Contents:
 		- [(( makemap(fieldlist) ))](#-makemapfieldlist-)
 		- [(( makemap(key, value) ))](#-makemapkey-value-)
 		- [(( merge(map1, map2) ))](#-mergemap1-map2-)
+		- [(( intersect(list1, list2) ))](#-intersectlist1-list2-)
+		- [(( reverse(list) ))](#-reverselist-)
 		- [(( parse(yamlorjson) ))](#-parseyamlorjson-)
 		- [(( asjson(expr) ))](#-asjsonexpr-)
 		- [(( asyaml(expr) ))](#-asjsonexpr-)
 		- [(( catch(expr) ))](#-catchexpr-)
 		- [(( validate(value,"dnsdomain") ))](#-validatevaluednsdomain-)
+		- [(( error("message") ))](#-errormessage-)
 		- [Accessing External Content](#accessing-external-content)
 		    - [(( read("file.yml") ))](#-readfileyml-)
 		    - [(( exec("command", arg1, arg2) ))](#-execcommand-arg1-arg2-)
@@ -124,8 +128,13 @@ Contents:
 		    - [(( x509publickey(key) ))](#-x509publickeykey-)
 		    - [(( x509cert(spec) ))](#-x509certspec-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
+	    - [Scopes and Lambda Expressions](#scopes-and-lambda-expressions)
+	    - [Optional Parameters (( |x,y=2|-> x * y ))](#optional-parameters)
+	    - [Variable Argument Lists (( |x,y...|-> x y ))](#variable-argument-lists)
+	    - [Currying (( function*(1) ))](#currying)
 	- [(( catch[expr|v,e|->v] ))](#-catchexprve-v-)
 	- [(( sync[expr|v,e|->defined(v.field),v.field|10] ))](#-syncexprve-definedvfieldvfield10-)
+	- [Inline List Expansion (( [a, list..., b] ))](#inline-list-expansion)
 	- [Mappings](#mappings)
 		- [(( map[list|elem|->dynaml-expr] ))](#-maplistelem-dynaml-expr-)
 		- [(( map[list|idx,elem|->dynaml-expr] ))](#-maplistidxelem-dynaml-expr-)
@@ -144,6 +153,7 @@ Contents:
 	    - [(( &temporary ))](#-temporary-)
 	    - [(( &local ))](#-local-)
     	- [(( &inject ))](#-inject-)
+    	- [(( &default ))](#-default-)
     	- [(( &state ))](#-state-)
 	- [Templates](#templates)
 		- [<<: (( &template ))](#--template-)
@@ -269,6 +279,12 @@ stdin.
 
 If the option `-d` is given, the data is decrypted, otherwise the data is
 read as yaml document and the encrypted result is printed. 
+
+# Libraries
+
+The [libraries](libraries/README.md) folder contains some useful _spiff_ template
+libraries. These are basically just stubs that are added to the merge file list
+to offer the utility functions for the merge processing.
 
 # dynaml Templating Language
 
@@ -2534,6 +2550,80 @@ merged:
   sum: 49
 ```
 
+### `(( intersect(list1, list2) ))`
+
+The function `intersect` intersects multiple lists. A list may contain entries
+of any type.
+
+e.g.:
+
+```yaml
+list1:
+- - a
+- - b
+- a
+- b
+- { a: b }
+- { b: c }
+- 0
+- 1
+- "0"
+- "1"
+list2:
+- - a
+- - c
+- a
+- c
+- { a: b }
+- { b: b }
+- 0
+- 2
+- "0"
+- "2"
+intersect: (( intersect(list1, list2) ))
+```
+
+resolves `intersect` to
+
+```yaml
+intersect:
+- - a
+- a
+- { a: b }
+- 0
+- "0"
+```
+
+### `(( reverse(list) ))`
+
+The function `reverse` reverses the order of a list. The list may contain entries
+of any type.
+
+e.g.:
+
+```yaml
+list:
+- - a
+- b
+- { a: b }
+- { b: c }
+- 0
+- 1
+reverse: (( reverse(list) ))
+```
+
+resolves `reverse` to
+
+```yaml
+reverse:
+- 1
+- 0
+- { b: c }
+- { a: b }
+- b
+- - a
+```
+
 ### `(( validate(value,"dnsdomain") ))`
 
 The function `validate` validates an expression using a set of validators.
@@ -2652,6 +2742,25 @@ validator:
 
 val: (( validate( map, validator)  ))
 ```
+
+### `(( error("message") ))`
+
+The function `error` can be used to cause explicit evaluation failures with
+a dedicated message.
+
+This can be used, for example, to reduce a complex
+processing error to a meaningful message by appending the error function
+as default for the potentially failing comples expression.
+
+e.g.:
+
+```yaml
+value: (( <some complex potentially failing expression> || error("this was an error my friend") ))
+```
+
+Another scenario could be omitting a descriptive message for missing required
+fields by using an error expression as (default) value for a field intended to
+be defined in an upstream stub.
 
 ### Accessing External Content
 
@@ -3239,6 +3348,20 @@ lvalue: lambda |x,y|->x + y
 mod: lambda|x,y,m|->(lambda m)(x, y) + 3
 value: 6
 ```
+If a complete expression is a lambda expression the keyword `lambda` can be omitted.
+
+Lambda expressions evaluate to lambda values, that are used as final values
+in yaml documents processed by _spiff_. 
+
+**Note**: If the final document still contains lambda values, they are transferred
+to a textual representation. It is not guaranteed that this representation can 
+correctly be parsed again, if the document is re-processed by _spiff_. Especially
+for complex scoped and curried functions this is not possible.
+
+Therefore function nodes should always be _temporary_ or _local_ to be available
+during processing or merging, but being omitted for the final document.
+
+### Scopes and Lambda Expressions
 
 A lambda expression might refer to absolute or relative nodes of the actual yaml document of the call. Relative references are evaluated in the context of the function call. Therefore
 
@@ -3251,6 +3374,7 @@ values:
 ```
 
 yields `6` for `values.value`.
+
 
 Besides the specified parameters, there is an implicit name (`_`), that can be
 used to refer to the function itself. It can be used to define self recursive
@@ -3321,7 +3445,131 @@ value: (( .mult2(3) ))
 
 yields `6` for property `value`.
 
-If a lambda function is called with less arguments than expected, the result is a new function taking the missing arguments (currying).
+### Optional Parameters
+
+Trailing parameters may be defaulted in the lambda expression by assigning
+values in the declaration. Those parameter are then optional, it is not
+required to specify arguments for those parameters in function calls. 
+
+e.g.:
+
+```yaml
+mult: (( lambda |x,y=2|-> x * y ))
+value: (( .mult(3) ))
+```
+
+yields `6` for property `value`.
+
+It is possible to default all parameters of a lambda expression. The function
+can then be called without arguments. There might be no non-defaulted parameters
+after a defaulted one.
+
+A call may only omit arguments for optional parameters from right to left. If
+there should be an explicit argument for the right most parameter, arguments for
+all parameters must be specified. Cherry-picking is not possible.
+
+The expression for the default does not need to be a constant value or even
+expression, it might refer to other nodes in the yaml document. The default
+expression is always evaluated in the scope of the lambda expression declaration
+at the time the lambda expression is evaluated.
+
+e.g.:
+
+**stub.yaml**
+```yaml
+default: 2
+mult: (( lambda |x,y=default * 2|-> x * y ))
+```
+
+**template.yaml**
+```yaml
+mult: (( merge ))
+scope:
+  default: 3
+  value: (( .mult(3) ))
+```
+
+evaluates `value`to 12
+
+### Variable Argument Lists
+
+The last parameter in the parameter list of a lambda expression may be a 
+_varargs_ parameter consuming additional argument in a fnction call.
+This parameter is always a list of values, one entry per additional argument.
+
+A _varargs_ parameter is denoted by a `...` following the last parameter name.
+
+e.g.:
+
+```yaml
+func: (( |a,b...|-> [a] b ))
+result: (( .func(1,2,3) ))
+```
+ 
+yields the list `[1, 2, 3]` for property `result`.
+
+If no argument is given for the _varargs_ parameter its value is the empty list.
+
+The `...` operator can also be used for [inline list expansion](#inline-list-expansion).
+
+
+### Currying
+
+Using the _currying_ operator (`*(`) a lambda function may be transformed to
+another function with less parameters by specifying leading argument values.
+
+The result is a new function taking the missing arguments (currying) and using
+the original function body with a static binding for the specified parameters.
+
+e.g.:
+
+```yaml
+mult: (( lambda |x,y|-> x * y ))
+mult2: (( .mult*(2) ))
+value: (( .mult2(3) ))
+```
+
+Currying may be combined with [defaulted parameters](#optional-parameters).
+But the resulting function does not default the leading parameters, it
+is just a new function with less parameters pinning the specified ones.
+
+If the original function uses a [variable argument list](#variable-argument-lists),
+the currying may span any number of the variable argument part, but once at
+least one such argument is given, the parameter for the variable part is satisfied.
+It cannot be extended by a function call of the curried function.
+
+e.g.:
+
+```yaml
+func: (( |a,b...|->join(a,b) ))
+func1: (( .func*(",","a","b")))
+#invalid: (( .func1("c") ))
+value: (( .func1() ))
+```
+
+evaluates `value` to `"a,b"`.
+
+It is also possible to use currying for builtin functions, like 
+[`join`](#-join---list-).
+
+e.g.:
+
+```yaml
+stringlist: (( join*(",") ))
+value: (( .stringlist("a", "b")  ))
+```
+
+evaluates `value` to `"a,b"`.
+
+There are several builtin functions acting on unevaluated or unevaluatable
+arguments, like [`defined`](#-definedfoobar-). For these functions currying is
+not possible.
+
+For compatibility reasons currying is also done, if a lambda function without
+defaulted parameters is called with less arguments than declared parameters.
+
+This behaviour is **deprecated** and will be removed in the future. It is
+replaced by the currying operator.
 
 e.g.:
 
@@ -3331,7 +3579,7 @@ mult2: (( .mult(2) ))
 value: (( .mult2(3) ))
 ```
 
-If a complete expression is a lambda expression the keyword `lambda` can be omitted.
+evaluates `value` to 6.
 
 ## `(( catch[expr|v,e|->v] ))`
 
@@ -3799,6 +4047,72 @@ names:
   - peter
 ```
 
+## Inline List Expansion
+
+In argument lists or list literals the _list expansion operator_ (`...`) can be
+used.  It is a postfix operator on any list expression. It substituted
+the list expression by a sequence of the list members. It can be be used
+in combination with static list argument denotation.
+
+e.g.:
+
+```yaml
+list:
+  - a
+  - b
+  
+result: (( [ 1, list..., 2, list... ]  ))
+```
+
+evaluates `result` to
+
+```yaml
+result:
+  - 1
+  - a
+  - b
+  - 2
+  - a
+  - b
+```
+
+The following example demonstrates the usage in combination with the
+[_varargs_ operator](#variable_argument_lists) in functions:
+
+```yaml
+func: (( |a,b...|-> [a] b ))
+
+list:
+  - a
+  - b
+
+a: (( .func(1,2,3) ))
+b: (( .func("x",list..., "z") ))
+c: (( [ "x", .func(list...)..., "z" ] ))
+```
+
+evaluates the following results:
+
+```yaml
+a:
+- 1
+- 2
+- 3
+b:
+- x
+- a
+- b
+- z
+c:
+- x
+- a
+- b
+- z
+```
+
+Please note, that the list expansion might span multiple arguments (including the
+[_varargs_ parameter](#variable-argument-lists)) in lambda function calls.
+
 ## Markers
 
 Nodes of the yaml document can be marked to enable dedicated behaviours for this
@@ -3897,6 +4211,103 @@ alice:
 bob:
   foobar: yep
 ```
+
+### `(( &default ))`
+
+Nodes marked as *default* will be used as default values
+for downstream stub levels. If no such entry is set there it will behave like
+`&inject` and implicitly add this node, but existing settings will not be
+overwritten.
+
+Maps (or lists) marked as *default* will be considered as values. 
+The map is used as a whole as default if no such field is defined downstream.
+
+e.g.:
+
+**template.yaml**
+```yaml
+data: { }
+```
+
+**stub.yaml**
+```yaml
+data:
+  foobar:
+    <<: (( &default ))
+    foo: claude
+    bar: peter
+```
+
+is merged to
+
+```yaml
+data:
+  foobar:
+    foo: claude
+    bar: peter
+```
+
+Their entries will neither be used for overwriting existing downstream values
+nor for defaulting non-existng fields of a not defaulted map field.
+
+e.g.:
+
+**template.yaml**
+```yaml
+data:
+  foobar:
+    bar: bob
+```
+
+**stub.yaml**
+```yaml
+data:
+  foobar:
+    <<: (( &default ))
+    foo: claude
+    bar: peter
+```
+
+is merged to
+
+```yaml
+data:
+  foobar:
+    bar: bob
+```
+
+If sub sequent defaulting is desired, the fields of a default map must again be
+marked as default.
+
+e.g.:
+
+**template.yaml**
+```yaml
+data:
+  foobar:
+    bar: bob
+```
+
+**stub.yaml**
+```yaml
+data:
+  foobar:
+    <<: (( &default ))
+    foo: (( &default ("claude") ))
+    bar: peter
+```
+
+is merged to
+
+```yaml
+data:
+  foobar:
+    foo: claude
+    bar: bob
+```
+
+**Note**: The behaviour of list entries marked as *default* is undefined.
+
 
 ### `(( &state ))`
 
@@ -4865,6 +5276,115 @@ networks:
   ...
   ```
 
+- Defaulting and Requiring Fields
+
+  Traditionally defaulting in _spiff_ is done by a downstream template where the
+  playload data file is used as stub.
+  
+  Fields with simple values can just be specified with their values.
+  They will be overwritten by stubs using the regular _spiff_ document merging
+  mechanisms.
+  
+  It is more difficult for maps or lists. If a map is specified in the
+  template only its fields will be merged (see above), but it is never
+  replaced as a whole by settings in the playload definition files.
+  And Lists are never merged.
+  
+  Therefore maps and lists that should be defaulted as a whole must be specified
+  as initial expressions (referential or inline) in the template file.
+  
+  e.g.: merging of
+  
+  **template.yaml**
+  ```yaml
+  defaults:
+    <<: (( &temporary ))
+    person:
+      name: alice
+      age: bob
+  config:
+    value1: defaultvalue
+    value2: defaultvalue
+    person: (( defaults.person ))
+  ```  
+  
+  and
+  
+  **payload.yaml**
+  ```yaml
+   config:
+     value2: configured
+     othervalue: I want this but don't get it
+  ```  
+    
+  evaluates to 
+  
+  ```yaml
+  config:
+    person:
+      age: bob
+      name: alice
+    value1: defaultvalue
+      value2: configured
+   ```
+
+  In such a scenario the structure of the resulting document is defined by the template.
+  All kinds of variable fields or sub-structures must be forseen by the template
+  by using `<<: (( merge ))` expressions in maps.
+  
+  e.g.: changing template to
+  
+  **template.yaml**
+  ```yaml
+  defaults:
+    <<: (( &temporary ))
+    person:
+      name: alice
+      age: bob
+  config:
+    <<: (( merge ))
+    value1: defaultvalue
+    value2: defaultvalue
+    person: (( defaults.person ))
+  ```  
+  
+  Known _optional_ fields can be described using the *undefined* (`~~`) expression:
+
+  **template.yaml**
+  ```yaml
+  config:
+    optional: (( ~~ ))
+  ```    
+  
+  Such fields will only be part of the final document if they are defined in
+  an upstream stub, otherwise they will be completely removed.
+ 
+  _Required_ fields can be defined with the expression `(( merge ))`. If
+  no stub contains a value for this field, the merge cannot be fullfilled and
+  an error is reported. If a dedicated message should be shown instead, the
+  merge expression can be defaulted with an error function call.
+  
+  e.g.:
+  
+  **template.yaml**
+  ```yaml
+  config:
+    password: (( merge || error("the field password is required") ))
+  ```
+
+   will produce the following error if no stub contains a value:
+   ```
+   error generating manifest: unresolved nodes:
+   	(( merge || error("the field password is required") ))	in c.yaml	config.password	()	*the field password is required 
+   ```
+   
+   This can be simplified by reducing the expression to the sole `error`
+   expression.
+
+   Besides this template based defaulting it is also possible to
+   provide defaults by upstream stubs using the [`&default` marker](#-default-).
+   Here the payload can be a downstream file.
+   
 - _X509_ and providing State
 
   When generating keys or certificates with the [X509 Functions](#x509-functions)
