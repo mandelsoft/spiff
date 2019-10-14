@@ -2,6 +2,7 @@ package dynaml
 
 import (
 	"fmt"
+	"github.com/mandelsoft/spiff/yaml"
 	"strings"
 
 	"github.com/mandelsoft/spiff/debug"
@@ -13,6 +14,15 @@ var functions = map[string]Function{}
 
 func RegisterFunction(name string, f Function) {
 	functions[name] = f
+}
+
+type NameArgument struct {
+	Name string
+	Expression
+}
+
+func (a NameArgument) String() string {
+	return fmt.Sprintf("%s=%s", a.Name, a.Expression)
 }
 
 type CallExpr struct {
@@ -83,16 +93,33 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		return e, info, true
 	}
 
+	named := map[string]yaml.Node{}
+	found := -1
+	for i := range e.Arguments {
+		if n, ok := e.Arguments[i].(NameArgument); ok {
+			named[n.Name] = NewNode(values[i], binding)
+			found = i
+		} else {
+			break
+		}
+	}
+	if found >= 0 {
+		values = values[found+1:]
+	}
+
 	var result interface{}
 	var sub EvaluationInfo
 
+	if funcName != "" && len(named) > 0 {
+		return info.Error("no named arguments for builtin function (%s)", e.Function)
+	}
 	if funcName != "" && e.Curry {
 		params := []Parameter{Parameter{Name: "__args"}}
 		args := make([]Expression, len(values)+1)
 		for i, v := range values {
 			args[i] = ValueExpr{v}
 		}
-		args[len(values)] = VarArgsExpr{ReferenceExpr{[]string{"__args"}}}
+		args[len(values)] = ListExpansionExpr{ReferenceExpr{[]string{"__args"}}}
 		expr := CallExpr{
 			Function:  ReferenceExpr{[]string{funcName}},
 			Arguments: args,
@@ -103,7 +130,7 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	switch funcName {
 	case "":
 		debug.Debug("calling lambda function %#v\n", value)
-		resolved, result, sub, ok = value.(LambdaValue).Evaluate(false, e.Curry, true, values, binding, false)
+		resolved, result, sub, ok = value.(LambdaValue).Evaluate(false, e.Curry, true, named, values, binding, false)
 
 	case "static_ips":
 		result, sub, ok = func_static_ips(e.Arguments, binding)
@@ -289,9 +316,12 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 func (e CallExpr) String() string {
 	args := make([]string, len(e.Arguments))
-	for i, e := range e.Arguments {
-		args[i] = fmt.Sprintf("%s", e)
+	for i, a := range e.Arguments {
+		args[i] = fmt.Sprintf("%s", a)
 	}
-
-	return fmt.Sprintf("%s(%s)", e.Function, strings.Join(args, ", "))
+	curry := ""
+	if e.Curry {
+		curry = "*"
+	}
+	return fmt.Sprintf("%s%s(%s)", e.Function, curry, strings.Join(args, ", "))
 }

@@ -251,7 +251,7 @@ var _ = Describe("parsing", func() {
 				ListExpr{
 					[]Expression{
 						IntegerExpr{1},
-						VarArgsExpr{ReferenceExpr{[]string{"foo"}}},
+						ListExpansionExpr{ReferenceExpr{[]string{"foo"}}},
 						IntegerExpr{2},
 					},
 				},
@@ -309,7 +309,7 @@ var _ = Describe("parsing", func() {
 					ReferenceExpr{[]string{"foo"}},
 					[]Expression{
 						IntegerExpr{1},
-						VarArgsExpr{ReferenceExpr{[]string{"foo"}}},
+						ListExpansionExpr{ReferenceExpr{[]string{"foo"}}},
 						IntegerExpr{2},
 					},
 					false,
@@ -324,6 +324,63 @@ var _ = Describe("parsing", func() {
 					ReferenceExpr{[]string{"foo", "bar"}},
 					[]Expression{
 						IntegerExpr{1},
+					},
+					false,
+				},
+			)
+		})
+
+		It("parses call for reference and named argument", func() {
+			parsesAs(
+				`foo.bar(a=1)`,
+				CallExpr{
+					ReferenceExpr{[]string{"foo", "bar"}},
+					[]Expression{
+						NameArgument{"a", IntegerExpr{1}},
+					},
+					false,
+				},
+			)
+		})
+
+		It("parses call for reference and named arguments", func() {
+			parsesAs(
+				`foo.bar(a=1, b=2)`,
+				CallExpr{
+					ReferenceExpr{[]string{"foo", "bar"}},
+					[]Expression{
+						NameArgument{"a", IntegerExpr{1}},
+						NameArgument{"b", IntegerExpr{2}},
+					},
+					false,
+				},
+			)
+		})
+
+		It("parses call for reference and named and positional argument", func() {
+			parsesAs(
+				`foo.bar(a=1, 2)`,
+				CallExpr{
+					ReferenceExpr{[]string{"foo", "bar"}},
+					[]Expression{
+						NameArgument{"a", IntegerExpr{1}},
+						IntegerExpr{2},
+					},
+					false,
+				},
+			)
+		})
+
+		It("parses call for reference and named and positional arguments", func() {
+			parsesAs(
+				`foo.bar(a=1, b=2, 3, 4)`,
+				CallExpr{
+					ReferenceExpr{[]string{"foo", "bar"}},
+					[]Expression{
+						NameArgument{"a", IntegerExpr{1}},
+						NameArgument{"b", IntegerExpr{2}},
+						IntegerExpr{3},
+						IntegerExpr{4},
 					},
 					false,
 				},

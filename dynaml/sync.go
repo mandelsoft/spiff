@@ -88,7 +88,7 @@ func (e SyncExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		default:
 			return info.Error("lambda expression for sync condition must take one or two arguments, found %d", len(lambda.lambda.Parameters))
 		}
-		resolved, result, sub, ok := lambda.Evaluate(inline, false, false, args, binding, locally)
+		resolved, result, sub, ok := lambda.Evaluate(inline, false, false, nil, args, binding, locally)
 		if !resolved {
 			return e, sub, ok
 		}
@@ -154,7 +154,7 @@ func (e SyncExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 			default:
 				return info.Error("lambda expression for sync value must take one or two arguments, found %d", len(lambda.lambda.Parameters))
 			}
-			resolved, result, sub, ok := lambda.Evaluate(inline, false, false, args, binding, locally)
+			resolved, result, sub, ok := lambda.Evaluate(inline, false, false, nil, args, binding, locally)
 			if !resolved {
 				return e, sub, ok
 			}

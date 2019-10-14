@@ -5,6 +5,7 @@ import (
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/yaml"
 	"reflect"
+	"strconv"
 )
 
 func staticScope(binding Binding) Binding {
@@ -151,6 +152,15 @@ type LambdaValue struct {
 var _ StaticallyScopedValue = LambdaValue{}
 var _ yaml.ComparableValue = TemplateValue{}
 
+func (e LambdaValue) ParameterIndex(name string) int {
+	for i, p := range e.Parameters {
+		if p.Name == name {
+			return i
+		}
+	}
+	return -1
+}
+
 func (e LambdaValue) StaticResolver() Binding {
 	return e.resolver
 }
@@ -198,6 +208,18 @@ func (e LambdaValue) String() string {
 	return fmt.Sprintf("%s%s", shorten(binding), e.lambda)
 }
 
+func (e LambdaValue) NumOptional() int {
+	for i, p := range e.Parameters {
+		if p.Default != nil {
+			return len(e.Parameters) - i
+		}
+	}
+	if e.lambda.VarArgs {
+		return 1
+	}
+	return 0
+}
+
 func shorten(s string) string {
 	if len(s) > 40 {
 		s = s[:17] + " ... " + s[len(s)-17:]
@@ -209,11 +231,34 @@ func (e LambdaValue) MarshalYAML() (tag string, value interface{}, err error) {
 	return "", "(( " + e.lambda.String() + " ))", nil
 }
 
-func (e LambdaValue) Evaluate(inline bool, curry, autocurry bool, args []interface{}, binding Binding, locally bool) (bool, interface{}, EvaluationInfo, bool) {
+func (e LambdaValue) Evaluate(inline bool, curry, autocurry bool, nargs map[string]yaml.Node, args []interface{}, binding Binding, locally bool) (bool, interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
-	required := len(e.lambda.Parameters)
+	nparams := len(e.Parameters)
+	required := nparams
 
-	if e.lambda.VarArgs {
+	named := map[string]yaml.Node{}
+	for n, v := range nargs {
+		i, err := strconv.ParseInt(n, 10, 32)
+		if err == nil {
+			i--
+			if i < 0 {
+				info.Issue = yaml.NewIssue("invalid argument index %d", i+1)
+				return false, nil, info, false
+			}
+			if int(i) >= nparams {
+				info.Issue = yaml.NewIssue("argument index %d too large for %d parameters", i+1, nparams)
+				return false, nil, info, false
+			}
+			n = e.Parameters[i].Name
+		}
+		if _, ok := named[n]; ok {
+			info.Issue = yaml.NewIssue("named argument %s given by name and index", n)
+			return false, nil, info, false
+		}
+		named[n] = v
+	}
+
+	if e.lambda.VarArgs { // reduce variable args to list
 		if required > 0 {
 			required--
 		}
@@ -223,14 +268,11 @@ func (e LambdaValue) Evaluate(inline bool, curry, autocurry bool, args []interfa
 				varargs = append(varargs, yaml.NewNode(a, binding.SourceName()))
 			}
 			args = append(args[:required], varargs)
-		} else {
-			if len(args) == required {
-				args = append(args, []yaml.Node{})
-			}
 		}
 	}
-	if len(args) > len(e.lambda.Parameters) {
-		info.Issue = yaml.NewIssue("found %d argument(s), but expects %d", len(args), len(e.lambda.Parameters))
+
+	if len(args) > nparams {
+		info.Issue = yaml.NewIssue("found %d argument(s), but expects %d", len(args), nparams)
 		return false, nil, info, false
 	}
 	inp := map[string]yaml.Node{}
@@ -238,33 +280,77 @@ func (e LambdaValue) Evaluate(inline bool, curry, autocurry bool, args []interfa
 		//fmt.Printf("  static %s: %s\n", n, ExpressionType(v.Value()))
 		inp[n] = v
 	}
+
+	for n, v := range named {
+		if i := e.ParameterIndex(n); i >= 0 {
+			if i < len(args) {
+				info.Issue = yaml.NewIssue("both, positional (%d) and named argument found for lambda parameter %s", i+1, n)
+				return false, nil, info, false
+			}
+			if e.lambda.VarArgs && i == nparams-1 {
+				if _, ok := v.Value().([]yaml.Node); !ok {
+					info.SetError("named varargs argument %d (%s) must be a list", i+1, n)
+					return false, nil, info, false
+				}
+			}
+		} else {
+			info.Issue = yaml.NewIssue("no lambda parameter found for named argument %s", n)
+			return false, nil, info, false
+		}
+		inp[n] = v
+	}
+
 	debug.Debug("LAMBDA CALL: inherit local %+v\n", inp)
 	for i, v := range args {
-		//fmt.Printf("  dyn %s: %s\n", e.lambda.Names[i], ExpressionType(v))
 		inp[e.lambda.Parameters[i].Name] = NewNode(v, binding)
 	}
 
-	if curry || (autocurry && len(args) < len(e.lambda.Parameters) && e.lambda.Parameters[len(e.lambda.Parameters)-1].Default == nil) {
+	if curry || (autocurry && len(named) == 0 && len(args) < nparams && !e.lambda.VarArgs && e.lambda.Parameters[nparams-1].Default == nil) {
 		debug.Debug("LAMBDA CALL: currying %+v\n", inp)
 		rest := []Parameter{}
-		if len(args) < len(e.lambda.Parameters) {
-			rest = e.lambda.Parameters[len(args):]
+		varargs := false
+		if len(args) < nparams {
+			for i, p := range e.lambda.Parameters[len(args):] {
+				if _, ok := named[p.Name]; !ok {
+					rest = append(rest, p)
+					if i == nparams-len(args)-1 {
+						varargs = e.lambda.VarArgs
+					}
+				}
+			}
 		}
 		return true, LambdaValue{
 			rest,
-			LambdaExpr{rest, e.lambda.VarArgs && len(rest) > 0, e.lambda.E},
+			LambdaExpr{rest, varargs, e.lambda.E},
 			inp,
 			e.resolver,
 		}, DefaultInfo(), true
 	}
-	if len(args) < len(e.lambda.Parameters) {
-		if e.lambda.Parameters[len(args)].Default != nil {
-			for i := len(args); i < len(e.lambda.Parameters); i++ {
-				inp[e.lambda.Parameters[i].Name] = NewNode(e.lambda.Parameters[i].Default.(ValueExpr).Value, binding)
+	if len(args) < nparams {
+		for i := len(args); i < nparams; i++ {
+			p := e.lambda.Parameters[i]
+			if v, ok := named[p.Name]; ok {
+				inp[p.Name] = v
+			} else {
+				if p.Default != nil {
+					inp[p.Name] = NewNode(p.Default.(ValueExpr).Value, binding)
+				} else {
+					if e.lambda.VarArgs && i == nparams-1 {
+						inp[p.Name] = NewNode([]yaml.Node{}, binding)
+					} else {
+						if len(named) > 0 {
+							info.SetError("missing named argument for %s", p.Name)
+						} else {
+							if o := e.NumOptional(); o > 0 {
+								info.SetError("expected at least %d arguments (%d optional), but found %d", nparams-o, o, len(args))
+							} else {
+								info.SetError("expected %d arguments, but found %d", nparams, len(args))
+							}
+						}
+						return false, nil, info, false
+					}
+				}
 			}
-		} else {
-			info.SetError("expected %d arguments, but found %d", len(e.lambda.Parameters), len(args))
-			return false, nil, info, false
 		}
 	}
 	if !inline {

@@ -72,7 +72,7 @@ func _validate(value interface{}, cond interface{}, binding Binding, args ...yam
 		for _, a := range args {
 			vargs = append(vargs, a.Value())
 		}
-		valid, r, info, ok := v.Evaluate(false, false, false, vargs, binding, false)
+		valid, r, info, ok := v.Evaluate(false, false, false, nil, vargs, binding, false)
 
 		if !valid {
 			if !ok {
