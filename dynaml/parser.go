@@ -218,13 +218,21 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (
 			call := tokens.Pop().(CallExpr)
 			call.Curry = true
 			tokens.Push(call)
+
 		case ruleChainedCall:
 			args := tokens.PopExpressionList()
 			f := tokens.Pop()
-			tokens.Push(CallExpr{
-				Function:  f,
-				Arguments: args,
-			})
+
+			var named []Expression
+			var pos []Expression
+			for _, a := range args {
+				if _, ok := a.(NameArgument); ok {
+					named = append(named, a)
+				} else {
+					pos = append(pos, a)
+				}
+			}
+			tokens.Push(CallExpr{Function: f, Arguments: append(named, pos...)})
 
 		case ruleAction0:
 		case ruleAction1:
@@ -462,15 +470,22 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (
 			seq := tokens.PopExpressionList()
 			tokens.Push(ListExpr{seq})
 
+		case ruleNextNameArgument:
+			rhs := tokens.Pop()
+			name := tokens.Pop().(nameHelper).name
+			list := tokens.Pop().(expressionListHelper)
+			list.list = append(list.list, NameArgument{name, rhs})
+			tokens.Push(list)
+
 		case ruleNextExpression:
 			rhs := tokens.Pop()
 			list := tokens.Pop().(expressionListHelper)
 			list.list = append(list.list, rhs)
-
 			tokens.Push(list)
-		case ruleVarArgs:
+
+		case ruleListExpansion:
 			rhs := tokens.Pop()
-			tokens.Push(VarArgsExpr{rhs})
+			tokens.Push(ListExpansionExpr{rhs})
 
 		case ruleStartList, ruleStartArguments:
 			tokens.Push(expressionListHelper{})
@@ -479,6 +494,7 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (
 		case ruleLevel0, ruleLevel1, ruleLevel2, ruleLevel3, ruleLevel4, ruleLevel5, ruleLevel6, ruleLevel7:
 		case ruleExpression:
 		case ruleExpressionList:
+		case ruleNameArgumentList:
 		case ruleMap:
 		case ruleScope:
 		case ruleAssignments:

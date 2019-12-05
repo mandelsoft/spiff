@@ -568,7 +568,24 @@ values:
 				Expect(template).To(CascadeAs(resolved, source))
 			})
 
-			It("supports currying with varargs", func() {
+			It("supports currying with unused varargs", func() {
+				source := parseYAML(`
+---
+func: (( |a,b...|->join(a,b) ))
+func1: (( .func*(",")))
+values:
+  value: (( .func1("a","b") ))
+`)
+
+				resolved := parseYAML(`
+---
+values:
+  value: a,b
+`)
+				Expect(template).To(CascadeAs(resolved, source))
+			})
+
+			It("supports currying with used varargs", func() {
 				source := parseYAML(`
 ---
 func: (( |a,b...|->join(a,b) ))

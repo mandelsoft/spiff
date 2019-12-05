@@ -128,6 +128,7 @@ Contents:
 		    - [(( x509publickey(key) ))](#-x509publickeykey-)
 		    - [(( x509cert(spec) ))](#-x509certspec-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
+	    - [Positional versus Named Argunments](#positional-versus-named-arguments)
 	    - [Scopes and Lambda Expressions](#scopes-and-lambda-expressions)
 	    - [Optional Parameters (( |x,y=2|-> x * y ))](#optional-parameters)
 	    - [Variable Argument Lists (( |x,y...|-> x y ))](#variable-argument-lists)
@@ -3314,7 +3315,10 @@ cert:
 
 ## `(( lambda |x|->x ":" port ))`
 
-Lambda expressions can be used to define additional anonymous functions. They can be assigned to yaml nodes as values and referenced with path expressions to call the function with approriate arguments in other dynaml expressions. For the final document they are mapped to string values.
+Lambda expressions can be used to define additional anonymous functions. They
+can be assigned to yaml nodes as values and referenced with path expressions
+to call the function with approriate arguments in other dynaml expressions.
+For the final document they are mapped to string values.
 
 There are two forms of lambda expressions. While
 
@@ -3360,6 +3364,49 @@ for complex scoped and curried functions this is not possible.
 
 Therefore function nodes should always be _temporary_ or _local_ to be available
 during processing or merging, but being omitted for the final document.
+
+
+### Positional versus Named Arguments
+
+A typical function call uses positional arguments. Here the given arguments
+satisfy the declared function parameters in the given order.
+For lambda values it is also possible to use named arguments in the call
+expression. Here an argument is assigned to a dedicated parameter as declared
+by the lambda expression. The order of named arguments can be arbitrarily chosen.
+
+e.g.:
+
+```yaml
+func: (( |a,b,c|->{$a=a, $b=b, $c=c } ))
+result: (( .func(c=1, b=2, a=1) ))
+```
+
+It is also posible to combine named with positional arguments. Hereby the
+positional arguments must follow the named ones.
+
+e.g.:
+
+```yaml
+func: (( |a,b,c|->{$a=a, $b=b, $c=c } ))
+result: (( .func(c=1, 1, 2) ))
+```
+
+The same argument MUST NOT be satified by both, a named and a positional 
+argument.
+
+Instead of using the parameter name it is also possible to use the parameter
+index, instead.
+
+e.g.:
+
+```yaml
+func: (( |a,b,c|->{$a=a, $b=b, $c=c } ))
+result: (( .func(3=1, 1) ))
+```
+
+As such, this feature seems to be quite useless, but it shows its power if
+combined with [optional parameters](#optional-parameters) or 
+[currying](#currying) as shown in the next paragraphs.
 
 ### Scopes and Lambda Expressions
 
@@ -3464,9 +3511,28 @@ It is possible to default all parameters of a lambda expression. The function
 can then be called without arguments. There might be no non-defaulted parameters
 after a defaulted one.
 
-A call may only omit arguments for optional parameters from right to left. If
-there should be an explicit argument for the right most parameter, arguments for
-all parameters must be specified. Cherry-picking is not possible.
+A call with positional arguments may only omit arguments for optional parameters
+from right to left. If there should be an explicit argument for the right most
+parameter, arguments for all parameters must be specified or
+[named arguments](#positional-versus-named-arguments) must be used.
+Here the desired optional parameter can explicitly be set prior to the regular
+positional arguments.
+
+e.g.:
+
+```yaml
+func:  (( |a,b=1,c=2|->{$a=a, $b=b, $c=c } ))
+result: (( .func(c=3, 2) ))
+```
+
+evaluates `result` to
+
+```yaml
+result:
+  a: 2
+  b: 1
+  c: 3
+```
 
 The expression for the default does not need to be a constant value or even
 expression, it might refer to other nodes in the yaml document. The default
@@ -3512,6 +3578,8 @@ If no argument is given for the _varargs_ parameter its value is the empty list.
 
 The `...` operator can also be used for [inline list expansion](#inline-list-expansion).
 
+If a vararg parameter should be set by a [named argument](#positional-versus-named-arguments)
+its value must be a list.
 
 ### Currying
 
@@ -3564,6 +3632,43 @@ evaluates `value` to `"a,b"`.
 There are several builtin functions acting on unevaluated or unevaluatable
 arguments, like [`defined`](#-definedfoobar-). For these functions currying is
 not possible.
+
+Using positional arguments currying is only possible from right to left.
+But currying can also be done for [named arguments](#positional-versus-named-arguments).
+Here any parameter combination, regardless of the position in the parameter
+list, can be preset. The resulting function then has the unsatisfied parameters
+in their original order. Switching the parameter order is not possible.
+
+e.g.:
+
+```yaml
+func: (( |a,b=1,c=2|->{$a=a, $b=b, $c=c } ))
+curry: (( .func(c=3, 2) ))
+
+result: (( .curry(5) ))
+```
+
+evalutes `result` to
+
+```yaml
+result:
+  a: 2
+  b: 5
+  c: 3
+```
+
+The resulting function keeps the parameter `b`. Hereby the default value will
+be kept. Therefore it can just be called without argument (`.curry()`), which 
+would produce
+
+```yaml
+result:
+  a: 2
+  b: 1
+  c: 3
+```
+
+**Attention**: 
 
 For compatibility reasons currying is also done, if a lambda function without
 defaulted parameters is called with less arguments than declared parameters.
