@@ -451,3 +451,18 @@ func EmbeddedDynaml(root Node) *string {
 	}
 	return nil
 }
+
+func UnescapeDynaml(root Node) Node {
+	rootString, ok := root.Value().(string)
+	if !ok {
+		return root
+	}
+	if strings.HasPrefix(rootString, "((") &&
+		strings.HasSuffix(rootString, "))") {
+		sub := rootString[2 : len(rootString)-2]
+		if strings.HasPrefix(sub, "!") {
+			return NewNode("((" + sub[1:]+"))", root.SourceName() )
+		}
+	}
+	return root
+}

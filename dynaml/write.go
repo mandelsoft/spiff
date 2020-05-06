@@ -14,7 +14,7 @@ func func_write(arguments []interface{}, binding Binding) (interface{}, Evaluati
 	info := DefaultInfo()
 
 	if len(arguments) < 2 || len(arguments) > 3 {
-		return info.Error("write requires two arguments")
+		return info.Error("write requires two or three arguments")
 	}
 	file, _, ok := getArg(0, arguments[0], false)
 	if !ok || file == "" {

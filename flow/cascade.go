@@ -21,6 +21,7 @@ func Apply(outer dynaml.Binding, template yaml.Node, prepared []yaml.Node) (yaml
 	result, err := NestedFlow(outer, template, prepared...)
 	if err == nil {
 		result = Cleanup(result, discardTemporary)
+		result = Cleanup(result, unescapeDynaml)
 	}
 	return result, err
 }
@@ -39,6 +40,10 @@ func discardTemporary(node yaml.Node) (yaml.Node, CleanupFunction) {
 		return nil, discardTemporary
 	}
 	return node, discardTemporary
+}
+
+func unescapeDynaml(node yaml.Node) (yaml.Node, CleanupFunction) {
+	return yaml.UnescapeDynaml(node), unescapeDynaml
 }
 
 func discardLocal(node yaml.Node) (yaml.Node, CleanupFunction) {
