@@ -121,6 +121,7 @@ Contents:
 		    - [(( write("file.yml", data) ))](#-writefileyml-data-)
 		    - [(( tempfile("file.yml", data) ))](#-tempfilefileyml-data-)
 		    - [(( lookup_file("file.yml", data) ))](#-lookup_filefileyml-list-)
+		    - [(( mkdir("dir", 0755) ))](#-mkdirdir-0755-)
 		    - [(( list_files(".") ))](#-list_files-)
 		    - [(( archive(files, "tar") ))](#-archivefiles-tar-)
 		- [X509 Functions](#x509-functions)
@@ -2971,6 +2972,14 @@ If no existing files can be found the empty list is returned.
 
 It is possible to pass multiple list or string arguments to compose the
 search path.
+
+#### `(( mkdir("dir", 0755) ))`
+
+Create a directory and all its intermediate directories if they do not
+exist yet.
+
+The permission part is optional (default 0755). The path of the directory
+might be given by atring like value or as a list of path components.
 
 #### `(( list_files(".") ))`
 
