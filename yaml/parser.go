@@ -7,8 +7,9 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/cloudfoundry-incubator/candiedyaml"
+	"github.com/mandelsoft/spiff/legacy/candiedyaml"
 )
+//	"github.com/cloudfoundry-incubator/candiedyaml"
 
 type NonStringKeyError struct {
 	Key interface{}

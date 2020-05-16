@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/cloudfoundry-incubator/candiedyaml"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/mandelsoft/spiff/legacy/candiedyaml"
 )
 
 func Test(t *testing.T) {
