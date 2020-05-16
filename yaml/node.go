@@ -461,7 +461,7 @@ func UnescapeDynaml(root Node) Node {
 		strings.HasSuffix(rootString, "))") {
 		sub := rootString[2 : len(rootString)-2]
 		if strings.HasPrefix(sub, "!") {
-			return NewNode("((" + sub[1:]+"))", root.SourceName() )
+			return NewNode("(("+sub[1:]+"))", root.SourceName())
 		}
 	}
 	return root

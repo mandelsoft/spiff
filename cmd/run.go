@@ -40,7 +40,6 @@ func init() {
 	processCmd.Flags().StringArrayVar(&selection, "select", []string{}, "filter dedicated output fields")
 }
 
-
 func run(documentFilePath, templateFilePath string, partial bool, json, split bool,
 	subpath string, selection []string, stateFilePath string, stubFilePaths []string) {
 	var err error
@@ -59,7 +58,7 @@ func run(documentFilePath, templateFilePath string, partial bool, json, split bo
 		log.Fatalln(fmt.Sprintf("error parsing template [%s]:", path.Clean(documentFilePath)), err)
 	}
 
-	documentYAML=yaml.NewNode(map[string]yaml.Node{"document": documentYAML}, "<"+documentFilePath+">")
-	stub:=yaml.NewNode(map[string]yaml.Node{"document": yaml.NewNode("(( &temporary &inject (merge) ))", "<document>)")}, "<document>")
-	merge(stdin, templateFilePath,partial, json, split, subpath, selection, stateFilePath, []yaml.Node{stub, documentYAML}, stubFilePaths)
+	documentYAML = yaml.NewNode(map[string]yaml.Node{"document": documentYAML}, "<"+documentFilePath+">")
+	stub := yaml.NewNode(map[string]yaml.Node{"document": yaml.NewNode("(( &temporary &inject (merge) ))", "<document>)")}, "<document>")
+	merge(stdin, templateFilePath, partial, json, split, subpath, selection, stateFilePath, []yaml.Node{stub, documentYAML}, stubFilePaths)
 }

@@ -37,7 +37,7 @@ var mergeCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		merge(false, args[0], partial, asJSON, split, outputPath, selection, state, nil,  args[1:])
+		merge(false, args[0], partial, asJSON, split, outputPath, selection, state, nil, args[1:])
 	},
 }
 
@@ -99,8 +99,7 @@ func merge(stdin bool, templateFilePath string, partial bool, json, split bool,
 		}
 	}
 
-
-	if stubs==nil {
+	if stubs == nil {
 		stubs = []yaml.Node{}
 	}
 	stubs = append(stubs[:0:0], stubs...)

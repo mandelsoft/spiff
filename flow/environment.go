@@ -278,7 +278,7 @@ func (e DefaultEnvironment) Cascade(outer dynaml.Binding, template yaml.Node, pa
 	return Cascade(outer, template, partial, templates...)
 }
 
-func NewEnvironmentX(stubs []yaml.Node, source string) dynaml.Binding {
+func NewEnvironment(stubs []yaml.Node, source string) dynaml.Binding {
 	return NewNestedEnvironment(stubs, source, nil)
 }
 

@@ -41,7 +41,7 @@ func func_mkdir(arguments []interface{}, binding Binding) (interface{}, Evaluati
 	if len(arguments) == 2 {
 		switch v := arguments[1].(type) {
 		case string:
-			permissions, binary, err = getWriteOptions(v, 0644)
+			permissions, binary, err = getWriteOptions(v, permissions)
 			if err != nil {
 				return info.Error("%s", err)
 			}
