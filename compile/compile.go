@@ -74,9 +74,9 @@ func compile(env dynaml.Binding, root interface{}) (yaml.Node, CompileErrors) {
 	case time.Time:
 		return yaml.NewNode(rootVal.Format("2019-01-08T10:06:26Z"), env.SourceName()), errors
 	case string:
-		root, err := flow.FlowString(yaml.NewNode(rootVal, env.SourceName()), env)
+		_, err := flow.FlowString(yaml.NewNode(rootVal, env.SourceName()), env)
 		errors.Add(env.Path(), err)
-		return root, errors
+		return yaml.NewNode(rootVal, env.SourceName()), errors
 
 	case map[interface{}]interface{}:
 		sanitized := map[string]yaml.Node{}

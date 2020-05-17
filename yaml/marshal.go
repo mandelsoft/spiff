@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cloudfoundry-incubator/candiedyaml"
 	"reflect"
+
+	"github.com/cloudfoundry-incubator/candiedyaml"
 )
 
 func ToJSON(root Node) ([]byte, error) {
@@ -38,6 +39,7 @@ func normalizeValue(value interface{}) (interface{}, error) {
 			return nil, err
 		}
 		return normalizeValue(v)
+
 	case map[string]Node:
 		normalized := map[string]interface{}{}
 
