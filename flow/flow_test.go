@@ -5048,6 +5048,39 @@ sum: 8
 				Expect(source).To(FlowAs(resolved))
 			})
 		})
+		Context("for a list with nil default", func() {
+			It("sums returns ~ for empty list", func() {
+				source := parseYAML(`
+---
+list: []
+sum: (( sum[list|~|s,x|->x] ))
+`)
+				resolved := parseYAML(`
+---
+list: []
+sum: ~
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("sums propagates ~ for non-empty list", func() {
+				source := parseYAML(`
+---
+list:
+- a
+- b
+sum: (( sum[list|~|s,x|->s] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+- a
+- b
+sum: ~
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+		})
 	})
 
 	Describe("using templates", func() {

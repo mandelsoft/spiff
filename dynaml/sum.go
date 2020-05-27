@@ -25,6 +25,8 @@ func (e SumExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluatio
 	if !ok {
 		return nil, info, false
 	}
+	undef := info.Undefined // TODO
+	debug.Debug("sum: initial undef: %t", undef)
 	inline := isInline(e.Lambda)
 	lvalue, infoe, ok := ResolveExpressionOrPushEvaluation(&e.Lambda, &resolved, nil, binding, false)
 	if !ok {
@@ -44,10 +46,10 @@ func (e SumExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluatio
 	var result interface{}
 	switch value.(type) {
 	case []yaml.Node:
-		result, info, ok = sumList(inline, value.([]yaml.Node), lambda, initial, binding)
+		resolved, result, info, ok = sumList(inline, value.([]yaml.Node), lambda, initial, binding)
 
 	case map[string]yaml.Node:
-		result, info, ok = sumMap(inline, value.(map[string]yaml.Node), lambda, initial, binding)
+		resolved, result, info, ok = sumMap(inline, value.(map[string]yaml.Node), lambda, initial, binding)
 
 	default:
 		return info.Error("map or list required for sum")
@@ -55,7 +57,7 @@ func (e SumExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluatio
 	if !ok {
 		return nil, info, false
 	}
-	if result == nil {
+	if !resolved {
 		return e, info, true
 	}
 	debug.Debug("sum: --> %+v\n", result)
@@ -71,43 +73,46 @@ func (e SumExpr) String() string {
 	}
 }
 
-func sumList(inline bool, source []yaml.Node, e LambdaValue, initial interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
+func sumList(inline bool, source []yaml.Node, e LambdaValue, initial interface{}, binding Binding) (bool, interface{}, EvaluationInfo, bool) {
 	inp := make([]interface{}, len(e.lambda.Parameters))
 	result := initial
 	info := DefaultInfo()
 
 	if len(e.lambda.Parameters) > 3 {
-		return info.Error("mapping expression take a maximum of 3 arguments")
+		info.SetError("mapping expression take a maximum of 3 arguments")
+		return true, nil, info, false
 	}
 	if len(e.lambda.Parameters) < 2 {
-		return info.Error("mapping expression take a minimum of 2 arguments")
+		info.SetError("mapping expression take a minimum of 2 arguments")
+		return true, nil, info, false
 	}
-
+	debug.Debug("sum:  initial: %+v\n", initial)
 	for i, n := range source {
-		debug.Debug("map:  mapping for %d: %+v\n", i, n)
+		debug.Debug("sum:  mapping for %d: %+v\n", i, n)
 		inp[0] = result
 		inp[1] = i
 		inp[len(inp)-1] = n.Value()
 		resolved, mapped, info, ok := e.Evaluate(inline, false, false, nil, inp, binding, false)
 		if !ok {
-			debug.Debug("map:  %d %+v: failed\n", i, n)
-			return nil, info, false
+			debug.Debug("sum:  %d %+v: failed\n", i, n)
+			return true, nil, info, false
 		}
 		if !resolved {
-			return nil, info, ok
+			return false, nil, info, ok
 		}
 		_, ok = mapped.(Expression)
 		if ok {
-			debug.Debug("map:  %d unresolved  -> KEEP\n", i)
-			return nil, info, true
+			debug.Debug("sum:  %d unresolved  -> KEEP\n", i)
+			return false, nil, info, true
 		}
-		debug.Debug("map:  %d --> %+v\n", i, mapped)
+		debug.Debug("sum:  %d --> %+v\n", i, mapped)
 		result = mapped
 	}
-	return result, info, true
+	debug.Debug("sum:  result: %+v\n", result)
+	return true, result, info, true
 }
 
-func sumMap(inline bool, source map[string]yaml.Node, e LambdaValue, initial interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
+func sumMap(inline bool, source map[string]yaml.Node, e LambdaValue, initial interface{}, binding Binding) (bool, interface{}, EvaluationInfo, bool) {
 	inp := make([]interface{}, len(e.lambda.Parameters))
 	result := initial
 	info := DefaultInfo()
@@ -122,18 +127,18 @@ func sumMap(inline bool, source map[string]yaml.Node, e LambdaValue, initial int
 		resolved, mapped, info, ok := e.Evaluate(inline, false, false, nil, inp, binding, false)
 		if !ok {
 			debug.Debug("map:  %s %+v: failed\n", k, n)
-			return nil, info, false
+			return true, nil, info, false
 		}
 		if !resolved {
-			return nil, info, ok
+			return false, nil, info, ok
 		}
 		_, ok = mapped.(Expression)
 		if ok {
 			debug.Debug("map:  %s unresolved  -> KEEP\n", k)
-			return nil, info, true
+			return false, nil, info, true
 		}
 		debug.Debug("map:  %s --> %+v\n", k, mapped)
 		result = mapped
 	}
-	return result, info, true
+	return true, result, info, true
 }
