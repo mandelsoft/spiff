@@ -7863,6 +7863,41 @@ values:
 `)
 				Expect(source).To(FlowAs(resolved))
 			})
+			It("generates pkix public key from public key", func() {
+				source := parseYAML(`
+---
+temp:
+  <<: (( &temporary ))
+  key: (( x509genkey(2048) ))
+  pub: (( x509publickey(key) ))
+values:
+  key: (( split("\n", x509publickey(temp.pub, "pkix"))[0] ))
+`)
+				resolved := parseYAML(`
+---
+values:
+  key: -----BEGIN PUBLIC KEY-----
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("generates pkcs#1 public key from public key", func() {
+				source := parseYAML(`
+---
+temp:
+  <<: (( &temporary ))
+  key: (( x509genkey(2048) ))
+  pub: (( x509publickey(key) ))
+values:
+  key: (( split("\n", x509publickey(temp.pub))[0] ))
+`)
+				resolved := parseYAML(`
+---
+values:
+  key: -----BEGIN RSA PUBLIC KEY-----
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
 
 			It("parses created certs", func() {
 				source := parseYAML(`

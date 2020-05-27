@@ -32,16 +32,17 @@ func func_x509publickey(arguments []interface{}, binding Binding) (interface{}, 
 		if !ok {
 			return info.Error("format argument for %s must be a string", F_PublicKey)
 		}
-		switch strings.ToLower(str) {
+		lower := strings.ToLower(str)
+		switch lower {
 		case "pem":
-		case "ssh":
-			rtype = str
+		case "ssh", "pkix":
+			rtype = lower
 		default:
-			return info.Error("invalid format for %s(<privatekey>): %s", F_PublicKey, str)
+			return info.Error("invalid format for %s: %s", F_PublicKey, str)
 		}
 
 	default:
-		return info.Error("invalid argument count for %s(<privatekey>)", F_PublicKey)
+		return info.Error("invalid argument count for %s", F_PublicKey)
 	}
 
 	str, ok := arguments[0].(string)
@@ -61,6 +62,8 @@ func func_x509publickey(arguments []interface{}, binding Binding) (interface{}, 
 	switch rtype {
 	case "pem":
 		str, err = PublicKeyPEM(publicKey(key))
+	case "pkix":
+		str, err = PublicKeyPEM(publicKey(key), true)
 	case "ssh":
 		var pk ssh.PublicKey
 		pk, err = ssh.NewPublicKey(publicKey(key))
@@ -75,11 +78,11 @@ func func_x509publickey(arguments []interface{}, binding Binding) (interface{}, 
 	return str, info, true
 }
 
-func PublicKeyPEM(key interface{}) (string, error) {
+func PublicKeyPEM(key interface{}, gen ...bool) (string, error) {
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)
 
-	if err := pem.Encode(writer, pemBlockForPublicKey(key)); err != nil {
+	if err := pem.Encode(writer, pemBlockForPublicKey(key, gen...)); err != nil {
 		return "", fmt.Errorf("failed to write public key pem block: %s", err)
 	}
 	writer.Flush()

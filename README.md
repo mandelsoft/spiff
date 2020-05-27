@@ -3133,8 +3133,12 @@ public: |+
 ```
 
 To generate an ssh public key an optional additional format argument can be set
-to `ssh`. The result will then be a regular publc key format usable for ssh.
-The default format is `pem` providinf the pem output format shown above.
+to `ssh`. The result will then be a regular public key format usable for ssh.
+The default format is `pem` providing the pem output format shown above.
+
+RSA keys are by default marshalled in PKCS#1 format(`RSA PUBLIC KEY`) in pem.
+If the the generic *PKIX* format (`PUBLIC KEY`) is required the format
+argument `pkix` must be given.
 
 Using the format `ssh` this function can also be used to convert a pem formatted
 public key into an ssh key, 

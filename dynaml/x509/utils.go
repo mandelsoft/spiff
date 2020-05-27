@@ -59,9 +59,16 @@ func pemBlockForKey(priv interface{}) *pem.Block {
 	}
 }
 
-func pemBlockForPublicKey(priv interface{}) *pem.Block {
+func pemBlockForPublicKey(priv interface{}, gen ...bool) *pem.Block {
 	switch k := priv.(type) {
 	case *rsa.PublicKey:
+		if len(gen) > 0 && gen[0] {
+			bytes, err := x509.MarshalPKIXPublicKey(k)
+			if err != nil {
+				panic(err)
+			}
+			return &pem.Block{Type: "PUBLIC KEY", Bytes: bytes}
+		}
 		return &pem.Block{Type: "RSA PUBLIC KEY", Bytes: x509.MarshalPKCS1PublicKey(k)}
 	case *ecdsa.PublicKey:
 		b, err := x509.MarshalPKIXPublicKey(k)

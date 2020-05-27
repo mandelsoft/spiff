@@ -282,6 +282,11 @@ func NewEnvironment(stubs []yaml.Node, source string) dynaml.Binding {
 	return NewNestedEnvironment(stubs, source, nil)
 }
 
+func NewProcessLocalEnvironment(stubs []yaml.Node, source string) dynaml.Binding {
+	state := NewState(os.Getenv("SPIFF_ENCRYPTION_KEY"), false)
+	return DefaultEnvironment{state: state, stubs: stubs, sourceName: source, currentSourceName: source, outer: nil, active: true}
+}
+
 func CleanupEnvironment(binding dynaml.Binding) {
 	env, ok := binding.(DefaultEnvironment)
 	if ok && env.state != nil {
@@ -292,7 +297,7 @@ func CleanupEnvironment(binding dynaml.Binding) {
 func NewNestedEnvironment(stubs []yaml.Node, source string, outer dynaml.Binding) dynaml.Binding {
 	var state *State
 	if outer == nil {
-		state = NewState(os.Getenv("SPIFF_ENCRYPTION_KEY"))
+		state = NewState(os.Getenv("SPIFF_ENCRYPTION_KEY"), true)
 	}
 	return DefaultEnvironment{state: state, stubs: stubs, sourceName: source, currentSourceName: source, outer: outer, active: true}
 }
