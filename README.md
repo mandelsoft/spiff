@@ -79,6 +79,9 @@ Contents:
 		- [(( contains(list, "foobar") ))](#-containslist-foobar-)
 		- [(( index(list, "foobar") ))](#-indexlist-foobar-)
 		- [(( lastindex(list, "foobar") ))](#-lastindexlist-foobar-)
+		- [(( basename(path) ))](#-basenamepath-)
+		- [(( dirname(path) ))](#-dirnamepath-)
+		- [(( parseurl("http://github.com") ))](#-parseurlhttpgithubcom-)
 		- [(( sort(list) ))](#-sortlist-)
 		- [(( replace(string, "foo", "bar") ))](#-replacestring-foo-bar-)
 		- [(( substr(string, 1, 3) ))](#-substrstring-1-3-)
@@ -1476,6 +1479,75 @@ contains: (( contains("foobar", "bar") ))
 ```
 
 yields `true`.
+
+### `(( basename(path) ))`
+
+The function `basename` returns the name of the last element of a path.
+The argument may either be a regular path name or a URL.
+
+e.g.:
+
+```yaml
+pathbase:  (( basename("alice/bob") ))
+urlbase:  (( basename("http://foobar/alice/bob?any=parameter") ))
+```
+
+yields:
+
+```yaml
+pathbase:  bob
+urlbase:  bob
+```
+
+### `(( dirname(path) ))`
+
+The function `dirname` returns the parent directory of a path.
+The argument may either be a regular path name or a URL.
+
+e.g.:
+
+```yaml
+pathbase:  (( dirname("alice/bob") ))
+urlbase:  (( dirname("http://foobar/alice/bob?any=parameter") ))
+```
+
+yields:
+
+```yaml
+pathbase:  alice
+urlbase:  /alice
+```
+
+### `(( parseurl("http://github.com") ))`
+
+This function parses a URL and yield a map with all elements of an URL.
+The fields `port`, `userinfo`and `password` are optional.
+
+e.g.:
+
+```yaml
+url:  (( parseurl("https://user:pass@github.com:443/mandelsoft/spiff?branch=master&tag=v1#anchor") ))
+```
+
+yields:
+
+```yaml
+url:
+  scheme: https
+  host: github.com
+  port: 443
+  path: /mandelsoft/spiff
+  fragment: anchor
+  query: branch=master&tag=v1
+  values:
+    branch: [ master ]
+    tag: [ v1 ]
+  userinfo:
+    username: user
+    password: pass
+```
+
+
 
 ### `(( index(list, "foobar") ))`
 
