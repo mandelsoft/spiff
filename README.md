@@ -303,6 +303,13 @@ value of a map or an entry in a list. The expression might span multiple
 lines. In any case the yaml string value *must not* end with a newline
 (for example using `|-`)
 
+If a parenthesized value should not be interpreted as an *dynaml* expression and
+kept as it is in the output, it can be escaped by an exclamation mark directly
+after the openeing brackets.
+
+For example, `((! .field ))` maps to the string value `(( .field ))` and
+`((!! .field ))` maps to the string value `((! .field ))`.
+
 The following is a complete list of dynaml expressions:
 
 
@@ -703,11 +710,6 @@ If the corresponding value is not defined, it will return nil. This then has the
 same semantics as reference expressions; a nil merge is an unresolved template.
 See [`||`](#-a--b-).
 
-**Note**: Instead of using a `<<:` insert field to place merge expressions it is
-possible now to use `<<<:`, also, which allows to use regular yaml parsers for
-spiff-like yaml documents. `<<:` is kept for backward compatibility.
-
-
 ### `<<: (( merge ))`
 
 Merging of maps or lists with the content of the same element found in some stub.
@@ -720,7 +722,17 @@ require content in at least one stub (as always for the merge operator). Now thi
 is evaluated correctly, but this would break existing manifest template sets, which use the
 first variant, but mean the second. Therfore this case is explicitly handled to describe an
 optional merge. If really a required merge is meant an additional explicit qualifier has to
+
+**Note**: Instead of using a `<<:` insert field to place merge expressions it is
+possible now to use `<<<:`, also, which allows to use regular yaml parsers for
+spiff-like yaml documents. `<<:` is kept for backward compatibility.
 be used (`(( merge required ))`).
+
+If the merge key should not be interpreted as regular key instead of a merge
+directive, it can be escaped by an excalamtion mark (`!`).
+
+For example, a map key `<<<!` will result in a string key `<<<` and `<<<!!`
+will result in a string key `<<<!`
 
 #### Merging maps
 

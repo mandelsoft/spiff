@@ -1261,5 +1261,65 @@ list:
 			})
 
 		})
+
+		Context("when there are ignorable dynaml nodes start with '!'", func() {
+			It("ignores nodes", func() {
+				source := parseYAML(`
+---
+foo: ((!template_only.foo))
+`)
+
+				resolved := parseYAML(`
+---
+foo: ((template_only.foo))
+`)
+
+				Expect(source).To(CascadeAs(resolved))
+			})
+			It("ignores merge nodes", func() {
+				source := parseYAML(`
+---
+foo:
+  <<!: test
+`)
+
+				resolved := parseYAML(`
+---
+foo:
+  <<: test
+`)
+
+				Expect(source).To(CascadeAs(resolved))
+			})
+
+			It("ignores nodes with escaped escape", func() {
+				source := parseYAML(`
+---
+foo: ((!!template_only.foo))
+`)
+
+				resolved := parseYAML(`
+---
+foo: ((!template_only.foo))
+`)
+
+				Expect(source).To(CascadeAs(resolved))
+			})
+			It("ignores merge nodes with escaped escape", func() {
+				source := parseYAML(`
+---
+foo:
+  <<!!: test
+`)
+
+				resolved := parseYAML(`
+---
+foo:
+  <<!: test
+`)
+
+				Expect(source).To(CascadeAs(resolved))
+			})
+		})
 	})
 })

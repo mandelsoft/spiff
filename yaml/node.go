@@ -453,15 +453,35 @@ func EmbeddedDynaml(root Node) *string {
 }
 
 func UnescapeDynaml(root Node) Node {
-	rootString, ok := root.Value().(string)
-	if !ok {
+	if root.Value() == nil {
 		return root
 	}
-	if strings.HasPrefix(rootString, "((") &&
-		strings.HasSuffix(rootString, "))") {
-		sub := rootString[2 : len(rootString)-2]
-		if strings.HasPrefix(sub, "!") {
-			return NewNode("(("+sub[1:]+"))", root.SourceName())
+	switch value := root.Value().(type) {
+	case string:
+		if strings.HasPrefix(value, "((") &&
+			strings.HasSuffix(value, "))") {
+			sub := value[2 : len(value)-2]
+			if strings.HasPrefix(sub, "!") {
+				return NewNode("(("+sub[1:]+"))", root.SourceName())
+			}
+		}
+	case map[string]Node:
+		new := map[string]Node{}
+		found := false
+		for k, v := range value {
+			switch {
+			case strings.HasPrefix(k, "<<!"):
+				found = true
+				new["<<"+k[3:]] = v
+			case strings.HasPrefix(k, MERGEKEY+"!"):
+				found = true
+				new[MERGEKEY+k[len(MERGEKEY)+1:]] = v
+			default:
+				new[k] = v
+			}
+		}
+		if found {
+			return NewNode(new, root.SourceName())
 		}
 	}
 	return root

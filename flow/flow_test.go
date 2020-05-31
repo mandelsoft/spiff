@@ -289,6 +289,21 @@ foo: ((!template_only.foo))
 
 			Expect(source).To(FlowAs(resolved))
 		})
+		It("ignores merge nodes", func() {
+			source := parseYAML(`
+---
+foo:
+  <<!: test
+`)
+
+			resolved := parseYAML(`
+---
+foo:
+  <<!: test
+`)
+
+			Expect(source).To(FlowAs(resolved))
+		})
 	})
 
 	Context("when a reference is made to a yet-to-be-resolved node, in a || expression", func() {
