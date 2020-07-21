@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/cloudfoundry-incubator/candiedyaml"
+	"github.com/mandelsoft/spiff/legacy/candiedyaml"
 )
 
 func ToJSON(root Node) ([]byte, error) {

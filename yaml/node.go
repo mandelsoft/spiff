@@ -2,9 +2,10 @@ package yaml
 
 import (
 	"fmt"
-	"github.com/cloudfoundry-incubator/candiedyaml"
 	"reflect"
 	"strings"
+
+	"github.com/mandelsoft/spiff/legacy/candiedyaml"
 )
 
 const SELF = "_"

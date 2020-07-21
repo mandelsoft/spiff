@@ -2,8 +2,9 @@ package passwd
 
 import (
 	"fmt"
-	"github.com/cloudfoundry-incubator/candiedyaml"
+
 	. "github.com/mandelsoft/spiff/dynaml"
+	"github.com/mandelsoft/spiff/legacy/candiedyaml"
 )
 
 type Encoding interface {

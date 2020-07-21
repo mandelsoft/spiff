@@ -30,4 +30,5 @@ spiff_darwin_amd64.zip: ensure
 ensure:
 	dep ensure
 	# restore patched version of candiedyaml/decode.go
-	git checkout -- vendor/github.com/cloudfoundry-incubator/candiedyaml/decode.go
+	#git checkout -- vendor/github.com/cloudfoundry-incubator/candiedyaml/decode.go
+	#git checkout -- vendor/github.com/cloudfoundry-incubator/candiedyaml/emitter.go

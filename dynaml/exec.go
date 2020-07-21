@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cloudfoundry-incubator/candiedyaml"
+	"github.com/mandelsoft/spiff/legacy/candiedyaml"
 
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/yaml"
