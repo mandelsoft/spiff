@@ -6,7 +6,7 @@ import (
 
 	"github.com/mandelsoft/spiff/yaml"
 
-	"github.com/cloudfoundry-incubator/candiedyaml"
+	"github.com/mandelsoft/spiff/legacy/candiedyaml"
 )
 
 func func_format(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {

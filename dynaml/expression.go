@@ -18,6 +18,7 @@ type State interface {
 	GetTempName(data []byte) (string, error)
 	GetFileContent(file string, cached bool) ([]byte, error)
 	GetEncryptionKey() string
+	OSAccessAllowed() bool
 }
 
 type Binding interface {
@@ -139,6 +140,10 @@ func (i *EvaluationInfo) Cleanup() error {
 	}
 	i.Cleanups = nil
 	return err
+}
+
+func (i *EvaluationInfo) DenyOSOperation(name string) (interface{}, EvaluationInfo, bool) {
+	return i.Error("%s: no OS operations supported in this execution environment", name)
 }
 
 func (i *EvaluationInfo) Error(msgfmt interface{}, args ...interface{}) (interface{}, EvaluationInfo, bool) {

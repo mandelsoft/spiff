@@ -16,6 +16,9 @@ func func_write(arguments []interface{}, binding Binding) (interface{}, Evaluati
 	if len(arguments) < 2 || len(arguments) > 3 {
 		return info.Error("write requires two or three arguments")
 	}
+	if !binding.GetState().OSAccessAllowed() {
+		return info.DenyOSOperation("write")
+	}
 	file, _, ok := getArg(0, arguments[0], false)
 	if !ok || file == "" {
 		return info.Error("file argument must be a non-empty string")

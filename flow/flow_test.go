@@ -289,6 +289,21 @@ foo: ((!template_only.foo))
 
 			Expect(source).To(FlowAs(resolved))
 		})
+		It("ignores merge nodes", func() {
+			source := parseYAML(`
+---
+foo:
+  <<!: test
+`)
+
+			resolved := parseYAML(`
+---
+foo:
+  <<!: test
+`)
+
+			Expect(source).To(FlowAs(resolved))
+		})
 	})
 
 	Context("when a reference is made to a yet-to-be-resolved node, in a || expression", func() {
@@ -5048,6 +5063,39 @@ sum: 8
 				Expect(source).To(FlowAs(resolved))
 			})
 		})
+		Context("for a list with nil default", func() {
+			It("sums returns ~ for empty list", func() {
+				source := parseYAML(`
+---
+list: []
+sum: (( sum[list|~|s,x|->x] ))
+`)
+				resolved := parseYAML(`
+---
+list: []
+sum: ~
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("sums propagates ~ for non-empty list", func() {
+				source := parseYAML(`
+---
+list:
+- a
+- b
+sum: (( sum[list|~|s,x|->s] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+- a
+- b
+sum: ~
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+		})
 	})
 
 	Describe("using templates", func() {
@@ -7863,6 +7911,41 @@ values:
 `)
 				Expect(source).To(FlowAs(resolved))
 			})
+			It("generates pkix public key from public key", func() {
+				source := parseYAML(`
+---
+temp:
+  <<: (( &temporary ))
+  key: (( x509genkey(2048) ))
+  pub: (( x509publickey(key) ))
+values:
+  key: (( split("\n", x509publickey(temp.pub, "pkix"))[0] ))
+`)
+				resolved := parseYAML(`
+---
+values:
+  key: -----BEGIN PUBLIC KEY-----
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("generates pkcs#1 public key from public key", func() {
+				source := parseYAML(`
+---
+temp:
+  <<: (( &temporary ))
+  key: (( x509genkey(2048) ))
+  pub: (( x509publickey(key) ))
+values:
+  key: (( split("\n", x509publickey(temp.pub))[0] ))
+`)
+				resolved := parseYAML(`
+---
+values:
+  key: -----BEGIN RSA PUBLIC KEY-----
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
 
 			It("parses created certs", func() {
 				source := parseYAML(`
@@ -8009,6 +8092,292 @@ decrypted: (( asyaml(decrypt(encrypted, password)) == asyaml(value)))
 ---
 password: this a very secret secret and may never be exposed to unauthorized people
 decrypted: true
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("basename", func() {
+		Context("on strings", func() {
+			It("handles root", func() {
+				source := parseYAML(`
+---
+result: (( basename("/") ))
+`)
+				resolved := parseYAML(`
+---
+result: /
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handles dot", func() {
+				source := parseYAML(`
+---
+result: (( basename(".") ))
+`)
+				resolved := parseYAML(`
+---
+result: .
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handles top level path", func() {
+				source := parseYAML(`
+---
+result: (( basename("/alice") ))
+`)
+				resolved := parseYAML(`
+---
+result: alice
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handles path", func() {
+				source := parseYAML(`
+---
+result: (( basename("alice/bob") ))
+`)
+				resolved := parseYAML(`
+---
+result: bob
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("on urls", func() {
+			It("handles empty path", func() {
+				source := parseYAML(`
+---
+result: (( basename("http://host") ))
+`)
+				resolved := parseYAML(`
+---
+result: /
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handles root", func() {
+				source := parseYAML(`
+---
+result: (( basename("http://host/") ))
+`)
+				resolved := parseYAML(`
+---
+result: /
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handles root dot", func() {
+				source := parseYAML(`
+---
+result: (( basename("http://host/.") ))
+`)
+				resolved := parseYAML(`
+---
+result: .
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handles dot", func() {
+				source := parseYAML(`
+---
+result: (( basename("http://host/alice/.") ))
+`)
+				resolved := parseYAML(`
+---
+result: .
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handles top level path", func() {
+				source := parseYAML(`
+---
+result: (( basename("http://host/alice") ))
+`)
+				resolved := parseYAML(`
+---
+result: alice
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handles path", func() {
+				source := parseYAML(`
+---
+result: (( basename("http://host/alice/bob") ))
+`)
+				resolved := parseYAML(`
+---
+result: bob
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("ignores parameters", func() {
+				source := parseYAML(`
+---
+result: (( basename("http://host/alice/bob?any=parameter") ))
+`)
+				resolved := parseYAML(`
+---
+result: bob
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
+	Describe("dirname", func() {
+		Context("on strings", func() {
+			It("handles root", func() {
+				source := parseYAML(`
+---
+result: (( dirname("/") ))
+`)
+				resolved := parseYAML(`
+---
+result: /
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handles dot", func() {
+				source := parseYAML(`
+---
+result: (( dirname(".") ))
+`)
+				resolved := parseYAML(`
+---
+result: .
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handles top level path", func() {
+				source := parseYAML(`
+---
+result: (( dirname("/alice") ))
+`)
+				resolved := parseYAML(`
+---
+result: /
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handles path", func() {
+				source := parseYAML(`
+---
+result: (( dirname("alice/bob") ))
+`)
+				resolved := parseYAML(`
+---
+result: alice
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("on urls", func() {
+			It("handles empty path", func() {
+				source := parseYAML(`
+---
+result: (( dirname("http://host") ))
+`)
+				resolved := parseYAML(`
+---
+result: /
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handles root", func() {
+				source := parseYAML(`
+---
+result: (( dirname("http://host/") ))
+`)
+				resolved := parseYAML(`
+---
+result: /
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handles root dot", func() {
+				source := parseYAML(`
+---
+result: (( dirname("http://host/.") ))
+`)
+				resolved := parseYAML(`
+---
+result: /
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handles dot", func() {
+				source := parseYAML(`
+---
+result: (( dirname("http://host/alice/.") ))
+`)
+				resolved := parseYAML(`
+---
+result: /alice
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handles top level path", func() {
+				source := parseYAML(`
+---
+result: (( dirname("http://host/alice") ))
+`)
+				resolved := parseYAML(`
+---
+result: /
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("handles path", func() {
+				source := parseYAML(`
+---
+result: (( dirname("http://host/alice/bob") ))
+`)
+				resolved := parseYAML(`
+---
+result: /alice
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("ignores parameters", func() {
+				source := parseYAML(`
+---
+result: (( dirname("http://host/alice/bob?any=parameter") ))
+`)
+				resolved := parseYAML(`
+---
+result: /alice
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
+	Describe("parseurl", func() {
+		It("parses valid url", func() {
+			source := parseYAML(`
+---
+url: (( parseurl("https://user:pass@github.com:80/mandelsoft/spiff?branch=master&tag=v1#anchor") ))
+`)
+			resolved := parseYAML(`
+---
+url:
+  scheme: https
+  host: github.com
+  port: 80
+  path: /mandelsoft/spiff
+  fragment: anchor
+  query: branch=master&tag=v1
+  values:
+    branch: [ master ]
+    tag: [ v1 ]
+  userinfo:
+    username: user
+    password: pass
 `)
 			Expect(source).To(FlowAs(resolved))
 		})

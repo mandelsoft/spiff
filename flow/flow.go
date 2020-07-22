@@ -112,7 +112,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 				_, ok = eval.(string)
 				if ok {
 					// map result to potential expression
-					result = flowString(result, env)
+					result, _ = FlowString(result, env)
 				}
 				_, expr := result.Value().(dynaml.Expression)
 
@@ -165,7 +165,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 			}
 
 		case string:
-			result := flowString(root, env)
+			result, _ := FlowString(root, env)
 			if result != nil {
 				_, ok := result.Value().(dynaml.Expression)
 				if ok {
@@ -443,20 +443,20 @@ func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
 	return root
 }
 
-func flowString(root yaml.Node, env dynaml.Binding) yaml.Node {
+func FlowString(root yaml.Node, env dynaml.Binding) (yaml.Node, error) {
 
 	sub := yaml.EmbeddedDynaml(root)
 	if sub == nil {
-		return root
+		return root, nil
 	}
 	expr, err := dynaml.Parse(*sub, env.Path(), env.StubPath())
 	if err != nil {
 		debug.Debug("parse dynaml: %v: %s failed: %s\n", env.Path(), *sub, err)
-		return root
+		return root, err
 	}
 	debug.Debug("parse dynaml: %v: %s  -> %T\n", env.Path(), *sub, expr)
 
-	return yaml.SubstituteNode(expr, root)
+	return yaml.SubstituteNode(expr, root), nil
 }
 
 func stepName(index int, value yaml.Node, keyName string, env dynaml.Binding) (string, bool) {

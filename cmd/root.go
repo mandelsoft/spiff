@@ -17,7 +17,7 @@ var cfgFile string
 var rootCmd = &cobra.Command{
 	Use:     "spiff",
 	Short:   "YAML in-domain templating processor",
-	Version: "v1.4.1-dev",
+	Version: "v1.5.0",
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

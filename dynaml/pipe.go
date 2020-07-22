@@ -11,6 +11,9 @@ func func_pipe(cached bool, arguments []interface{}, binding Binding) (interface
 	if len(arguments) <= 2 {
 		return info.Error("pipe requires ")
 	}
+	if !binding.GetState().OSAccessAllowed() {
+		return info.DenyOSOperation("pipe")
+	}
 	args := []string{}
 	debug.Debug("pipe: found %d arguments for call\n", len(arguments))
 	for i, arg := range arguments {

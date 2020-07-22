@@ -16,10 +16,15 @@ type State struct {
 	files     map[string]string // content hash to temp file name
 	fileCache map[string][]byte // file content cache
 	key       string            // default encryption key
+	osaccess  bool              // allow OS access
 }
 
-func NewState(key string) *State {
-	return &State{map[string]string{}, map[string][]byte{}, key}
+func NewState(key string, osaccess bool) *State {
+	return &State{map[string]string{}, map[string][]byte{}, key, osaccess}
+}
+
+func (s *State) OSAccessAllowed() bool {
+	return s.osaccess
 }
 
 func (s *State) GetEncryptionKey() string {

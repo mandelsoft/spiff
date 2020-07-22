@@ -278,8 +278,13 @@ func (e DefaultEnvironment) Cascade(outer dynaml.Binding, template yaml.Node, pa
 	return Cascade(outer, template, partial, templates...)
 }
 
-func NewEnvironmentX(stubs []yaml.Node, source string) dynaml.Binding {
+func NewEnvironment(stubs []yaml.Node, source string) dynaml.Binding {
 	return NewNestedEnvironment(stubs, source, nil)
+}
+
+func NewProcessLocalEnvironment(stubs []yaml.Node, source string) dynaml.Binding {
+	state := NewState(os.Getenv("SPIFF_ENCRYPTION_KEY"), false)
+	return DefaultEnvironment{state: state, stubs: stubs, sourceName: source, currentSourceName: source, outer: nil, active: true}
 }
 
 func CleanupEnvironment(binding dynaml.Binding) {
@@ -292,7 +297,7 @@ func CleanupEnvironment(binding dynaml.Binding) {
 func NewNestedEnvironment(stubs []yaml.Node, source string, outer dynaml.Binding) dynaml.Binding {
 	var state *State
 	if outer == nil {
-		state = NewState(os.Getenv("SPIFF_ENCRYPTION_KEY"))
+		state = NewState(os.Getenv("SPIFF_ENCRYPTION_KEY"), true)
 	}
 	return DefaultEnvironment{state: state, stubs: stubs, sourceName: source, currentSourceName: source, outer: outer, active: true}
 }

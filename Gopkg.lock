@@ -2,10 +2,10 @@
 
 
 [[projects]]
-  digest = "1:02d18b868bb9a855f688f36818440170d0e375a7a618942d7fad084f6416e2b0"
+  digest = "1:c12310d3e2b5a97b89dba30d1d006e00b564e04ec4f2d4b5d1631e97e86a8b42"
   name = "github.com/cloudfoundry-incubator/candiedyaml"
   packages = ["."]
-  pruneopts = ""
+  pruneopts = "UT"
   revision = "a41693b7b7afb422c7ecb1028458ab27da047bbb"
 
 [[projects]]

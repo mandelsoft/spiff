@@ -79,6 +79,9 @@ Contents:
 		- [(( contains(list, "foobar") ))](#-containslist-foobar-)
 		- [(( index(list, "foobar") ))](#-indexlist-foobar-)
 		- [(( lastindex(list, "foobar") ))](#-lastindexlist-foobar-)
+		- [(( basename(path) ))](#-basenamepath-)
+		- [(( dirname(path) ))](#-dirnamepath-)
+		- [(( parseurl("http://github.com") ))](#-parseurlhttpgithubcom-)
 		- [(( sort(list) ))](#-sortlist-)
 		- [(( replace(string, "foo", "bar") ))](#-replacestring-foo-bar-)
 		- [(( substr(string, 1, 3) ))](#-substrstring-1-3-)
@@ -302,6 +305,13 @@ surrounded by two parentheses `(( <dynaml> ))`. They can be used as the
 value of a map or an entry in a list. The expression might span multiple
 lines. In any case the yaml string value *must not* end with a newline
 (for example using `|-`)
+
+If a parenthesized value should not be interpreted as an *dynaml* expression and
+kept as it is in the output, it can be escaped by an exclamation mark directly
+after the openeing brackets.
+
+For example, `((! .field ))` maps to the string value `(( .field ))` and
+`((!! .field ))` maps to the string value `((! .field ))`.
 
 The following is a complete list of dynaml expressions:
 
@@ -703,11 +713,6 @@ If the corresponding value is not defined, it will return nil. This then has the
 same semantics as reference expressions; a nil merge is an unresolved template.
 See [`||`](#-a--b-).
 
-**Note**: Instead of using a `<<:` insert field to place merge expressions it is
-possible now to use `<<<:`, also, which allows to use regular yaml parsers for
-spiff-like yaml documents. `<<:` is kept for backward compatibility.
-
-
 ### `<<: (( merge ))`
 
 Merging of maps or lists with the content of the same element found in some stub.
@@ -720,7 +725,17 @@ require content in at least one stub (as always for the merge operator). Now thi
 is evaluated correctly, but this would break existing manifest template sets, which use the
 first variant, but mean the second. Therfore this case is explicitly handled to describe an
 optional merge. If really a required merge is meant an additional explicit qualifier has to
+
+**Note**: Instead of using a `<<:` insert field to place merge expressions it is
+possible now to use `<<<:`, also, which allows to use regular yaml parsers for
+spiff-like yaml documents. `<<:` is kept for backward compatibility.
 be used (`(( merge required ))`).
+
+If the merge key should not be interpreted as regular key instead of a merge
+directive, it can be escaped by an excalamtion mark (`!`).
+
+For example, a map key `<<<!` will result in a string key `<<<` and `<<<!!`
+will result in a string key `<<<!`
 
 #### Merging maps
 
@@ -1464,6 +1479,75 @@ contains: (( contains("foobar", "bar") ))
 ```
 
 yields `true`.
+
+### `(( basename(path) ))`
+
+The function `basename` returns the name of the last element of a path.
+The argument may either be a regular path name or a URL.
+
+e.g.:
+
+```yaml
+pathbase:  (( basename("alice/bob") ))
+urlbase:  (( basename("http://foobar/alice/bob?any=parameter") ))
+```
+
+yields:
+
+```yaml
+pathbase:  bob
+urlbase:  bob
+```
+
+### `(( dirname(path) ))`
+
+The function `dirname` returns the parent directory of a path.
+The argument may either be a regular path name or a URL.
+
+e.g.:
+
+```yaml
+pathbase:  (( dirname("alice/bob") ))
+urlbase:  (( dirname("http://foobar/alice/bob?any=parameter") ))
+```
+
+yields:
+
+```yaml
+pathbase:  alice
+urlbase:  /alice
+```
+
+### `(( parseurl("http://github.com") ))`
+
+This function parses a URL and yield a map with all elements of an URL.
+The fields `port`, `userinfo`and `password` are optional.
+
+e.g.:
+
+```yaml
+url:  (( parseurl("https://user:pass@github.com:443/mandelsoft/spiff?branch=master&tag=v1#anchor") ))
+```
+
+yields:
+
+```yaml
+url:
+  scheme: https
+  host: github.com
+  port: 443
+  path: /mandelsoft/spiff
+  fragment: anchor
+  query: branch=master&tag=v1
+  values:
+    branch: [ master ]
+    tag: [ v1 ]
+  userinfo:
+    username: user
+    password: pass
+```
+
+
 
 ### `(( index(list, "foobar") ))`
 
@@ -3133,8 +3217,12 @@ public: |+
 ```
 
 To generate an ssh public key an optional additional format argument can be set
-to `ssh`. The result will then be a regular publc key format usable for ssh.
-The default format is `pem` providinf the pem output format shown above.
+to `ssh`. The result will then be a regular public key format usable for ssh.
+The default format is `pem` providing the pem output format shown above.
+
+RSA keys are by default marshalled in PKCS#1 format(`RSA PUBLIC KEY`) in pem.
+If the the generic *PKIX* format (`PUBLIC KEY`) is required the format
+argument `pkix` must be given.
 
 Using the format `ssh` this function can also be used to convert a pem formatted
 public key into an ssh key, 

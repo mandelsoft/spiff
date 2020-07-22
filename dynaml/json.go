@@ -1,9 +1,10 @@
 package dynaml
 
 import (
-	"github.com/cloudfoundry-incubator/candiedyaml"
-	"github.com/mandelsoft/spiff/yaml"
 	"strings"
+
+	"github.com/mandelsoft/spiff/legacy/candiedyaml"
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 func func_as_json(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {

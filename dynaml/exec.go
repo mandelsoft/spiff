@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cloudfoundry-incubator/candiedyaml"
+	"github.com/mandelsoft/spiff/legacy/candiedyaml"
 
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/yaml"
@@ -20,7 +20,10 @@ func func_exec(cached bool, arguments []interface{}, binding Binding) (interface
 	info := DefaultInfo()
 
 	if len(arguments) < 1 {
-		return nil, info, false
+		return info.Error("exec: argument required")
+	}
+	if !binding.GetState().OSAccessAllowed() {
+		return info.DenyOSOperation("exec")
 	}
 	args := []string{}
 	debug.Debug("exec: found %d arguments for call\n", len(arguments))

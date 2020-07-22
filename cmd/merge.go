@@ -9,12 +9,13 @@ import (
 	"path"
 	"strings"
 
-	"github.com/cloudfoundry-incubator/candiedyaml"
+	"github.com/spf13/cobra"
+
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/dynaml"
 	"github.com/mandelsoft/spiff/flow"
+	"github.com/mandelsoft/spiff/legacy/candiedyaml"
 	"github.com/mandelsoft/spiff/yaml"
-	"github.com/spf13/cobra"
 )
 
 var asJSON bool
@@ -37,7 +38,7 @@ var mergeCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		merge(args[0], partial, asJSON, split, outputPath, selection, state, args[1:])
+		merge(false, args[0], partial, asJSON, split, outputPath, selection, state, nil, args[1:])
 	},
 }
 
@@ -67,11 +68,10 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-func merge(templateFilePath string, partial bool, json, split bool,
-	subpath string, selection []string, stateFilePath string, stubFilePaths []string) {
+func merge(stdin bool, templateFilePath string, partial bool, json, split bool,
+	subpath string, selection []string, stateFilePath string, stubs []yaml.Node, stubFilePaths []string) {
 	var templateFile []byte
 	var err error
-	var stdin = false
 
 	if templateFilePath == "-" {
 		templateFile, err = ioutil.ReadAll(os.Stdin)
@@ -100,7 +100,10 @@ func merge(templateFilePath string, partial bool, json, split bool,
 		}
 	}
 
-	stubs := []yaml.Node{}
+	if stubs == nil {
+		stubs = []yaml.Node{}
+	}
+	stubs = append(stubs[:0:0], stubs...)
 
 	for _, stubFilePath := range stubFilePaths {
 		var stubFile []byte

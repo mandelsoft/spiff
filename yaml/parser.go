@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/cloudfoundry-incubator/candiedyaml"
 	"reflect"
 	"time"
+
+	"github.com/mandelsoft/spiff/legacy/candiedyaml"
 )
+
+//	"github.com/cloudfoundry-incubator/candiedyaml"
 
 type NonStringKeyError struct {
 	Key interface{}
@@ -51,6 +54,9 @@ func ParseMulti(sourceName string, source []byte) ([]Node, error) {
 	}
 	return docs, nil
 }
+
+var mapType = reflect.TypeOf(map[string]interface{}{})
+var arrayType = reflect.TypeOf([]interface{}{})
 
 func Sanitize(sourceName string, root interface{}) (Node, error) {
 	switch rootVal := root.(type) {
@@ -102,9 +108,22 @@ func Sanitize(sourceName string, root interface{}) (Node, error) {
 		}
 
 		return NewNode(sanitized, sourceName), nil
+	case int:
+		return NewNode(int64(rootVal), sourceName), nil
+	case int32:
+		return NewNode(int64(rootVal), sourceName), nil
+	case float32:
+		return NewNode(float64(rootVal), sourceName), nil
 	case string, []byte, int64, float64, bool, nil:
 		return NewNode(rootVal, sourceName), nil
 	}
 
+	value := reflect.ValueOf(root)
+	if value.Type().ConvertibleTo(mapType) {
+		return Sanitize(sourceName, value.Convert(mapType).Interface())
+	}
+	if value.Type().ConvertibleTo(arrayType) {
+		return Sanitize(sourceName, value.Convert(arrayType).Interface())
+	}
 	return nil, errors.New(fmt.Sprintf("unknown type (%s) during sanitization: %#v\n", reflect.TypeOf(root).String(), root))
 }
