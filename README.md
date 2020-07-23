@@ -216,7 +216,7 @@ The ` merge` command offers several options:
   
 - With the option `--json` the output will be in JSON format instead of YAML.
 
-- The Option `--path <path>` can be used to output a nested path, instead of the 
+- The option `--path <path>` can be used to output a nested path, instead of the 
   the complete processed document.
   
 - If the output is a list, the option `--split` outputs every list element as
@@ -234,7 +234,13 @@ The ` merge` command offers several options:
   state file with the `.bak` suffix. This can be used together with a manual
   merging as offered by the [state](libraries/state/README.md) utility library.
   
+- The option `--preserve-escapes` will preserve the escaping for dynaml
+  expressions and list/map merge directives. This option can be used
+  if further processing steps of a processing result with *spiff* is intended.
 
+- The option `--preserve-temporary` will preserve the fields marked as temporary
+  in the final document.
+  
 The folder [libraries](libraries/README.md) offers some useful
 utility libraries. They can also be used as an example for the power
 of this templating engine.

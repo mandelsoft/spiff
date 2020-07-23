@@ -19,10 +19,10 @@ import (
 )
 
 var asJSON bool
-var partial bool
 var outputPath string
 var selection []string
 var split bool
+var processingOptions flow.Options
 var state string
 
 // mergeCmd represents the merge command
@@ -38,7 +38,7 @@ var mergeCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		merge(false, args[0], partial, asJSON, split, outputPath, selection, state, nil, args[1:])
+		merge(false, args[0], processingOptions, asJSON, split, outputPath, selection, state, nil, args[1:])
 	},
 }
 
@@ -46,17 +46,13 @@ func init() {
 	rootCmd.AddCommand(mergeCmd)
 
 	mergeCmd.Flags().BoolVar(&asJSON, "json", false, "print output in json format")
-
 	mergeCmd.Flags().BoolVar(&debug.DebugFlag, "debug", false, "Print state info")
-
-	mergeCmd.Flags().BoolVar(&partial, "partial", false, "Allow partial evaluation only")
-
+	mergeCmd.Flags().BoolVar(&processingOptions.Partial, "partial", false, "Allow partial evaluation only")
 	mergeCmd.Flags().StringVar(&outputPath, "path", "", "output is taken from given path")
-
 	mergeCmd.Flags().BoolVar(&split, "split", false, "if the output is alist it will be split into separate documents")
-
+	mergeCmd.Flags().BoolVar(&processingOptions.PreserveEscapes, "preserve-escapes", false, "preserve escaping for escaped expressions and merges")
+	mergeCmd.Flags().BoolVar(&processingOptions.PreserveTemporaray, "preserve-temporary", false, "preserve temporary fields")
 	mergeCmd.Flags().StringVar(&state, "state", "", "select state file to maintain")
-
 	mergeCmd.Flags().StringArrayVar(&selection, "select", []string{}, "filter dedicated output fields")
 }
 
@@ -68,7 +64,7 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-func merge(stdin bool, templateFilePath string, partial bool, json, split bool,
+func merge(stdin bool, templateFilePath string, opts flow.Options, json, split bool,
 	subpath string, selection []string, stateFilePath string, stubs []yaml.Node, stubFilePaths []string) {
 	var templateFile []byte
 	var err error
@@ -142,8 +138,8 @@ func merge(stdin bool, templateFilePath string, partial bool, json, split bool,
 		" @: dependent of or involved in a cycle\n" +
 		" -: depending on a node with an error"
 
-	prepared, err := flow.PrepareStubs(nil, partial, stubs...)
-	if !partial && err != nil {
+	prepared, err := flow.PrepareStubs(nil, processingOptions.Partial, stubs...)
+	if !processingOptions.Partial && err != nil {
 		log.Fatalln("error generating manifest:", err, legend)
 	}
 
@@ -157,8 +153,8 @@ func merge(stdin bool, templateFilePath string, partial bool, json, split bool,
 		var bytes []byte
 		if templateYAML.Value() != nil {
 			count++
-			flowed, err := flow.Apply(nil, templateYAML, prepared)
-			if !partial && err != nil {
+			flowed, err := flow.Apply(nil, templateYAML, prepared, opts)
+			if !opts.Partial && err != nil {
 				log.Fatalln(fmt.Sprintf("error generating manifest%s:", doc), err, legend)
 			}
 			if err != nil {
