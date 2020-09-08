@@ -102,3 +102,7 @@ func Cleanup(node yaml.Node, test CleanupFunction) yaml.Node {
 	}
 	return yaml.ReplaceValue(value, node)
 }
+
+func DetermineState(node yaml.Node) yaml.Node {
+	return Cleanup(node, DiscardNonState)
+}
