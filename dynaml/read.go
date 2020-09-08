@@ -17,7 +17,7 @@ func func_read(cached bool, arguments []interface{}, binding Binding) (interface
 	if len(arguments) > 2 {
 		return info.Error("read takes a maximum of two arguments")
 	}
-	if !binding.GetState().OSAccessAllowed() {
+	if !binding.GetState().FileAccessAllowed() {
 		return info.DenyOSOperation("read")
 	}
 

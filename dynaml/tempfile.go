@@ -1,7 +1,6 @@
 package dynaml
 
 import (
-	"io/ioutil"
 	"os"
 )
 
@@ -9,6 +8,10 @@ func func_tempfile(arguments []interface{}, binding Binding) (interface{}, Evalu
 	var err error
 
 	info := DefaultInfo()
+
+	if !binding.GetState().FileAccessAllowed() {
+		return info.DenyOSOperation("tempfile")
+	}
 
 	if len(arguments) < 1 || len(arguments) > 2 {
 		return info.Error("temp_file requires exactly one or two arguments")
@@ -34,7 +37,7 @@ func func_tempfile(arguments []interface{}, binding Binding) (interface{}, Evalu
 		return info.Error("cannot create temporary file: %s", err)
 	}
 
-	err = ioutil.WriteFile(name, []byte(data), os.FileMode(permissions))
+	err = binding.GetState().FileSystem().WriteFile(name, []byte(data), os.FileMode(permissions))
 	if err != nil {
 		return info.Error("cannot write file: %s", err)
 	}

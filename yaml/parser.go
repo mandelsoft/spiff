@@ -20,6 +20,10 @@ func (e NonStringKeyError) Error() string {
 	return fmt.Sprintf("map key must be a string: %#v", e.Key)
 }
 
+func Unmarshal(sourceName string, source []byte) (Node, error) {
+	return Parse(sourceName, source)
+}
+
 func Parse(sourceName string, source []byte) (Node, error) {
 	docs, err := ParseMulti(sourceName, source)
 	if err != nil {
@@ -29,6 +33,10 @@ func Parse(sourceName string, source []byte) (Node, error) {
 		return nil, fmt.Errorf("multi document not possible")
 	}
 	return docs[0], err
+}
+
+func UnmarshalMulti(sourceName string, source []byte) ([]Node, error) {
+	return ParseMulti(sourceName, source)
 }
 
 func ParseMulti(sourceName string, source []byte) ([]Node, error) {

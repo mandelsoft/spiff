@@ -3,7 +3,6 @@ package dynaml
 import (
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -16,7 +15,7 @@ func func_write(arguments []interface{}, binding Binding) (interface{}, Evaluati
 	if len(arguments) < 2 || len(arguments) > 3 {
 		return info.Error("write requires two or three arguments")
 	}
-	if !binding.GetState().OSAccessAllowed() {
+	if !binding.GetState().FileAccessAllowed() {
 		return info.DenyOSOperation("write")
 	}
 	file, _, ok := getArg(0, arguments[0], false)
@@ -42,7 +41,7 @@ func func_write(arguments []interface{}, binding Binding) (interface{}, Evaluati
 
 	file, raw, data, _ := getData(file, binary, 1, arguments[1], true)
 
-	err = ioutil.WriteFile(file, data, os.FileMode(permissions))
+	err = binding.GetState().FileSystem().WriteFile(file, data, os.FileMode(permissions))
 	if err != nil {
 		return info.Error("cannot write file: %s", err)
 	}

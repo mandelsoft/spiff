@@ -2,7 +2,7 @@ package dynaml
 
 import (
 	"strings"
-	
+
 	"github.com/mandelsoft/spiff/legacy/candiedyaml"
 	"github.com/mandelsoft/spiff/yaml"
 )

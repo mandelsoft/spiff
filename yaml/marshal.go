@@ -9,6 +9,10 @@ import (
 	"github.com/mandelsoft/spiff/legacy/candiedyaml"
 )
 
+func Marshal(node Node) ([]byte, error) {
+	return candiedyaml.Marshal(node)
+}
+
 func ToJSON(root Node) ([]byte, error) {
 	if root == nil {
 		return ValueToJSON(nil)

@@ -1,13 +1,18 @@
 package dynaml
 
 import (
+	"github.com/mandelsoft/vfs/pkg/vfs"
+
 	"github.com/mandelsoft/spiff/yaml"
-	"os"
 	"path/filepath"
 )
 
 func func_lookup(directory bool, arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
 	info := DefaultInfo()
+
+	if !binding.GetState().FileAccessAllowed() {
+		return info.DenyOSOperation("lookup")
+	}
 
 	paths := []string{}
 
@@ -48,7 +53,7 @@ func func_lookup(directory bool, arguments []interface{}, binding Binding) (inte
 
 	result := []yaml.Node{}
 	if filepath.IsAbs(name) {
-		if checkExistence(name, directory) {
+		if checkExistence(binding, name, directory) {
 			result = append(result, NewNode(name, binding))
 		}
 		return result, info, true
@@ -57,7 +62,7 @@ func func_lookup(directory bool, arguments []interface{}, binding Binding) (inte
 	for _, d := range paths {
 		if d != "" {
 			p := d + "/" + name
-			if checkExistence(p, directory) {
+			if checkExistence(binding, p, directory) {
 				result = append(result, NewNode(p, binding))
 			}
 		}
@@ -65,9 +70,12 @@ func func_lookup(directory bool, arguments []interface{}, binding Binding) (inte
 	return result, info, true
 }
 
-func checkExistence(path string, directory bool) bool {
-	s, err := os.Stat(path)
-	if os.IsNotExist(err) || err != nil {
+func checkExistence(binding Binding, path string, directory bool) bool {
+	if !binding.GetState().FileAccessAllowed() {
+		return false
+	}
+	s, err := binding.GetState().FileSystem().Stat(path)
+	if vfs.IsErrNotExist(err) || err != nil {
 		return false
 	}
 	return s.IsDir() == directory
