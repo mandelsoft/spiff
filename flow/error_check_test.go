@@ -24,7 +24,7 @@ a: true
 node: (( a + 1 ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a + 1 ))	in test	node	()	*first argument of PLUS must be IP address or integer`,
+			`	(( a + 1 ))	in test	node	()	*non-IP address addition requires number arguments`,
 		))
 	})
 
@@ -35,7 +35,7 @@ a: true
 node: (( a - 1 ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a - 1 ))	in test	node	()	*first argument of MINUS must be IP address or integer`,
+			`	(( a - 1 ))	in test	node	()	*non-IP address subtration requires number arguments`,
 		))
 	})
 
@@ -57,7 +57,7 @@ a: 1
 node: (( a / true ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( a / true ))	in test	node	()	*integer operand required`,
+			`	(( a / true ))	in test	node	()	*non-CIDR division requires number arguments`,
 		))
 	})
 

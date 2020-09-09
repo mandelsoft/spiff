@@ -91,5 +91,30 @@ var _ = Describe("addition", func() {
 
 			Expect(expr).To(EvaluateAs("10.9.9.255", FakeBinding{}))
 		})
+
+		It("adds floats", func() {
+			expr := AdditionExpr{
+				FloatExpr{1.2},
+				FloatExpr{2.3},
+			}
+
+			Expect(expr).To(EvaluateAs(3.5, FakeBinding{}))
+		})
+		It("adds ints and floats", func() {
+			expr := AdditionExpr{
+				IntegerExpr{1},
+				FloatExpr{2.3},
+			}
+
+			Expect(expr).To(EvaluateAs(3.3, FakeBinding{}))
+		})
+		It("adds floats and ints", func() {
+			expr := AdditionExpr{
+				FloatExpr{2.3},
+				IntegerExpr{1},
+			}
+
+			Expect(expr).To(EvaluateAs(3.3, FakeBinding{}))
+		})
 	})
 })

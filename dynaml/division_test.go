@@ -74,4 +74,38 @@ var _ = Describe("division", func() {
 			Expect(expr).To(FailToEvaluate(FakeBinding{}))
 		})
 	})
+	Context("floats", func() {
+		It("divides floats", func() {
+			expr := DivisionExpr{
+				FloatExpr{2.2},
+				FloatExpr{1.1},
+			}
+
+			Expect(expr).To(EvaluateAs(2.0, FakeBinding{}))
+		})
+		It("divides ints and floats", func() {
+			expr := DivisionExpr{
+				IntegerExpr{3},
+				FloatExpr{0.5},
+			}
+
+			Expect(expr).To(EvaluateAs(6.0, FakeBinding{}))
+		})
+		It("divides floats and ints", func() {
+			expr := DivisionExpr{
+				FloatExpr{2.2},
+				IntegerExpr{2},
+			}
+
+			Expect(expr).To(EvaluateAs(1.1, FakeBinding{}))
+		})
+		It("fails for zero", func() {
+			expr := DivisionExpr{
+				FloatExpr{2.2},
+				FloatExpr{0.0},
+			}
+
+			Expect(expr).To(FailToEvaluate(FakeBinding{}))
+		})
+	})
 })

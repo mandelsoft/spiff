@@ -27,19 +27,11 @@ func (e SubtractionExpr) Evaluate(binding Binding, locally bool) (interface{}, E
 		return e, info, true
 	}
 
-	aint, ok := a.(int64)
-	bint, bok := b.(int64)
-	if ok {
-		if !bok {
-			return info.Error("integer operand required")
-		}
-		return aint - bint, info, true
-	}
-
 	str, ok := a.(string)
 	if ok {
 		ip := net.ParseIP(str)
 		if ip != nil {
+			bint, bok := b.(int64)
 			if bok {
 				return IPAdd(ip, -bint).String(), info, true
 			}
@@ -52,13 +44,21 @@ func (e SubtractionExpr) Evaluate(binding Binding, locally bool) (interface{}, E
 					}
 					return DiffIP(ip, ipb), info, true
 				}
-				return info.Error("string argument for MINUS must be an IP address")
+				return info.Error("second argument of IP address subtraction must be IP address or integer")
 			}
-			return info.Error("second argument of MINUS must be IP address or integer")
+			return info.Error("second argument of IP address subtraction must be IP address or integer")
 		}
 		return info.Error("string argument for MINUS must be an IP address")
 	}
-	return info.Error("first argument of MINUS must be IP address or integer")
+
+	a, b, err := NumberOperands(a, b)
+	if err != nil {
+		return info.Error("non-IP address subtration requires number arguments")
+	}
+	if _, ok := a.(int64); ok {
+		return a.(int64) - b.(int64), info, true
+	}
+	return a.(float64) - b.(float64), info, true
 }
 
 func (e SubtractionExpr) String() string {

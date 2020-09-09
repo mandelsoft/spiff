@@ -38,7 +38,8 @@ Contents:
 	- [(( foo.bar.[1].baz ))](#-foobar1baz-)
 	- [(( foo.[bar].baz ))](#-foobarbaz-)
 	- [(( list.[1..3] ))](#-list13-)
-	- [(( "foo" ))](#-foo--1)
+	- [(( 1.2e4 ))](#-12e4-)
+	- [(( "foo" ))](#-foo-)
 	- [(( [ 1, 2, 3 ] ))](#--1-2-3--)
 	- [(( { "alice" = 25 } ))](#--alice--25--)
 	- [(( ( "alice" = 25 ) alice ))](#--alice--25---alice-)
@@ -512,6 +513,10 @@ actual size of the list. Therefore `list.[1..length(list)]` is equivalent
 to `list.[1..]`.
 
 evaluates `foo` to the list `[b,c]`.
+
+## `(( 1.2e4 ))`
+
+Number literatls are supported for integers and floating point values.
 
 ## `(( "foo" ))`
 
@@ -1151,7 +1156,8 @@ value (not equal `~`).
 
 ## `(( 1 + 2 * foo ))`
 
-Dynaml expressions can be used to execute arithmetic integer calculations. Supported operations are +, -, *, / and %.
+Dynaml expressions can be used to execute arithmetic integer and floating-point calculations. Supported operations are `+`, `-`, `*`, and `/`.
+The modulo operator (`%`) only supports integer operands.
 
 e.g.:
 
