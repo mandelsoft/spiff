@@ -54,15 +54,15 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0338d864590e1d5e5001813bb2fb08bd90df686fd0a8a8e6e508abe829a38df4"
+  digest = "1:79d4c7eac6cf9f9fd5c17cdc6536f28fc9532798f61ac1efa3a57152c379f221"
   name = "github.com/mandelsoft/filepath"
   packages = ["pkg/filepath"]
   pruneopts = "UT"
-  revision = "2d4df97399184f8496a2c126c0e3e9bca0855e7f"
+  revision = "3df73d378d552504d3df40fd7b6d8b00c12b4427"
 
 [[projects]]
   branch = "master"
-  digest = "1:4c76bbe29c1d3f8dc70c850247e59761c43412a6f7d0245afc9409fff12753df"
+  digest = "1:d2a7f2299eb22acea062019deff50c9d559937b05b4614b2f39d9aab49204b55"
   name = "github.com/mandelsoft/vfs"
   packages = [
     "pkg/osfs",
@@ -71,7 +71,7 @@
     "pkg/vfs",
   ]
   pruneopts = "UT"
-  revision = "531655b52e45b0ef04e884db3ba32ef4cc5275f8"
+  revision = "2adb28762d89d34907999c1a518fae43439c99d2"
 
 [[projects]]
   digest = "1:aff0e9185b5df855488a42e064cb479e994636d3cefa47d053495123d086add4"
@@ -247,7 +247,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b6d8bb07a7329c1e1e1eb5ae1a66af4a6718deff9c4723cdd8331a5d08789aec"
+  digest = "1:79be2ae08bf49d36e96657e70dccc1423be91c0abb27d8baf5ee98b2178c660c"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -255,7 +255,7 @@
     "unix",
   ]
   pruneopts = "UT"
-  revision = "be1d3432aa8f4fd677757447c4c9e7ff9bf25f73"
+  revision = "eff7692f900947b7d782d16af70ca32cc40774f0"
 
 [[projects]]
   digest = "1:517b82807b3218687e9eb32fe11de9cb07a38d06554d04cd1965c0441360c0b3"

@@ -103,7 +103,7 @@ outer:
 					parsed = next
 					continue
 				}
-				link, err := os.Readlink(next)
+				link, err := os.Readlink(p)
 				if err != nil {
 					return "", &os.PathError{"", next, err}
 				}

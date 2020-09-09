@@ -13,6 +13,7 @@ import (
 	"github.com/mandelsoft/vfs/pkg/vfs"
 
 	"github.com/mandelsoft/spiff/debug"
+	"github.com/mandelsoft/spiff/dynaml"
 )
 
 const MODE_FILE_ACCESS = 1 // support file system access
@@ -24,7 +25,10 @@ type State struct {
 	key        string            // default encryption key
 	mode       int
 	fileSystem vfs.VFS // virtual filesystem to use for filesystem based operations
+	functions  dynaml.Registry
 }
+
+var _ dynaml.State = &State{}
 
 func NewState(key string, mode int, optfs ...vfs.FileSystem) *State {
 	var fs vfs.FileSystem
@@ -45,6 +49,11 @@ func NewState(key string, mode int, optfs ...vfs.FileSystem) *State {
 	}
 }
 
+func (s *State) SetFunctions(f dynaml.Registry) *State {
+	s.functions = f
+	return s
+}
+
 func (s *State) OSAccessAllowed() bool {
 	return s.mode&MODE_OS_ACCESS != 0
 }
@@ -55,6 +64,10 @@ func (s *State) FileAccessAllowed() bool {
 
 func (s *State) FileSystem() vfs.VFS {
 	return s.fileSystem
+}
+
+func (s *State) GetFunctions() dynaml.Registry {
+	return s.functions
 }
 
 func (s *State) GetEncryptionKey() string {

@@ -23,6 +23,7 @@ type State interface {
 	OSAccessAllowed() bool
 	FileAccessAllowed() bool
 	FileSystem() vfs.VFS
+	GetFunctions() Registry
 }
 
 type Binding interface {
