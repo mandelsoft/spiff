@@ -16,21 +16,16 @@ func func_pow(arguments []interface{}, binding dynaml.Binding) (interface{}, dyn
 		return info.Error("pow takes 2 arguments")
 	}
 
-	a, b, err := dynaml.NumberOperands(arguments[0], arguments[1])
+	args, wasInt, err := dynaml.NumberOperandsN(dynaml.TYPE_FLOAT, arguments...)
 
 	if err != nil {
 		return info.Error("%s", err)
 	}
-	_, i := a.(int64)
-	if i {
-		r := math.Pow(float64(a.(int64)), float64(b.(int64)))
-		if float64(int64(r)) == r {
-			return int64(r), info, true
-		}
-		return r, info, true
-	} else {
-		return math.Pow(a.(float64), b.(float64)), info, true
+	r := math.Pow(args[0].(float64), args[1].(float64))
+	if wasInt && float64(int64(r)) == r {
+		return int64(r), info, true
 	}
+	return r, info, true
 }
 
 var state = `
@@ -53,8 +48,7 @@ example:
   name: (( input ))  # direct reference to additional values 
   sum: (( sum[ages|0|s,k,v|->s + v] ))
   int: (( pow(2,4) ))
-  float: 2.1
-  pow: (( pow(1.1e1,2.1) ))
+  pow: (( pow(1.1e-1,2) ))
 `
 
 func Error(err error) {

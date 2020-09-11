@@ -88,3 +88,43 @@ func NumberOperands(a, b interface{}) (interface{}, interface{}, error) {
 	}
 	return float64(ia), fb, nil
 }
+
+const TYPE_INT = 1
+const TYPE_FLOAT = 2
+const TYPE_NUMBER = TYPE_FLOAT | TYPE_INT
+
+func NumberOperandsN(convert int, ops ...interface{}) ([]interface{}, bool, error) {
+	isInt := true
+	var r []interface{}
+
+	for n, o := range ops {
+		v, ok := o.(int64)
+		if ok {
+			if isInt && (convert&TYPE_INT != 0) {
+				r = append(r, v)
+			} else {
+				r = append(r, float64(v))
+			}
+		} else {
+			v, ok := o.(float64)
+			if ok {
+				if isInt {
+					isInt = false
+					if convert == TYPE_NUMBER {
+						for i, v := range r {
+							r[i] = float64(v.(int64))
+						}
+					}
+				}
+				if convert&TYPE_FLOAT != 0 {
+					r = append(r, v)
+				} else {
+					r = append(r, int64(v))
+				}
+			} else {
+				return nil, false, fmt.Errorf("operand %d must be integer or float (%s)", n, reflect.TypeOf(o))
+			}
+		}
+	}
+	return r, isInt, nil
+}
