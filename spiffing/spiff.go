@@ -72,12 +72,13 @@ type spiff struct {
 	binding dynaml.Binding
 }
 
+// NewFunctions provides a new registry for additional spiff functions
 func NewFunctions() Functions {
 	return dynaml.NewRegistry()
 }
 
 // New create a new default spiff context.
-func New() *spiff {
+func New() Spiff {
 	return &spiff{
 		key:  os.Getenv("SPIFF_ENCRYPTION_KEY"),
 		mode: MODE_DEFAULT,

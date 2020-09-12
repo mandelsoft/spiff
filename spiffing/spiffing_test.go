@@ -37,5 +37,4 @@ var _ = Describe("Spiffing", func() {
 			Expect(string(result)).To(Equal("- 25\n- 26\n"))
 		})
 	})
-
 })

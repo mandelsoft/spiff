@@ -1,6 +1,7 @@
 package spiffing
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -26,7 +27,7 @@ func ProcessFile(s Spiff, path string) ([]byte, error) {
 	return Process(s, s.FileSource(path))
 }
 
-// ExecuteDynamlExpression just processes a plain dynaml expression with the values set in
+// EvaluateDynamlExpression just processes a plain dynaml expression with the values set in
 // the execution context.
 func EvaluateDynamlExpression(s Spiff, expr string) ([]byte, error) {
 	r, err := Process(s, NewSourceData("dynaml", []byte("(( "+expr+" ))")))
@@ -38,4 +39,46 @@ func EvaluateDynamlExpression(s Spiff, expr string) ([]byte, error) {
 		return []byte(lines[0]), nil
 	}
 	return r, nil
+}
+
+// Cascade processes a template source with a list of stub sources andoptional state and
+// devivers the cascading results and the new state as yaml data
+func Cascade(s Spiff, template Source, stubs []Source, optstate ...Source) ([]byte, []byte, error) {
+	var nstubs []Node
+
+	for i, src := range stubs {
+		stub, err := s.UnmarshalSource(src)
+		if err != nil {
+			return nil, nil, fmt.Errorf("stub %d [%s] failed: %s", i+1, src.Name(), err)
+		}
+		nstubs = append(nstubs, stub)
+	}
+	for i, src := range optstate {
+		stub, err := s.UnmarshalSource(src)
+		if err != nil {
+			return nil, nil, fmt.Errorf("state %d [%s] failed: %s", i+1, src.Name(), err)
+		}
+		nstubs = append(nstubs, stub)
+	}
+	node, err := s.UnmarshalSource(template)
+	if err != nil {
+		return nil, nil, fmt.Errorf("template [%s] failed: %s", template.Name(), err)
+	}
+	result, err := s.Cascade(node, nstubs)
+	if err != nil {
+		return nil, nil, err
+	}
+	rdata, err := s.Marshal(result)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error marshalling result: %s", err)
+	}
+	state := s.DetermineState(result)
+	if state != nil {
+		sdata, err := s.Marshal(state)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error marshalling result: %s", err)
+		}
+		return rdata, sdata, err
+	}
+	return rdata, nil, err
 }

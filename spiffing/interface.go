@@ -8,13 +8,23 @@ import (
 	"github.com/mandelsoft/spiff/yaml"
 )
 
+// MODE_OS_ACCESS allows os command execution (pipe, exec)
 const MODE_OS_ACCESS = flow.MODE_OS_ACCESS
+
+//  MODE_FILE_ACCESS allows file access to virtual filesystem
 const MODE_FILE_ACCESS = flow.MODE_FILE_ACCESS
 
+// MODE_DEFAULT (default) enables all os related spiff functions
 const MODE_DEFAULT = MODE_OS_ACCESS | MODE_FILE_ACCESS
 
+// Node is a document node of the processing representation of a document
 type Node = yaml.Node
+
+// Options described the processing options
 type Options = flow.Options
+
+// Functions provides access to a set of spiff functions used to extend
+// the standrd function set
 type Functions = dynaml.Registry
 
 // Spiff is a configuration end execution context for
