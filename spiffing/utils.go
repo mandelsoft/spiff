@@ -41,7 +41,7 @@ func EvaluateDynamlExpression(s Spiff, expr string) ([]byte, error) {
 	return r, nil
 }
 
-// Cascade processes a template source with a list of stub sources andoptional state and
+// Cascade processes a template source with a list of stub sources and optional state and
 // devivers the cascading results and the new state as yaml data
 func Cascade(s Spiff, template Source, stubs []Source, optstate ...Source) ([]byte, []byte, error) {
 	var nstubs []Node

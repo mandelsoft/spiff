@@ -201,6 +201,16 @@ func (s *spiff) UnmarshalMulti(name string, source []byte) ([]Node, error) {
 	return yaml.UnmarshalMulti(name, source)
 }
 
+// UnmarshalMulti parses a multi document source and
+// returns the list of documents in the internal representation
+func (s *spiff) UnmarshalMultiSource(source Source) ([]Node, error) {
+	data, err := source.Data()
+	if err != nil {
+		return nil, err
+	}
+	return yaml.UnmarshalMulti(source.Name(), data)
+}
+
 // DetermineState extracts the intended new state representation from
 // a processing result.
 func (s *spiff) DetermineState(node Node) Node {
@@ -213,7 +223,7 @@ func (s *spiff) Marshal(node Node) ([]byte, error) {
 	return yaml.Marshal(node)
 }
 
-// Normalize transform the node represenation to a regular go value representation
+// Normalize transform the node representation to a regular go value representation
 // consisting of map[string]interface{}`, `[]interface{}`, `string `boolean`,
 // `int64`, `float64` and []byte objects
 func (s *spiff) Normalize(node Node) (interface{}, error) {

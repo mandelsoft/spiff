@@ -5,10 +5,14 @@ import (
 	"github.com/mandelsoft/spiff/yaml"
 )
 
+// Options bundles the options for processing yaml templates
 type Options struct {
-	PreserveEscapes    bool
-	PreserveTemporaray bool
-	Partial            bool
+	// PreserveEscapes prevents escaped dynaml expressions to be unescaped for the final output
+	PreserveEscapes bool
+	// PreserveTemporary will keep temporary elements in the final output
+	PreserveTemporary bool
+	// Partial will not treat unevaluated dynaml expressions as error, but keep it in the output.
+	Partial bool
 }
 
 func PrepareStubs(outer dynaml.Binding, partial bool, stubs ...yaml.Node) ([]yaml.Node, error) {
@@ -26,7 +30,7 @@ func PrepareStubs(outer dynaml.Binding, partial bool, stubs ...yaml.Node) ([]yam
 func Apply(outer dynaml.Binding, template yaml.Node, prepared []yaml.Node, opts Options) (yaml.Node, error) {
 	result, err := NestedFlow(outer, template, prepared...)
 	if err == nil {
-		if !opts.PreserveTemporaray {
+		if !opts.PreserveTemporary {
 			result = Cleanup(result, discardTemporary)
 		}
 		if !opts.PreserveEscapes {
