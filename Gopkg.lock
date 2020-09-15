@@ -45,12 +45,12 @@
   version = "v1.0"
 
 [[projects]]
-  digest = "1:7d2baa3cbd4a9afd35b7b9b18de1b14540f64086b14ed1cf01cdfc49a70c35d0"
+  digest = "1:fae336644ff950d61b17ed30a0e82d710ab56e792321048f31afc82a3aa8375a"
   name = "github.com/magiconair/properties"
   packages = ["."]
   pruneopts = "UT"
-  revision = "fb997392a7e693835970429956b62f6bbf19b3fd"
-  version = "v1.8.2"
+  revision = "e55ec40311b90df900426eae806bb80a40154583"
+  version = "v1.8.3"
 
 [[projects]]
   branch = "master"
@@ -61,8 +61,7 @@
   revision = "3df73d378d552504d3df40fd7b6d8b00c12b4427"
 
 [[projects]]
-  branch = "master"
-  digest = "1:d2a7f2299eb22acea062019deff50c9d559937b05b4614b2f39d9aab49204b55"
+  digest = "1:e3bff19a88b38e751206f3f28599a9e3d23617255d4747c5fc9ea43691b0bb37"
   name = "github.com/mandelsoft/vfs"
   packages = [
     "pkg/osfs",
@@ -71,7 +70,8 @@
     "pkg/vfs",
   ]
   pruneopts = "UT"
-  revision = "2adb28762d89d34907999c1a518fae43439c99d2"
+  revision = "d03d33d5889a612bddefccdd689094cc517b374a"
+  version = "v0.1"
 
 [[projects]]
   digest = "1:aff0e9185b5df855488a42e064cb479e994636d3cefa47d053495123d086add4"
@@ -147,23 +147,23 @@
   version = "v1.10.2"
 
 [[projects]]
-  digest = "1:53aab5f59edb1cd47773bbbb5b1b6d0b76b0c9e31cfac670a0bb7ccc917e98a3"
+  digest = "1:ba7c8395a3bdd3b44d40ba36ff6eb283b583a3db865c02a952b89a1aa639081b"
   name = "github.com/pelletier/go-toml"
   packages = ["."]
   pruneopts = "UT"
-  revision = "16c9a8bdc086a2130a88eff98df4088e4c359bb2"
-  version = "v1.8.0"
+  revision = "65ca8064882c8c308e5c804c5d5443d409e0738c"
+  version = "v1.8.1"
 
 [[projects]]
-  digest = "1:951fcde0e99119656cba0bbb6d79b087dda52a72eeff75ac086ac3fa9cd05a21"
+  digest = "1:5bc51628f10ee2e983badf7e302531fd87db15badfb675389450b8765cb3149f"
   name = "github.com/spf13/afero"
   packages = [
     ".",
     "mem",
   ]
   pruneopts = "UT"
-  revision = "27c9ee049885de0846b9326ffe09d128a545a323"
-  version = "v1.3.5"
+  revision = "a4ea980f2d023f22c7eede4c142190115449de5b"
+  version = "v1.4.0"
 
 [[projects]]
   digest = "1:ff4cd55a3666b6ea3a876c9e133bfb54d6c812e725409a773f2c94a0b3a92f4f"
@@ -247,7 +247,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:79be2ae08bf49d36e96657e70dccc1423be91c0abb27d8baf5ee98b2178c660c"
+  digest = "1:54af96607722c8391392608c659997d4c51a7844c697689d22d42f282ddd9582"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -255,7 +255,7 @@
     "unix",
   ]
   pruneopts = "UT"
-  revision = "eff7692f900947b7d782d16af70ca32cc40774f0"
+  revision = "288bc346aa3906399979ee2fc63bacf4c43e04c9"
 
 [[projects]]
   digest = "1:517b82807b3218687e9eb32fe11de9cb07a38d06554d04cd1965c0441360c0b3"
