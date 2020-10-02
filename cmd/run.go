@@ -40,8 +40,7 @@ func init() {
 	processCmd.Flags().StringVar(&state, "state", "", "select state file to maintain")
 	processCmd.Flags().StringArrayVar(&selection, "select", []string{}, "filter dedicated output fields")
 	processCmd.Flags().BoolVar(&processingOptions.PreserveEscapes, "preserve-escapes", false, "preserve escaping for escaped expressions and merges")
-	processCmd.Flags().BoolVar(&processingOptions.PreserveTemporaray, "preserve-temporary", false, "preserve temporary fields")
-
+	processCmd.Flags().BoolVar(&processingOptions.PreserveTemporary, "preserve-temporary", false, "preserve temporary fields")
 }
 
 func run(documentFilePath, templateFilePath string, opts flow.Options, json, split bool,

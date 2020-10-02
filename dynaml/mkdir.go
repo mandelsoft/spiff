@@ -15,6 +15,10 @@ func func_mkdir(arguments []interface{}, binding Binding) (interface{}, Evaluati
 	var err error
 	info := DefaultInfo()
 
+	if !binding.GetState().FileAccessAllowed() {
+		return info.DenyOSOperation("mkdir")
+	}
+
 	if len(arguments) < 1 || len(arguments) > 2 {
 		return info.Error("mkdir requires one or two arguments")
 	}
@@ -55,7 +59,7 @@ func func_mkdir(arguments []interface{}, binding Binding) (interface{}, Evaluati
 		}
 	}
 
-	err = os.MkdirAll(path, os.FileMode(permissions))
+	err = binding.GetState().FileSystem().MkdirAll(path, os.FileMode(permissions))
 	if err != nil {
 		return info.Error("cannot create directory %q: %s", path, err)
 	}

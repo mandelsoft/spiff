@@ -56,4 +56,31 @@ var _ = Describe("subtraction", func() {
 			Expect(expr).To(EvaluateAs("10.10.9.9", FakeBinding{}))
 		})
 	})
+
+	Context("floats", func() {
+		It("subtracts floats", func() {
+			expr := SubtractionExpr{
+				FloatExpr{1.25},
+				FloatExpr{2.125},
+			}
+
+			Expect(expr).To(EvaluateAs(-0.875, FakeBinding{}))
+		})
+		It("subtracts ints and floats", func() {
+			expr := SubtractionExpr{
+				IntegerExpr{1},
+				FloatExpr{2.25},
+			}
+
+			Expect(expr).To(EvaluateAs(-1.25, FakeBinding{}))
+		})
+		It("subtracts floats and ints", func() {
+			expr := SubtractionExpr{
+				FloatExpr{2.25},
+				IntegerExpr{1},
+			}
+
+			Expect(expr).To(EvaluateAs(1.25, FakeBinding{}))
+		})
+	})
 })

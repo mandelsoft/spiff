@@ -47,4 +47,32 @@ var _ = Describe("multiplication", func() {
 			Expect(expr).To(EvaluateAs("10.1.5.0/24", FakeBinding{}))
 		})
 	})
+
+	Context("multiplaction", func() {
+
+		It("multiplies floats", func() {
+			expr := MultiplicationExpr{
+				FloatExpr{1.2},
+				FloatExpr{2.2},
+			}
+
+			Expect(expr).To(EvaluateAs(2.64, FakeBinding{}))
+		})
+		It("multiplies ints and floats", func() {
+			expr := MultiplicationExpr{
+				IntegerExpr{2},
+				FloatExpr{2.3},
+			}
+
+			Expect(expr).To(EvaluateAs(4.6, FakeBinding{}))
+		})
+		It("multiplies floats and ints", func() {
+			expr := MultiplicationExpr{
+				FloatExpr{2.3},
+				IntegerExpr{2},
+			}
+
+			Expect(expr).To(EvaluateAs(4.6, FakeBinding{}))
+		})
+	})
 })

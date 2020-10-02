@@ -38,7 +38,8 @@ Contents:
 	- [(( foo.bar.[1].baz ))](#-foobar1baz-)
 	- [(( foo.[bar].baz ))](#-foobarbaz-)
 	- [(( list.[1..3] ))](#-list13-)
-	- [(( "foo" ))](#-foo--1)
+	- [(( 1.2e4 ))](#-12e4-)
+	- [(( "foo" ))](#-foo-)
 	- [(( [ 1, 2, 3 ] ))](#--1-2-3--)
 	- [(( { "alice" = 25 } ))](#--alice--25--)
 	- [(( ( "alice" = 25 ) alice ))](#--alice--25---alice-)
@@ -174,6 +175,7 @@ Contents:
 - [Bringing it all together](#bringing-it-all-together)
 - [Useful to Know](#useful-to-know)
 - [Error Reporting](#error-reporting)
+- [Using _spiff_ as Go Library](#using-spiff-as-go-library)
 
 
 # Installation
@@ -512,6 +514,10 @@ actual size of the list. Therefore `list.[1..length(list)]` is equivalent
 to `list.[1..]`.
 
 evaluates `foo` to the list `[b,c]`.
+
+## `(( 1.2e4 ))`
+
+Number literatls are supported for integers and floating point values.
 
 ## `(( "foo" ))`
 
@@ -1151,7 +1157,8 @@ value (not equal `~`).
 
 ## `(( 1 + 2 * foo ))`
 
-Dynaml expressions can be used to execute arithmetic integer calculations. Supported operations are +, -, *, / and %.
+Dynaml expressions can be used to execute arithmetic integer and floating-point calculations. Supported operations are `+`, `-`, `*`, and `/`.
+The modulo operator (`%`) only supports integer operands.
 
 e.g.:
 
@@ -5895,3 +5902,110 @@ is show, otherwise the line numer is omitted.
 ```
 </details>
 
+# Using _spiff_ as Go Library
+
+_Spiff_ provides a Go package (`spiffing`) that can be used to include _spiff_ templates in Go programs.
+
+An example program could look like this:
+
+```go
+import (
+	"fmt"
+	"math"
+	"os"
+
+	"github.com/mandelsoft/spiff/dynaml"
+	"github.com/mandelsoft/spiff/spiffing"
+)
+
+func func_pow(arguments []interface{}, binding dynaml.Binding) (interface{}, dynaml.EvaluationInfo, bool) {
+	info := dynaml.DefaultInfo()
+
+	if len(arguments) != 2 {
+		return info.Error("pow takes 2 arguments")
+	}
+
+	a, b, err := dynaml.NumberOperands(arguments[0], arguments[1])
+
+	if err != nil {
+		return info.Error("%s", err)
+	}
+	_, i := a.(int64)
+	if i {
+		r := math.Pow(float64(a.(int64)), float64(b.(int64)))
+		if float64(int64(r)) == r {
+			return int64(r), info, true
+		}
+		return r, info, true
+	} else {
+		return math.Pow(a.(float64), b.(float64)), info, true
+	}
+}
+
+var state = `
+state: {}
+`
+var stub = `
+unused: (( input ))
+ages:
+  alice: (( pow(2,5) ))
+  bob: (( alice + 1 ))
+`
+
+var template = `
+state:
+  <<<: (( &state ))
+  random: (( rand("[:alnum:]", 10) )) 
+ages: (( &temporary ))
+
+example:
+  name: (( input ))  # direct reference to additional values 
+  sum: (( sum[ages|0|s,k,v|->s + v] ))
+  int: (( pow(2,4) ))
+  float: 2.1
+  pow: (( pow(1.1e1,2.1) ))
+`
+
+func Error(err error) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		os.Exit(1)
+	}
+}
+
+func main() {
+	values := map[string]interface{}{}
+	values["input"] = "this is an input"
+
+	functions := spiffing.NewFunctions()
+	functions.RegisterFunction("pow", func_pow)
+
+	spiff, err := spiffing.New().WithFunctions(functions).WithValues(values)
+	Error(err)
+	pstate, err := spiff.Unmarshal("state", []byte(state))
+	Error(err)
+	pstub, err := spiff.Unmarshal("stub", []byte(stub))
+	Error(err)
+	ptempl, err := spiff.Unmarshal("template", []byte(template))
+	Error(err)
+	result, err := spiff.Cascade(ptempl, []spiffing.Node{pstub}, pstate)
+	Error(err)
+	b, err := spiff.Marshal(result)
+	Error(err)
+	newstate, err := spiff.Marshal(spiff.DetermineState(result))
+	Error(err)
+	fmt.Printf("==== new state ===\n")
+	fmt.Printf("%s\n", string(newstate))
+	fmt.Printf("==== result ===\n")
+	fmt.Printf("%s\n", string(b))
+}
+```
+
+It supports
+ - transforming file data to and from spiffs internal node representation
+ - the processing of stubs and templates with or without state handling
+ - defining an outer binding for injected path names
+ - defining additional spiff functions
+ - enabling/disabling command execution and/or filesystem operations
+ - using a [virtual filesystem](http://github.com/mandelsoft/vfs) for
+   file system operations

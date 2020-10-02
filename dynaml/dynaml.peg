@@ -43,7 +43,7 @@ Multiplication <- '*' req_ws Level0
 Division <-  '/' req_ws Level0
 Modulo <-  '%' req_ws Level0
 
-Level0 <- IP / String / Integer / Boolean / Undefined / Nil / Symbol / Not /
+Level0 <- IP / String / Number / Boolean / Undefined / Nil / Symbol / Not /
           Substitution / Merge / Auto / Lambda / Chained 
 
 Chained <- ( MapMapping / Sync / Catch / Mapping / MapSelection / Selection / Sum / List / Map / Range / Grouped / Reference ) ChainedQualifiedExpression*
@@ -71,7 +71,7 @@ Range <- StartRange Expression? RangeOp Expression? ']'
 StartRange <- '['
 RangeOp <- '..'
 
-Integer <- '-'? [0-9] [0-9_]*
+Number <-  '-'? [0-9] [0-9_]* ( '.' [0-9] [0-9]* )?  ( ( 'e' / 'E' ) '-'? [0-9] [0-9]* )?
 String <- '"' ('\\"' / !'"' .)* '"'
 Boolean <- 'true' / 'false'
 Nil <- 'nil' / '~'

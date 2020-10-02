@@ -4,6 +4,8 @@ tags
 /local
 /spiff
 /spiff++
+/hack
+/godoc
 *.coverprofile
 spiff_darwin_amd64.zip
 spiff_linux_amd64.zip

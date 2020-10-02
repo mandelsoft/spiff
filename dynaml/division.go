@@ -18,7 +18,7 @@ func (e DivisionExpr) Evaluate(binding Binding, locally bool) (interface{}, Eval
 		return nil, info, false
 	}
 
-	bint, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.B, &resolved, &info, binding, false)
+	b, info, ok := ResolveExpressionOrPushEvaluation(&e.B, &resolved, &info, binding, false)
 	if !ok {
 		return nil, info, false
 	}
@@ -27,24 +27,24 @@ func (e DivisionExpr) Evaluate(binding Binding, locally bool) (interface{}, Eval
 		return e, info, true
 	}
 
-	if bint == 0 {
-		return info.Error("division by zero")
-	}
-
-	aint, ok := a.(int64)
-	if ok {
-		return aint / bint, info, true
-	}
-
 	str, ok := a.(string)
 	if ok {
 		ip, cidr, err := net.ParseCIDR(str)
 		if err != nil {
-			return info.Error("CIDR or int argument required as first argument for division: %s", err)
+			return info.Error("first argument of division must be CIDR or number: %s", err)
 		}
 		ones, bits := cidr.Mask.Size()
 		ip = ip.Mask(cidr.Mask)
 		round := false
+
+		bint, ok := b.(int64)
+		if !ok {
+			return info.Error("IP address division requires an integer argument")
+		}
+		if bint < 1 {
+			return info.Error("IP address division requires a positive integer argument")
+		}
+
 		for bint > 1 {
 			if bint%2 == 1 {
 				round = true
@@ -60,7 +60,21 @@ func (e DivisionExpr) Evaluate(binding Binding, locally bool) (interface{}, Eval
 		}
 		return (&net.IPNet{ip, net.CIDRMask(ones, bits)}).String(), info, true
 	}
-	return info.Error("CIDR or int argument required as first argument for division")
+
+	a, b, err := NumberOperands(a, b)
+	if err != nil {
+		return info.Error("non-CIDR division requires number arguments")
+	}
+	if ib, ok := b.(int64); ok {
+		if ib == 0 {
+			return info.Error("division by zero")
+		}
+		return a.(int64) / ib, info, true
+	}
+	if b.(float64) == 0.0 {
+		return info.Error("division by zero")
+	}
+	return a.(float64) / b.(float64), info, true
 }
 
 func (e DivisionExpr) String() string {

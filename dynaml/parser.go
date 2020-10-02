@@ -249,13 +249,22 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (
 			expr := tokens.Pop()
 			tokens.Push(ProjectionExpr{expr, value.(ProjectionValueExpr).Value, qual})
 
-		case ruleInteger:
-			val, err := strconv.ParseInt(contents, 10, 64)
-			if err != nil {
-				panic(err)
+		case ruleNumber:
+			contents = strings.ReplaceAll(contents, "_", "")
+			if strings.ContainsAny(contents, ".eE") {
+				val, err := strconv.ParseFloat(contents, 64)
+				if err != nil {
+					panic(err)
+				}
+				tokens.Push(FloatExpr{val})
+			} else {
+				val, err := strconv.ParseInt(contents, 10, 64)
+				if err != nil {
+					panic(err)
+				}
+				tokens.Push(IntegerExpr{val})
 			}
 
-			tokens.Push(IntegerExpr{val})
 		case ruleNil:
 			tokens.Push(NilExpr{})
 		case ruleUndefined:

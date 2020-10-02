@@ -51,7 +51,7 @@ func init() {
 	mergeCmd.Flags().StringVar(&outputPath, "path", "", "output is taken from given path")
 	mergeCmd.Flags().BoolVar(&split, "split", false, "if the output is alist it will be split into separate documents")
 	mergeCmd.Flags().BoolVar(&processingOptions.PreserveEscapes, "preserve-escapes", false, "preserve escaping for escaped expressions and merges")
-	mergeCmd.Flags().BoolVar(&processingOptions.PreserveTemporaray, "preserve-temporary", false, "preserve temporary fields")
+	mergeCmd.Flags().BoolVar(&processingOptions.PreserveTemporary, "preserve-temporary", false, "preserve temporary fields")
 	mergeCmd.Flags().StringVar(&state, "state", "", "select state file to maintain")
 	mergeCmd.Flags().StringArrayVar(&selection, "select", []string{}, "filter dedicated output fields")
 }

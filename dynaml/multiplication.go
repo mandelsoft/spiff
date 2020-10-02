@@ -18,7 +18,7 @@ func (e MultiplicationExpr) Evaluate(binding Binding, locally bool) (interface{}
 		return nil, info, false
 	}
 
-	bint, info, ok := ResolveIntegerExpressionOrPushEvaluation(&e.B, &resolved, &info, binding, false)
+	b, info, ok := ResolveExpressionOrPushEvaluation(&e.B, &resolved, &info, binding, false)
 	if !ok {
 		return nil, info, false
 	}
@@ -27,23 +27,32 @@ func (e MultiplicationExpr) Evaluate(binding Binding, locally bool) (interface{}
 		return e, info, true
 	}
 
-	aint, ok := a.(int64)
-	if ok {
-		return aint * bint, info, true
-	}
-
 	str, ok := a.(string)
 	if ok {
 		ip, cidr, err := net.ParseCIDR(str)
 		if err != nil {
-			return info.Error("CIDR or int argument required for multiplication: %s", err)
+			return info.Error("first argument of multiplication must be CIDR or number: %s", err)
 		}
 		ones, _ := cidr.Mask.Size()
 		size := int64(1 << (32 - uint32(ones)))
+
+		bint, ok := b.(int64)
+		if !ok {
+			return info.Error("CIDR multiplication requires an integer argument")
+		}
+
 		ip = IPAdd(ip.Mask(cidr.Mask), size*bint)
 		return (&net.IPNet{ip, cidr.Mask}).String(), info, true
 	}
-	return info.Error("CIDR or int argument required as first argument for multiplication")
+
+	a, b, err := NumberOperands(a, b)
+	if err != nil {
+		return info.Error("non-CIDR multiplication requires number arguments")
+	}
+	if _, ok := a.(int64); ok {
+		return a.(int64) * b.(int64), info, true
+	}
+	return a.(float64) * b.(float64), info, true
 }
 
 func (e MultiplicationExpr) String() string {

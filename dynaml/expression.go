@@ -1,6 +1,8 @@
 package dynaml
 
 import (
+	"github.com/mandelsoft/vfs/pkg/vfs"
+
 	"github.com/mandelsoft/spiff/yaml"
 )
 
@@ -19,6 +21,9 @@ type State interface {
 	GetFileContent(file string, cached bool) ([]byte, error)
 	GetEncryptionKey() string
 	OSAccessAllowed() bool
+	FileAccessAllowed() bool
+	FileSystem() vfs.VFS
+	GetFunctions() Registry
 }
 
 type Binding interface {

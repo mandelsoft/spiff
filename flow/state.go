@@ -4,27 +4,70 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"fmt"
-	"github.com/mandelsoft/spiff/debug"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"path"
 	"strings"
+
+	"github.com/mandelsoft/vfs/pkg/osfs"
+	"github.com/mandelsoft/vfs/pkg/vfs"
+
+	"github.com/mandelsoft/spiff/debug"
+	"github.com/mandelsoft/spiff/dynaml"
 )
 
+const MODE_FILE_ACCESS = 1 // support file system access
+const MODE_OS_ACCESS = 2   // support os commands like pipe and exec
+
 type State struct {
-	files     map[string]string // content hash to temp file name
-	fileCache map[string][]byte // file content cache
-	key       string            // default encryption key
-	osaccess  bool              // allow OS access
+	files      map[string]string // content hash to temp file name
+	fileCache  map[string][]byte // file content cache
+	key        string            // default encryption key
+	mode       int
+	fileSystem vfs.VFS // virtual filesystem to use for filesystem based operations
+	functions  dynaml.Registry
 }
 
-func NewState(key string, osaccess bool) *State {
-	return &State{map[string]string{}, map[string][]byte{}, key, osaccess}
+var _ dynaml.State = &State{}
+
+func NewState(key string, mode int, optfs ...vfs.FileSystem) *State {
+	var fs vfs.FileSystem
+	if len(optfs) > 0 {
+		fs = optfs[0]
+	}
+	if fs == nil {
+		fs = osfs.New()
+	} else {
+		mode = mode & ^MODE_OS_ACCESS
+	}
+	return &State{
+		files:      map[string]string{},
+		fileCache:  map[string][]byte{},
+		key:        key,
+		mode:       mode,
+		fileSystem: vfs.New(fs),
+	}
+}
+
+func (s *State) SetFunctions(f dynaml.Registry) *State {
+	s.functions = f
+	return s
 }
 
 func (s *State) OSAccessAllowed() bool {
-	return s.osaccess
+	return s.mode&MODE_OS_ACCESS != 0
+}
+
+func (s *State) FileAccessAllowed() bool {
+	return s.mode&MODE_FILE_ACCESS != 0
+}
+
+func (s *State) FileSystem() vfs.VFS {
+	return s.fileSystem
+}
+
+func (s *State) GetFunctions() dynaml.Registry {
+	return s.functions
 }
 
 func (s *State) GetEncryptionKey() string {
@@ -32,12 +75,15 @@ func (s *State) GetEncryptionKey() string {
 }
 
 func (s *State) GetTempName(data []byte) (string, error) {
+	if !s.FileAccessAllowed() {
+		return "", fmt.Errorf("tempname: no OS operations supported in this execution environment")
+	}
 	sum := sha512.Sum512(data)
 	hash := base64.StdEncoding.EncodeToString(sum[:])
 
 	name, ok := s.files[hash]
 	if !ok {
-		file, err := ioutil.TempFile("", "spiff-")
+		file, err := s.fileSystem.TempFile("", "spiff-")
 		if err != nil {
 			return "", err
 		}
@@ -49,7 +95,7 @@ func (s *State) GetTempName(data []byte) (string, error) {
 
 func (s *State) Cleanup() {
 	for _, n := range s.files {
-		os.Remove(n)
+		s.fileSystem.Remove(n)
 	}
 	s.files = map[string]string{}
 }
@@ -73,7 +119,7 @@ func (s *State) GetFileContent(file string, cached bool) ([]byte, error) {
 				data = contents
 			}
 		} else {
-			data, err = ioutil.ReadFile(file)
+			data, err = s.fileSystem.ReadFile(file)
 			if err != nil {
 				return nil, fmt.Errorf("error reading [%s]: %s", path.Clean(file), err)
 			}
