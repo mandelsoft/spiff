@@ -236,6 +236,11 @@ The ` merge` command offers several options:
   state file with the `.bak` suffix. This can be used together with a manual
   merging as offered by the [state](libraries/state/README.md) utility library.
   
+- With option `--bindings <path>` a yaml file can be specified, whose content
+  is used to build additional bindings for the processing. The yaml document must
+  consist of a map. Each key is used as additional binding. The bindings document
+  is not processed, the values are used as defined.
+  
 - The option `--preserve-escapes` will preserve the escaping for dynaml
   expressions and list/map merge directives. This option can be used
   if further processing steps of a processing result with *spiff* is intended.
