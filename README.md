@@ -117,6 +117,7 @@ Contents:
 		- [(( asyaml(expr) ))](#-asjsonexpr-)
 		- [(( catch(expr) ))](#-catchexpr-)
 		- [(( validate(value,"dnsdomain") ))](#-validatevaluednsdomain-)
+		- [(( check(value,"dnsdomain") ))](#-checkvaluednsdomain-)
 		- [(( error("message") ))](#-errormessage-)
 		- [Accessing External Content](#accessing-external-content)
 		    - [(( read("file.yml") ))](#-readfileyml-)
@@ -2756,7 +2757,8 @@ The following validators are available:
 | `ca`|  none | certificate for CA |
 | `type`| list of accepted type keys | at least one [type key](#-typefoobar-) must match |
 | `valueset` | list argument with values | possible values |
-| `match` | regular expression | string value matching regular expression |
+| `value` | `=` | value | check dedicated value |
+| `match` | `~=` | regular expression | string value matching regular expression |
 | `list` | optional list of entry validators | is list and entries match given validators |
 | `map` | [[ &lt;key validator&gt;, ] &lt;entry validator&gt; ] | is map and keys and entries match given validators |
 | `mapfield` | &lt;field name&gt; [ , &lt;validator&gt;] | required entry in map |
@@ -2847,6 +2849,14 @@ validator:
 val: (( validate( map, validator)  ))
 ```
 
+### `(( check(value,"dnsdomain") ))`
+
+The function `check` can be used to match a yaml structure against a yaml
+based value checker. Hereby the same check description already described for 
+[validate](#-validatevaluednsdomain-) can be used. The result of the call is
+a boolean value indicating the match result. It does not fail if the check
+fails.
+ 
 ### `(( error("message") ))`
 
 The function `error` can be used to cause explicit evaluation failures with
