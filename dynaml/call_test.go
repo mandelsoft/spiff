@@ -24,6 +24,55 @@ func newNetworkFakeBinding(subnets yaml.Node, instances interface{}) Binding {
 
 var _ = Describe("calls", func() {
 	Describe("CIDR functions", func() {
+		It("contains IP", func() {
+			expr := CallExpr{
+				Function: ReferenceExpr{[]string{"contains_ip"}},
+				Arguments: []Expression{
+					StringExpr{"192.168.1.1/24"},
+					StringExpr{"192.168.1.2"},
+				},
+			}
+
+			Expect(expr).To(
+				EvaluateAs(
+					true,
+					FakeBinding{},
+				),
+			)
+		})
+		It("not contains IP", func() {
+			expr := CallExpr{
+				Function: ReferenceExpr{[]string{"contains_ip"}},
+				Arguments: []Expression{
+					StringExpr{"192.168.1.1/24"},
+					StringExpr{"192.168.2.0"},
+				},
+			}
+
+			Expect(expr).To(
+				EvaluateAs(
+					false,
+					FakeBinding{},
+				),
+			)
+		})
+		It("not contains IP", func() {
+			expr := CallExpr{
+				Function: ReferenceExpr{[]string{"contains_ip"}},
+				Arguments: []Expression{
+					StringExpr{"192.168.1.1/24"},
+					StringExpr{"192.168.0.255"},
+				},
+			}
+
+			Expect(expr).To(
+				EvaluateAs(
+					false,
+					FakeBinding{},
+				),
+			)
+		})
+
 		It("determines minimal IP", func() {
 			expr := CallExpr{
 				Function: ReferenceExpr{[]string{"min_ip"}},
