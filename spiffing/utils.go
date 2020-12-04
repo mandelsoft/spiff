@@ -3,6 +3,8 @@ package spiffing
 import (
 	"fmt"
 	"strings"
+
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 // Process just processes a template with the values set in the execution
@@ -81,4 +83,12 @@ func Cascade(s Spiff, template Source, stubs []Source, optstate ...Source) ([]by
 		return rdata, sdata, err
 	}
 	return rdata, nil, err
+}
+
+func ToNode(name string, data interface{}) (Node, error) {
+	return yaml.Sanitize(name, data)
+}
+
+func Normalize(n Node) (interface{}, error) {
+	return yaml.Normalize(n)
 }
