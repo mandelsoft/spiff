@@ -37,6 +37,27 @@ baz: 42
 		Expect(source).To(CascadeAs(resolved, secondary, stub))
 	})
 
+	It("merges root node", func() {
+		source := parseYAML(`
+---
+<<: (( merge ))
+bar: alice
+`)
+
+		stub := parseYAML(`
+---
+foo: bob
+`)
+
+		resolved := parseYAML(`
+---
+foo: bob
+bar: alice
+`)
+
+		Expect(source).To(CascadeAs(resolved, stub))
+	})
+
 	Context("with multiple mutually-exclusive templates", func() {
 		It("flows through both", func() {
 			source := parseYAML(`

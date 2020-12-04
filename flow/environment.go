@@ -180,12 +180,16 @@ func (e DefaultEnvironment) FindReference(path []string) (yaml.Node, bool) {
 }
 
 func (e DefaultEnvironment) FindInStubs(path []string) (yaml.Node, bool) {
+	debug.Debug("lookup %v in stubs\n", path)
 	for _, stub := range e.stubs {
+		debug.Debug("checking stub %s\n", stub.SourceName())
 		val, found := yaml.Find(stub, path...)
 		if found {
 			if !val.Flags().Implied() {
+				debug.Debug("found %v\n", path)
 				return val, true
 			}
+			debug.Debug("skipping found stub %v\n", path)
 		}
 	}
 
