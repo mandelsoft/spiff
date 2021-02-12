@@ -3,14 +3,16 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/mandelsoft/spiff/debug"
-	"github.com/mandelsoft/spiff/flow"
-	"github.com/mandelsoft/spiff/yaml"
-	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
+
+	"github.com/spf13/cobra"
+
+	"github.com/mandelsoft/spiff/debug"
+	"github.com/mandelsoft/spiff/flow"
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 // runCmd represents the merge command
@@ -64,5 +66,9 @@ func run(documentFilePath, templateFilePath string, opts flow.Options, json, spl
 
 	documentYAML = yaml.NewNode(map[string]yaml.Node{"document": documentYAML}, "<"+documentFilePath+">")
 	stub := yaml.NewNode(map[string]yaml.Node{"document": yaml.NewNode("(( &temporary &inject (merge) ))", "<document>)")}, "<document>")
-	merge(stdin, templateFilePath, opts, json, split, subpath, selection, stateFilePath, bindingFilePath, []yaml.Node{stub, documentYAML}, stubFilePaths)
+	vals, err := createValuesFromArgs(values)
+	if err != nil {
+		log.Fatalf("%s\n", err)
+	}
+	merge(stdin, templateFilePath, opts, json, split, subpath, selection, stateFilePath, bindingFilePath, vals, []yaml.Node{stub, documentYAML}, stubFilePaths)
 }

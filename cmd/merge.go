@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -25,6 +26,7 @@ var split bool
 var processingOptions flow.Options
 var state string
 var bindings string
+var values []string
 
 // mergeCmd represents the merge command
 var mergeCmd = &cobra.Command{
@@ -39,7 +41,11 @@ var mergeCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		merge(false, args[0], processingOptions, asJSON, split, outputPath, selection, state, bindings, nil, args[1:])
+		vals, err := createValuesFromArgs(values)
+		if err != nil {
+			log.Fatalf("%s\n", err)
+		}
+		merge(false, args[0], processingOptions, asJSON, split, outputPath, selection, state, bindings, vals, nil, args[1:])
 	},
 }
 
@@ -55,7 +61,26 @@ func init() {
 	mergeCmd.Flags().BoolVar(&processingOptions.PreserveTemporary, "preserve-temporary", false, "preserve temporary fields")
 	mergeCmd.Flags().StringVar(&state, "state", "", "select state file to maintain")
 	mergeCmd.Flags().StringVar(&bindings, "bindings", "", "yaml file with additional bindings to use")
+	mergeCmd.Flags().StringArrayVarP(&values, "define", "D", nil, "key/value bindings")
 	mergeCmd.Flags().StringArrayVar(&selection, "select", []string{}, "filter dedicated output fields")
+}
+
+func createValuesFromArgs(values []string) (map[string]string, error) {
+	if len(values) == 0 {
+		return nil, nil
+	}
+	result := map[string]string{}
+	for _, s := range values {
+		parts := strings.Split(s, "=")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid value definition %q\n", s)
+		}
+		if parts[0] == "" {
+			return nil, fmt.Errorf("empty key in value definition %q\n", s)
+		}
+		result[parts[0]] = parts[1]
+	}
+	return result, nil
 }
 
 func fileExists(filename string) bool {
@@ -84,7 +109,7 @@ func readYAML(filename string, desc string, required bool) yaml.Node {
 }
 
 func merge(stdin bool, templateFilePath string, opts flow.Options, json, split bool,
-	subpath string, selection []string, stateFilePath, bindingFilePath string, stubs []yaml.Node, stubFilePaths []string) {
+	subpath string, selection []string, stateFilePath, bindingFilePath string, values map[string]string, stubs []yaml.Node, stubFilePaths []string) {
 	var templateFile []byte
 	var err error
 
@@ -112,6 +137,24 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 		stateYAML = readYAML(stateFilePath, "state file", false)
 	}
 	bindingYAML := readYAML(bindingFilePath, "bindings file", true)
+
+	if len(values) > 0 {
+		if bindingYAML == nil {
+			bindingYAML = yaml.NewNode(map[string]yaml.Node{}, "<values>")
+		}
+		m, ok := bindingYAML.Value().(map[string]yaml.Node)
+		if !ok {
+			log.Fatalf(fmt.Sprintf("binding %q must be a map\n", bindingFilePath))
+		}
+		for k, v := range values {
+			i, err := strconv.ParseInt(v, 10, 64)
+			if err == nil {
+				m[k] = yaml.NewNode(i, "<values>")
+			} else {
+				m[k] = yaml.NewNode(v, "<values>")
+			}
+		}
+	}
 
 	if stubs == nil {
 		stubs = []yaml.Node{}

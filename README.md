@@ -241,6 +241,10 @@ The ` merge` command offers several options:
   is used to build additional bindings for the processing. The yaml document must
   consist of a map. Each key is used as additional binding. The bindings document
   is not processed, the values are used as defined.
+
+- With option `--define <key>=<value>` (shorthand`-D`) additional binding values
+  can be specified on the command line overriding binding values from the
+  binding file. The option may occur multiple times.
   
 - The option `--preserve-escapes` will preserve the escaping for dynaml
   expressions and list/map merge directives. This option can be used
@@ -284,6 +288,13 @@ $ spiff diff deployment.yml current.yml
 $ bosh deployment deployment.yml
 $ bosh deploy
 ```
+
+### `spiff convert --json manifest.yml `
+
+The `convert` sub command can be used to convert input files to json or
+just to normalize the order of the fields.
+Available options are `--json`, `--path`, `--split` or `--select` according
+to their meanings for the `merge` sub command.
 
 ### `spiff encrypt secret.yaml`
 
