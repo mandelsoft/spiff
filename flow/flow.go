@@ -10,6 +10,7 @@ import (
 	"github.com/mandelsoft/spiff/yaml"
 
 	_ "github.com/mandelsoft/spiff/dynaml/passwd"
+	_ "github.com/mandelsoft/spiff/dynaml/wireguard"
 	_ "github.com/mandelsoft/spiff/dynaml/x509"
 )
 
