@@ -1,7 +1,12 @@
 language: go
 
 go:
-  - 1.13.x
+  - 1.11.x
+
+matrix:
+  include:
+    - arch: amd64
+      go: 1.15.x
 
 install:
   - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
