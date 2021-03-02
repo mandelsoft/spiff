@@ -3223,7 +3223,7 @@ key: |+
 
 #### `(( x509publickey(key) ))`
 
-For a given key in PEM format (for example generated with the [x509genkey](#-x509genkeyspec-)
+For a given key or certificate in PEM format (for example generated with the [x509genkey](#-x509genkeyspec-)
 function) this function extracts the public key and returns it again in PEM format as a
 multi-line string.
 
@@ -3262,7 +3262,7 @@ to `ssh`. The result will then be a regular public key format usable for ssh.
 The default format is `pem` providing the pem output format shown above.
 
 RSA keys are by default marshalled in PKCS#1 format(`RSA PUBLIC KEY`) in pem.
-If the the generic *PKIX* format (`PUBLIC KEY`) is required the format
+If the generic *PKIX* format (`PUBLIC KEY`) is required the format
 argument `pkix` must be given.
 
 Using the format `ssh` this function can also be used to convert a pem formatted
@@ -3271,7 +3271,7 @@ public key into an ssh key,
 #### `(( x509cert(spec) ))`
 
 The function `x509cert` creates locally signed certificates, either a self signed
-one or a certificate signed by a given ca. It returns PEM encoded certificate
+one or a certificate signed by a given ca. It returns a PEM encoded certificate
 as a multi-line string value.
 
 The single _spec_ parameter take a map with some optional and non optional
@@ -3291,7 +3291,7 @@ The following map fields are observed:
 | `validity` | integer | optional |  validity interval in hours |
 | `validFrom` | string | optional |  start time in the format "Jan 1 01:22:31 2019" |
 | `hosts` | string or string list | optional |  List of DNS names or IP addresses |
-| `privateKey` | string | required or publicKey |  private key to geberate the certificate for |
+| `privateKey` | string | required or publicKey |  private key to generate the certificate for |
 | `publicKey` | string | required or privateKey|  public key to generate the certificate for |
 | `caCert` | string | optional|  certificate to sign with |
 | `caPrivateKey` | string | optional|  priavte key for `caCert` |
