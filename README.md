@@ -168,6 +168,7 @@ Contents:
 	- [Scope References](#scope-references)
 	    - [_](#_)
 	    - [__](#__)
+	    - [___](#___)
 	    - [__ctx.OUTER](#__ctxouter)
 	- [Special Literals](#special-literals)
 	- [Access to evaluation context](#access-to-evaluation-context)
@@ -4779,6 +4780,48 @@ result:
     bob: static
 ```
 
+
+### `___`
+
+The special reference `___` can be used to lookup references in the outer most
+scope. It can therefore be used to access processing bindings specified for a
+document processing via command line or API. If no bindings are specified
+the document root is used.
+
+Calling `spiff merge template.yaml --bindings bindings.yaml` with a binding of
+
+**bindings.yaml**
+```yaml
+input1: binding1
+input2: binding2
+``` 
+
+and the template
+
+**template.yaml**
+```yaml
+input1: top1
+map:
+  input: map
+  input1: map1
+  
+  results:
+    frommap: (( input1 ))
+    fromroot: (( .input1 ))
+    frombinding1: (( ___.input1 ))
+    frombinding2: (( input2 ))
+```
+
+evaluates `map.results`  to
+
+```yaml
+  results:
+    frombinding1: binding1
+    frombinding2: binding2
+    frommap: map1
+    fromroot: top1
+```
+
 ### `__ctx.OUTER`
 
 The context field `OUTER` is used for nested [merges](#-mergemap1-map2-). 
@@ -4831,6 +4874,9 @@ The following fields are supported:
 | `PATHNAME` | string | path name of actually processed field |
 | `PATH` | list[string] | path name as component list |
 | `OUTER` | yaml doc | outer documents for nested [merges](#-mergemap1-map2-), index 0 is the next outer document  |
+| `BINDINGS` | yaml doc |  the external bindings for the actual processing (see also [___](#___)) |
+
+If external bindings are specified they are the last elements in `OUTER`.
 
 e.g.:
 

@@ -37,4 +37,46 @@ var _ = Describe("Spiffing", func() {
 			Expect(string(result)).To(Equal("- 25\n- 26\n"))
 		})
 	})
+
+	Context("Bindings", func() {
+		ctx, err := New().WithValues(map[string]interface{}{
+			"values": map[string]interface{}{
+				"alice": 25,
+				"bob":   26,
+			},
+		})
+		Expect(err).To(Succeed())
+
+		It("Handles simple bindings", func() {
+			templ, err := ctx.Unmarshal("test", []byte(`
+data: (( values.alice ))
+`))
+			Expect(err).To(Succeed())
+			result, err := ctx.Cascade(templ, nil)
+			Expect(err).To(Succeed())
+			data, err := ctx.Marshal(result)
+			Expect(err).To(Succeed())
+			Expect(string(data)).To(Equal(
+				`data: 25
+`))
+		})
+
+		It("Handles override bindings", func() {
+			templ, err := ctx.Unmarshal("test", []byte(`
+values: other
+data: (( ___.values.alice ))
+orig: (( values ))
+`))
+			Expect(err).To(Succeed())
+			result, err := ctx.Cascade(templ, nil)
+			Expect(err).To(Succeed())
+			data, err := ctx.Marshal(result)
+			Expect(err).To(Succeed())
+			Expect(string(data)).To(Equal(
+				`data: 25
+orig: other
+values: other
+`))
+		})
+	})
 })
