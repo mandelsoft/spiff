@@ -117,6 +117,7 @@ Contents:
 		- [(( asyaml(expr) ))](#-asjsonexpr-)
 		- [(( catch(expr) ))](#-catchexpr-)
 		- [(( validate(value,"dnsdomain") ))](#-validatevaluednsdomain-)
+		- [(( check(value,"dnsdomain") ))](#-checkvaluednsdomain-)
 		- [(( error("message") ))](#-errormessage-)
 		- [Accessing External Content](#accessing-external-content)
 		    - [(( read("file.yml") ))](#-readfileyml-)
@@ -167,6 +168,7 @@ Contents:
 	- [Scope References](#scope-references)
 	    - [_](#_)
 	    - [__](#__)
+	    - [___](#___)
 	    - [__ctx.OUTER](#__ctxouter)
 	- [Special Literals](#special-literals)
 	- [Access to evaluation context](#access-to-evaluation-context)
@@ -236,6 +238,15 @@ The ` merge` command offers several options:
   state file with the `.bak` suffix. This can be used together with a manual
   merging as offered by the [state](libraries/state/README.md) utility library.
   
+- With option `--bindings <path>` a yaml file can be specified, whose content
+  is used to build additional bindings for the processing. The yaml document must
+  consist of a map. Each key is used as additional binding. The bindings document
+  is not processed, the values are used as defined.
+
+- With option `--define <key>=<value>` (shorthand`-D`) additional binding values
+  can be specified on the command line overriding binding values from the
+  binding file. The option may occur multiple times.
+  
 - The option `--preserve-escapes` will preserve the escaping for dynaml
   expressions and list/map merge directives. This option can be used
   if further processing steps of a processing result with *spiff* is intended.
@@ -278,6 +289,13 @@ $ spiff diff deployment.yml current.yml
 $ bosh deployment deployment.yml
 $ bosh deploy
 ```
+
+### `spiff convert --json manifest.yml `
+
+The `convert` sub command can be used to convert input files to json or
+just to normalize the order of the fields.
+Available options are `--json`, `--path`, `--split` or `--select` according
+to their meanings for the `merge` sub command.
 
 ### `spiff encrypt secret.yaml`
 
@@ -1234,6 +1252,7 @@ cidr: 192.168.0.1/24
 range: (( min_ip(cidr) "-" max_ip(cidr) ))
 next: (( max_ip(cidr) + 1 ))
 num: (( min_ip(cidr) "+" num_ip(cidr) "=" min_ip(cidr) + num_ip(cidr) ))
+contains: (( contains_ip(cidr, "192.168.0.2") ))
 ```
 
 yields
@@ -1243,6 +1262,7 @@ cidr: 192.168.0.1/24
 range: 192.168.0.0-192.168.0.255
 next: 192.168.1.0
 num: 192.168.0.0+256=192.168.1.0
+contains: true
 ```
 
 ## `(( a > 1 ? foo :bar ))`
@@ -2751,7 +2771,8 @@ The following validators are available:
 | `ca`|  none | certificate for CA |
 | `type`| list of accepted type keys | at least one [type key](#-typefoobar-) must match |
 | `valueset` | list argument with values | possible values |
-| `match` | regular expression | string value matching regular expression |
+| `value` | `=` | value | check dedicated value |
+| `match` | `~=` | regular expression | string value matching regular expression |
 | `list` | optional list of entry validators | is list and entries match given validators |
 | `map` | [[ &lt;key validator&gt;, ] &lt;entry validator&gt; ] | is map and keys and entries match given validators |
 | `mapfield` | &lt;field name&gt; [ , &lt;validator&gt;] | required entry in map |
@@ -2842,6 +2863,14 @@ validator:
 val: (( validate( map, validator)  ))
 ```
 
+### `(( check(value,"dnsdomain") ))`
+
+The function `check` can be used to match a yaml structure against a yaml
+based value checker. Hereby the same check description already described for 
+[validate](#-validatevaluednsdomain-) can be used. The result of the call is
+a boolean value indicating the match result. It does not fail if the check
+fails.
+ 
 ### `(( error("message") ))`
 
 The function `error` can be used to cause explicit evaluation failures with
@@ -3195,7 +3224,7 @@ key: |+
 
 #### `(( x509publickey(key) ))`
 
-For a given key in PEM format (for example generated with the [x509genkey](#-x509genkeyspec-)
+For a given key or certificate in PEM format (for example generated with the [x509genkey](#-x509genkeyspec-)
 function) this function extracts the public key and returns it again in PEM format as a
 multi-line string.
 
@@ -3234,7 +3263,7 @@ to `ssh`. The result will then be a regular public key format usable for ssh.
 The default format is `pem` providing the pem output format shown above.
 
 RSA keys are by default marshalled in PKCS#1 format(`RSA PUBLIC KEY`) in pem.
-If the the generic *PKIX* format (`PUBLIC KEY`) is required the format
+If the generic *PKIX* format (`PUBLIC KEY`) is required the format
 argument `pkix` must be given.
 
 Using the format `ssh` this function can also be used to convert a pem formatted
@@ -3243,7 +3272,7 @@ public key into an ssh key,
 #### `(( x509cert(spec) ))`
 
 The function `x509cert` creates locally signed certificates, either a self signed
-one or a certificate signed by a given ca. It returns PEM encoded certificate
+one or a certificate signed by a given ca. It returns a PEM encoded certificate
 as a multi-line string value.
 
 The single _spec_ parameter take a map with some optional and non optional
@@ -3263,7 +3292,7 @@ The following map fields are observed:
 | `validity` | integer | optional |  validity interval in hours |
 | `validFrom` | string | optional |  start time in the format "Jan 1 01:22:31 2019" |
 | `hosts` | string or string list | optional |  List of DNS names or IP addresses |
-| `privateKey` | string | required or publicKey |  private key to geberate the certificate for |
+| `privateKey` | string | required or publicKey |  private key to generate the certificate for |
 | `publicKey` | string | required or privateKey|  public key to generate the certificate for |
 | `caCert` | string | optional|  certificate to sign with |
 | `caPrivateKey` | string | optional|  priavte key for `caCert` |
@@ -3550,7 +3579,7 @@ static scope of the lambda dedinition followed by the static yaml scope of the
 caller. Absolute references are always evalated in the document scope of the
 caller.
 
-The name `_` can also be used as an anchor to refer to the static dfinition
+The name `_` can also be used as an anchor to refer to the static definition
 scope of the lambda expression in the yaml document that was used to define
 the lambda function. Those references are always interpreted as relative
 references related to the this static yaml document scope. There is no
@@ -4751,6 +4780,48 @@ result:
     bob: static
 ```
 
+
+### `___`
+
+The special reference `___` can be used to lookup references in the outer most
+scope. It can therefore be used to access processing bindings specified for a
+document processing via command line or API. If no bindings are specified
+the document root is used.
+
+Calling `spiff merge template.yaml --bindings bindings.yaml` with a binding of
+
+**bindings.yaml**
+```yaml
+input1: binding1
+input2: binding2
+``` 
+
+and the template
+
+**template.yaml**
+```yaml
+input1: top1
+map:
+  input: map
+  input1: map1
+  
+  results:
+    frommap: (( input1 ))
+    fromroot: (( .input1 ))
+    frombinding1: (( ___.input1 ))
+    frombinding2: (( input2 ))
+```
+
+evaluates `map.results`  to
+
+```yaml
+  results:
+    frombinding1: binding1
+    frombinding2: binding2
+    frommap: map1
+    fromroot: top1
+```
+
 ### `__ctx.OUTER`
 
 The context field `OUTER` is used for nested [merges](#-mergemap1-map2-). 
@@ -4803,6 +4874,9 @@ The following fields are supported:
 | `PATHNAME` | string | path name of actually processed field |
 | `PATH` | list[string] | path name as component list |
 | `OUTER` | yaml doc | outer documents for nested [merges](#-mergemap1-map2-), index 0 is the next outer document  |
+| `BINDINGS` | yaml doc |  the external bindings for the actual processing (see also [___](#___)) |
+
+If external bindings are specified they are the last elements in `OUTER`.
 
 e.g.:
 

@@ -337,6 +337,7 @@
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "golang.org/x/crypto/bcrypt",
+    "golang.org/x/crypto/curve25519",
     "golang.org/x/crypto/md4",
     "golang.org/x/crypto/ssh",
   ]

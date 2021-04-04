@@ -254,6 +254,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "num_ip":
 		result, sub, ok = func_numIP(values, binding)
 
+	case "contains_ip":
+		result, sub, ok = func_containsIP(values, binding)
+
 	case "makemap":
 		result, sub, ok = func_makemap(values, binding)
 
@@ -308,6 +311,8 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "validate":
 		resolved, result, sub, ok = func_validate(values, binding)
+	case "check":
+		resolved, result, sub, ok = func_check(values, binding)
 
 	case "type":
 		if info.Undefined {

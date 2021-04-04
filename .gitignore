@@ -1,6 +1,7 @@
 *.sw[pq]
 tags
 .idea
+.godev
 /local
 /spiff
 /spiff++

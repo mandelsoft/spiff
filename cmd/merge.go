@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -24,6 +25,8 @@ var selection []string
 var split bool
 var processingOptions flow.Options
 var state string
+var bindings string
+var values []string
 
 // mergeCmd represents the merge command
 var mergeCmd = &cobra.Command{
@@ -38,7 +41,11 @@ var mergeCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		merge(false, args[0], processingOptions, asJSON, split, outputPath, selection, state, nil, args[1:])
+		vals, err := createValuesFromArgs(values)
+		if err != nil {
+			log.Fatalf("%s\n", err)
+		}
+		merge(false, args[0], processingOptions, asJSON, split, outputPath, selection, state, bindings, vals, nil, args[1:])
 	},
 }
 
@@ -53,7 +60,27 @@ func init() {
 	mergeCmd.Flags().BoolVar(&processingOptions.PreserveEscapes, "preserve-escapes", false, "preserve escaping for escaped expressions and merges")
 	mergeCmd.Flags().BoolVar(&processingOptions.PreserveTemporary, "preserve-temporary", false, "preserve temporary fields")
 	mergeCmd.Flags().StringVar(&state, "state", "", "select state file to maintain")
+	mergeCmd.Flags().StringVar(&bindings, "bindings", "", "yaml file with additional bindings to use")
+	mergeCmd.Flags().StringArrayVarP(&values, "define", "D", nil, "key/value bindings")
 	mergeCmd.Flags().StringArrayVar(&selection, "select", []string{}, "filter dedicated output fields")
+}
+
+func createValuesFromArgs(values []string) (map[string]string, error) {
+	if len(values) == 0 {
+		return nil, nil
+	}
+	result := map[string]string{}
+	for _, s := range values {
+		parts := strings.Split(s, "=")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid value definition %q\n", s)
+		}
+		if parts[0] == "" {
+			return nil, fmt.Errorf("empty key in value definition %q\n", s)
+		}
+		result[parts[0]] = parts[1]
+	}
+	return result, nil
 }
 
 func fileExists(filename string) bool {
@@ -64,8 +91,25 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
+func readYAML(filename string, desc string, required bool) yaml.Node {
+	if filename != "" {
+		if fileExists(filename) {
+			data, err := ioutil.ReadFile(filename)
+			if required && err != nil {
+				log.Fatalln(fmt.Sprintf("error reading %s [%s]:", desc, path.Clean(filename)), err)
+			}
+			doc, err := yaml.Parse(filename, data)
+			if err != nil {
+				log.Fatalln(fmt.Sprintf("error parsing %s [%s]:", desc, path.Clean(filename)), err)
+			}
+			return doc
+		}
+	}
+	return nil
+}
+
 func merge(stdin bool, templateFilePath string, opts flow.Options, json, split bool,
-	subpath string, selection []string, stateFilePath string, stubs []yaml.Node, stubFilePaths []string) {
+	subpath string, selection []string, stateFilePath, bindingFilePath string, values map[string]string, stubs []yaml.Node, stubFilePaths []string) {
 	var templateFile []byte
 	var err error
 
@@ -85,14 +129,30 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 		log.Fatalln(fmt.Sprintf("error parsing template [%s]:", path.Clean(templateFilePath)), err)
 	}
 
-	var stateData []byte
-
+	var stateYAML yaml.Node
 	if stateFilePath != "" {
 		if len(templateYAMLs) > 1 {
 			log.Fatalln(fmt.Sprintf("state handling not supported gor multi documents [%s]:", path.Clean(templateFilePath)), err)
 		}
-		if fileExists(stateFilePath) {
-			stateData, err = ioutil.ReadFile(stateFilePath)
+		stateYAML = readYAML(stateFilePath, "state file", false)
+	}
+	bindingYAML := readYAML(bindingFilePath, "bindings file", true)
+
+	if len(values) > 0 {
+		if bindingYAML == nil {
+			bindingYAML = yaml.NewNode(map[string]yaml.Node{}, "<values>")
+		}
+		m, ok := bindingYAML.Value().(map[string]yaml.Node)
+		if !ok {
+			log.Fatalf(fmt.Sprintf("binding %q must be a map\n", bindingFilePath))
+		}
+		for k, v := range values {
+			i, err := strconv.ParseInt(v, 10, 64)
+			if err == nil {
+				m[k] = yaml.NewNode(i, "<values>")
+			} else {
+				m[k] = yaml.NewNode(v, "<values>")
+			}
 		}
 	}
 
@@ -125,11 +185,7 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 		stubs = append(stubs, stubYAML)
 	}
 
-	if stateData != nil {
-		stateYAML, err := yaml.Parse(stateFilePath, stateData)
-		if err != nil {
-			log.Fatalln(fmt.Sprintf("error parsing state [%s]:", path.Clean(stateFilePath)), err)
-		}
+	if stateYAML != nil {
 		stubs = append(stubs, stateYAML)
 	}
 
@@ -138,7 +194,16 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 		" @: dependent of or involved in a cycle\n" +
 		" -: depending on a node with an error"
 
-	prepared, err := flow.PrepareStubs(nil, processingOptions.Partial, stubs...)
+	var binding dynaml.Binding
+	if bindingYAML != nil {
+		values, ok := bindingYAML.Value().(map[string]yaml.Node)
+		if !ok {
+			log.Fatalln("bindings must be given as map")
+		}
+		binding = flow.NewEnvironment(
+			nil, "context").WithLocalScope(values)
+	}
+	prepared, err := flow.PrepareStubs(binding, processingOptions.Partial, stubs...)
 	if !processingOptions.Partial && err != nil {
 		log.Fatalln("error generating manifest:", err, legend)
 	}
@@ -153,7 +218,7 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 		var bytes []byte
 		if templateYAML.Value() != nil {
 			count++
-			flowed, err := flow.Apply(nil, templateYAML, prepared, opts)
+			flowed, err := flow.Apply(binding, templateYAML, prepared, opts)
 			if !opts.Partial && err != nil {
 				log.Fatalln(fmt.Sprintf("error generating manifest%s:", doc), err, legend)
 			}

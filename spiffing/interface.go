@@ -8,6 +8,9 @@ import (
 	"github.com/mandelsoft/spiff/yaml"
 )
 
+// MODE_PRIVATE does not allow access to any external resources
+const MODE_PRIVATE = 0
+
 // MODE_OS_ACCESS allows os command execution (pipe, exec)
 const MODE_OS_ACCESS = flow.MODE_OS_ACCESS
 

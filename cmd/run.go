@@ -3,14 +3,16 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/mandelsoft/spiff/debug"
-	"github.com/mandelsoft/spiff/flow"
-	"github.com/mandelsoft/spiff/yaml"
-	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
+
+	"github.com/spf13/cobra"
+
+	"github.com/mandelsoft/spiff/debug"
+	"github.com/mandelsoft/spiff/flow"
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 // runCmd represents the merge command
@@ -26,7 +28,7 @@ var processCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		run(args[0], args[1], processingOptions, asJSON, split, outputPath, selection, state, args[2:])
+		run(args[0], args[1], processingOptions, asJSON, split, outputPath, selection, state, bindings, args[2:])
 	},
 }
 
@@ -44,7 +46,7 @@ func init() {
 }
 
 func run(documentFilePath, templateFilePath string, opts flow.Options, json, split bool,
-	subpath string, selection []string, stateFilePath string, stubFilePaths []string) {
+	subpath string, selection []string, stateFilePath, bindingFilePath string, stubFilePaths []string) {
 	var err error
 	var stdin = false
 	var documentFile []byte
@@ -63,5 +65,9 @@ func run(documentFilePath, templateFilePath string, opts flow.Options, json, spl
 
 	documentYAML = yaml.NewNode(map[string]yaml.Node{"document": documentYAML}, "<"+documentFilePath+">")
 	stub := yaml.NewNode(map[string]yaml.Node{"document": yaml.NewNode("(( &temporary &inject (merge) ))", "<document>)")}, "<document>")
-	merge(stdin, templateFilePath, opts, json, split, subpath, selection, stateFilePath, []yaml.Node{stub, documentYAML}, stubFilePaths)
+	vals, err := createValuesFromArgs(values)
+	if err != nil {
+		log.Fatalf("%s\n", err)
+	}
+	merge(stdin, templateFilePath, opts, json, split, subpath, selection, stateFilePath, bindingFilePath, vals, []yaml.Node{stub, documentYAML}, stubFilePaths)
 }

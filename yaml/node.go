@@ -10,6 +10,7 @@ import (
 
 const SELF = "_"
 const DOCNODE = "__"
+const ROOT = "___"
 const MERGEKEY = "<<<"
 
 type RefResolver interface {

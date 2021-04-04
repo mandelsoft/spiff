@@ -10,6 +10,7 @@ import (
 	"github.com/mandelsoft/spiff/yaml"
 
 	_ "github.com/mandelsoft/spiff/dynaml/passwd"
+	_ "github.com/mandelsoft/spiff/dynaml/wireguard"
 	_ "github.com/mandelsoft/spiff/dynaml/x509"
 )
 
@@ -248,6 +249,7 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 				return yaml.IssueNode(root, true, true, yaml.NewIssue("multiple merge keys not allowed"))
 			}
 			mergefound = true
+			debug.Debug("handle map merge %#v\n", val)
 			_, initial := val.Value().(string)
 			base := flow(val, env, false)
 			if base.Undefined() {
@@ -281,8 +283,10 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 					debug.Debug("  insert expression: %v\n", val)
 				} else {
 					if simpleMergeCompatibilityCheck(initial, base) {
+						debug.Debug("  skip merge\n")
 						continue
 					}
+					debug.Debug("  continue merge\n")
 					val = base
 				}
 				processed = false

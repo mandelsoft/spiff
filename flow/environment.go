@@ -49,7 +49,8 @@ type DefaultEnvironment struct {
 	static map[string]yaml.Node
 	outer  dynaml.Binding
 
-	active bool
+	active  bool
+	binding bool
 }
 
 func keys(s map[string]yaml.Node) string {
@@ -146,24 +147,35 @@ func (e DefaultEnvironment) FindFromRoot(path []string) (yaml.Node, bool) {
 	return yaml.FindR(true, yaml.NewNode(e.scope.root.local, "scope"), path...)
 }
 
+func FindInScopes(nodescope *Scope, path []string) (yaml.Node, bool) {
+	if len(path) > 0 {
+		scope := nodescope
+		for scope != nil {
+			val := scope.local[path[0]]
+			if val != nil {
+				return yaml.FindR(true, val, path[1:]...)
+			}
+			scope = scope.next
+		}
+		return nil, false
+	}
+	return yaml.FindR(true, node(nodescope.local), path...)
+}
+
 func (e DefaultEnvironment) FindReference(path []string) (yaml.Node, bool) {
 	root, found, nodescope := resolveSymbol(&e, path[0], e.scope)
 	if !found {
+		if path[0] == yaml.ROOT {
+			var outer dynaml.Binding = e
+			for outer.Outer() != nil {
+				outer = outer.Outer()
+			}
+			return yaml.FindR(true, node(outer.GetRootBinding()), path[1:]...)
+		}
 		//fmt.Printf("FIND %s: %s\n", strings.Join(path,"."), e)
 		//fmt.Printf("FOUND %s: %v\n", strings.Join(path,"."),  keys(nodescope))
 		if path[0] == yaml.DOCNODE && nodescope != nil {
-			if len(path) > 1 {
-				scope := nodescope
-				for scope != nil {
-					val := scope.local[path[1]]
-					if val != nil {
-						return yaml.FindR(true, val, path[2:]...)
-					}
-					scope = scope.next
-				}
-				return nil, false
-			}
-			return yaml.FindR(true, node(nodescope.local), path[1:]...)
+			return FindInScopes(nodescope, path[1:])
 		}
 		if e.outer != nil {
 			return e.outer.FindReference(path)
@@ -180,12 +192,16 @@ func (e DefaultEnvironment) FindReference(path []string) (yaml.Node, bool) {
 }
 
 func (e DefaultEnvironment) FindInStubs(path []string) (yaml.Node, bool) {
+	debug.Debug("lookup %v in stubs\n", path)
 	for _, stub := range e.stubs {
+		debug.Debug("checking stub %s\n", stub.SourceName())
 		val, found := yaml.Find(stub, path...)
 		if found {
 			if !val.Flags().Implied() {
+				debug.Debug("found %v\n", path)
 				return val, true
 			}
+			debug.Debug("skipping found stub %v\n", path)
 		}
 	}
 
@@ -286,7 +302,7 @@ func NewEnvironment(stubs []yaml.Node, source string, optstate ...*State) dynaml
 	if state == nil {
 		state = NewState(os.Getenv("SPIFF_ENCRYPTION_KEY"), MODE_OS_ACCESS|MODE_FILE_ACCESS)
 	}
-	return DefaultEnvironment{state: state, stubs: stubs, sourceName: source, currentSourceName: source, outer: nil, active: true}
+	return DefaultEnvironment{state: state, stubs: stubs, sourceName: source, currentSourceName: source, outer: nil, active: true, binding: true}
 }
 
 func NewProcessLocalEnvironment(stubs []yaml.Node, source string) dynaml.Binding {
@@ -375,6 +391,33 @@ func resolveSymbol(env *DefaultEnvironment, name string, scope *Scope) (yaml.Nod
 	return nil, false, nodescope
 }
 
+func getOuters(env *DefaultEnvironment) (yaml.Node, yaml.Node) {
+	var bindings dynaml.Binding
+	var list []yaml.Node
+
+	if outer := env.Outer(); outer != nil {
+		for outer != nil {
+			if e, ok := outer.(DefaultEnvironment); ok && e.binding {
+				bindings = outer
+			}
+			list = append(list, node(outer.GetRootBinding()))
+			outer = outer.Outer()
+		}
+	}
+	if list == nil {
+		if bindings != nil {
+			return nil, node(bindings.GetRootBinding())
+		} else {
+			return nil, yaml.NewNode([]map[string]interface{}{}, "context")
+		}
+	}
+	if bindings != nil {
+		return node(list), node(bindings.GetRootBinding())
+	} else {
+		return node(list), yaml.NewNode([]map[string]interface{}{}, "context")
+	}
+}
+
 func createContext(env *DefaultEnvironment) yaml.Node {
 	ctx := make(map[string]yaml.Node)
 
@@ -399,14 +442,11 @@ func createContext(env *DefaultEnvironment) yaml.Node {
 		path[i] = node(v)
 	}
 	ctx["STUBPATH"] = node(path)
-	if outer := env.Outer(); outer != nil {
-		list := []yaml.Node{}
-		for outer != nil {
-			list = append(list, node(outer.GetRootBinding()))
-			outer = outer.Outer()
-		}
-		ctx["OUTER"] = node(list)
+	list, bindings := getOuters(env)
+	if list != nil {
+		ctx["OUTER"] = list
 	}
+	ctx["BINDINGS"] = bindings
 	return node(ctx)
 }
 

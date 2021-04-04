@@ -179,15 +179,17 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (
 		case ruleSimpleMerge:
 			debug.Debug("*** rule simple merge\n")
 			redirect := !equals(path, stubPath)
-			tokens.Push(MergeExpr{stubPath, redirect, replace, replace || required || redirect, keyName})
+			tokens.Push(MergeExpr{stubPath, redirect, replace, replace || required || redirect, false, keyName})
 		case ruleRefMerge:
 			debug.Debug("*** rule ref merge\n")
 			rhs := tokens.Pop()
 			merge := rhs.(ReferenceExpr).Path
+			none := false
 			if len(merge) == 1 && merge[0] == "none" {
 				merge = []string{}
+				none = true
 			}
-			tokens.Push(MergeExpr{merge, true, replace, len(merge) > 0, keyName})
+			tokens.Push(MergeExpr{merge, true, replace, len(merge) > 0, none, keyName})
 		case ruleReplace:
 			replace = true
 		case ruleRequired:
