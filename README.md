@@ -185,7 +185,7 @@ Contents:
 
 # Installation
 
-Official release executable binaries can be downloaded via [Github releases](https://github.com/mandelsoft/spiff/releases) for Darwin and Linux machines (and virtual machines).
+Official release executable binaries can be downloaded via [Github releases](https://github.com/mandelsoft/spiff/releases) for Darwin, Linux ans PowerPc machines (and virtual machines).
 
 Some of spiff's dependencies have changed since the last official release, and spiff will not be updated to keep up with these dependencies.  Working dependencies are vendored in the `Godeps` directory (more information on the `godep` tool is available [here](https://github.com/tools/godep)).  As such, trying to `go get` spiff will likely fail; the only supported way to use spiff is to use an official binary release.
 
@@ -230,10 +230,16 @@ The ` merge` command offers several options:
   separate documen. The _yaml_ format uses as usual `---` as separator line.
   The _json_ format outputs a sequence of _json_ documents, one per line.
   
-- With `--select <field path>` is is possible to select a dedicated field of the
+- With `--select <field path>` it is possible to select a dedicated field of the
   processed document for the output
   
+- With `--evaluate <dynaml expression>` it is possible to evaluate a given dynaml
+  expression on the processed document for the output. The expression is evaluated
+  before the selection path is applied, which will then work on the evaluation
+  result.
+  
 - The option `--state <path>` enables the state support of _spiff_. If the
+  given file exists it is put on top of the configured stub list for the
   given file exists it is put on top of the configured stub list for the
   merge processing. Additionally to the output of the processed document
   it is filtered for nodes marked with the [`&state` marker](#-state-).
