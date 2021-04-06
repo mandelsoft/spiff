@@ -17,6 +17,13 @@ utilities:
     # offered fields in the value field:
     #   key and pub
     #
+    wireguardKey: (( |update=false|->utilities.state.data("",_.templates.wireguard_value,update) ))
+
+    #
+    # generate a ssh key with the state library
+    # offered fields in the value field:
+    #   key and pub
+    #
     sshKey: (( |size=2048,update=false|->utilities.state.standard(_.sshKeySpec(size),update) ))
 
     #
@@ -78,6 +85,17 @@ utilities:
     # helper templates
     #
     templates:
+      #
+      # the value template used by the state library
+      # to generate a new wireguard key containing
+      # private key (key), public key (pub)
+      wireguard_value:
+        <<: (( &template ))
+        state:
+          key: (( wggenkey() ))
+          pub: (( wgpublickey(key) ))
+
+
       #
       # the value template used by the state library
       # to generate a new ssh key containing

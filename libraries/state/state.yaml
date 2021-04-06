@@ -24,8 +24,19 @@
 #                                  value
 #    new:         template or and: the new value based on the input or
 #                                  a template using the `input` binding to
-#                                  generate the state value
+#                                  generate the state value using the state field
 #    forceupdate: bool:            setting to true encorces a value update
+#
+#
+#  - utilities.state.valuedata(input,new,forceupdate=false)
+#
+#    input:       any:             the input data used to generate the state
+#                                  value
+#    new:         template or and: the new value based on the input or
+#                                  a template using the `input` binding to
+#                                  directly generate the state value
+#    forceupdate: bool:            setting to true encorces a value update
+#
 #
 #  - utilities.state.standard(spec,forceupdate=false)
 #

@@ -88,3 +88,13 @@ If no `default` (`~`) is given a random string consisting of alphanumeric
 character of given length is generated.
 
 The _value_ field directly contains the secret value.
+
+## Generate a Wireguard Key Pair
+
+```
+    wireguardKey(<update>=false)  -> state
+```
+
+The _value_ field provides the fields:
+- `key` holding the private key
+- `pub` holding the public key

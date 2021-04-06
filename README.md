@@ -133,6 +133,9 @@ Contents:
 		    - [(( x509genkey(spec) ))](#-x509genkeyspec-)
 		    - [(( x509publickey(key) ))](#-x509publickeykey-)
 		    - [(( x509cert(spec) ))](#-x509certspec-)
+		- [Wireguard Functions](#wireguard-functions)
+            - [(( wggenkey() ))](#-wggenkey-)
+        	- [(( wgpublickey(key) ))](#-wgpublickey-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
 	    - [Positional versus Named Argunments](#positional-versus-named-arguments)
 	    - [Scopes and Lambda Expressions](#scopes-and-lambda-expressions)
@@ -3450,6 +3453,50 @@ cert:
   validFrom: Mar 11 15:34:36 2019
   validUntil: Mar 15 19:34:36 2019
   validity: 99  # yepp, that's right, there has already time passed since the creation
+```
+
+### Wireguard Functions
+
+spiff supports some useful functions to work with _wireguard_ keys.
+Please refer also to the [Useful to Know](#useful-to-know) section to find some
+tips for providing state.
+
+#### `(( wggenkey() ))`
+
+This function can be used generate private wireguard key. The result will
+base64 encoded.
+
+e.g.:
+
+```yaml
+keys:
+  key: (( wggenkey() ))
+```
+
+resolves to something like
+
+```yaml
+key: WH9xNVJuSuh7sDVIyUAlmxc+woFDJg4QA6tGUVBtGns=
+```
+
+#### `(( wgpublickey(key) ))`
+
+For a given key (for example generated with the [wggenkey](#-wggenkey-)
+function) this function extracts the public key and returns it again in base64 format-
+
+e.g.:
+
+```yaml
+keys:
+  key: (( wggenkey() ))
+  public: (( wgpublickey(key)
+```
+
+resolves to something like
+
+```yaml
+key: WH9xNVJuSuh7sDVIyUAlmxc+woFDJg4QA6tGUVBtGns=
+public: n405KfwLpfByhU9pOu0A/ENwp0njcEmmQQJvfYHHQ2M=
 ```
 
 ## `(( lambda |x|->x ":" port ))`

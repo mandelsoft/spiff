@@ -4,9 +4,16 @@ import (
 	"encoding/base64"
 	"fmt"
 	"math/rand"
+	"time"
 
 	"golang.org/x/crypto/curve25519"
 )
+
+func init() {
+	random = rand.New(rand.NewSource(time.Now().UnixNano()))
+}
+
+var random *rand.Rand
 
 // KeyLen is the expected key length for a WireGuard key.
 const KeyLen = 32 // wgh.KeyLen
@@ -23,7 +30,7 @@ type Key [KeyLen]byte
 // instead.
 func GenerateKey() (Key, error) {
 	b := make([]byte, KeyLen)
-	if _, err := rand.Read(b); err != nil {
+	if _, err := random.Read(b); err != nil {
 		return Key{}, fmt.Errorf("wgtypes: failed to read random bytes: %v", err)
 	}
 
