@@ -37,7 +37,10 @@ func (e CallExpr) stub(binding Binding) (interface{}, EvaluationInfo, bool) {
 						arg = append(arg, str)
 					}
 				default:
-					return info.Error("stub() requires a string or reference argument")
+					if !info.Undefined {
+						return info.Error("stub() requires a string or reference argument")
+					}
+					arg = binding.Path()
 				}
 			}
 		} else {

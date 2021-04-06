@@ -157,18 +157,18 @@ node: (( length( 5 ) ))
 node: (( select{[5]|x|->x} ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( select{[5]|x|->x} ))	in test	node	()	*list value not supported for select mapping`,
+			`	(( select{[5]|x|->x} ))	in test	node	()	*select{} does not support list values`,
 		))
 	})
 
-	It("reports list error in map{}", func() {
+	It("reports int list error in map{}", func() {
 		source := parseYAML(`
 ---
 
 node: (( map{[5]|x|->x} ))
 `)
 		Expect(source).To(FlowToErr(
-			`	(( map{[5]|x|->x} ))	in test	node	()	*list value not supported for map mapping`,
+			`	(( map{[5]|x|->x} ))	in test	node	()	*list element must be string, but found int`,
 		))
 	})
 

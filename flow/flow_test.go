@@ -3308,6 +3308,57 @@ val:
 `)
 			Expect(source).To(FlowAs(resolved, stub))
 		})
+
+		It("handles ~~ arg", func() {
+			source := parseYAML(`
+---
+data:
+  <<: (( merge none ))
+  age: (( stub(~~) + 1))
+`)
+			stub := parseYAML(`
+---
+data:
+  age: 24
+`)
+
+			resolved := parseYAML(`
+---
+data:
+  age: 25
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("handles ~~ arg", func() {
+			source := parseYAML(`
+---
+data:
+  <<: (( merge none ))
+  list:
+    - alice
+    - bob
+  age: (( sum[list|{}|s,name|-> ($__relpath=[name]) s { name= stub(__ctx.PATH __relpath || ~~) + 1 || 1 }] ))
+`)
+			stub := parseYAML(`
+---
+data:
+  age:
+    alice: 24
+`)
+
+			resolved := parseYAML(`
+---
+data:
+  list:
+    - alice
+    - bob
+  age:
+    alice: 25
+    bob: 1
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
 	})
 
 	Describe("when calling uniq", func() {
@@ -4815,6 +4866,24 @@ map:
 mapped:
   alice: 30
   bob: 27
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("for a list to map", func() {
+			It("maps string list", func() {
+				source := parseYAML(`
+---
+
+mapped: (( map{["alice", "bob"]|x|->length(x)} ))
+`)
+
+				resolved := parseYAML(`
+---
+mapped:
+  alice: 5
+  bob: 3
 `)
 				Expect(source).To(FlowAs(resolved))
 			})

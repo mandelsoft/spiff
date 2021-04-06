@@ -35,7 +35,7 @@ utilities:
     generateDir: (( |v,stubs,dir|->_.generateFiles(v,stubs,_.yamlFiles(dir))  ))
 
     #
-    # generate a list of yaml manifests froma chart structure given
+    # generate a list of yaml manifests from a chart structure given
     # by a chart dir
     #
     # a chart directory must contain a `values.yaml` file used as template
@@ -45,5 +45,5 @@ utilities:
     generateChart: (( |v,dir|->_.generateFiles(v,[dir "/values.yaml"],_.yamlFiles(dir "/templates"))  ))
 
     readFiles: (( |files,mode|->map[files|f|->read(f,mode)] ))
-    yamlFiles: (( |dir|->map[list_files(dir)|f|-> match("^.*\.yaml$",f) ? dir "/" f :~] ))
+    yamlFiles: (( |dir|->map[list_files(dir)|f|-> match("^.*\\.yaml$",f) ? dir "/" f :~] ))
 

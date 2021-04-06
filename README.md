@@ -150,6 +150,7 @@ Contents:
 		- [(( map[list|idx,elem|->dynaml-expr] ))](#-maplistidxelem-dynaml-expr-)
 		- [(( map[map|key,value|->dynaml-expr] ))](#-mapmapkeyvalue-dynaml-expr-)
 		- [(( map{map|elem|->dynaml-expr} ))](#-mapmapelem-dynaml-expr-)
+		- [(( map{list|elem|->dynaml-expr} ))](#-maplistelem-dynaml-expr-)
 		- [(( select[expr|elem|->dynaml-expr] ))](#-selectexprelem-dynaml-expr-)
 		- [(( select{map|elem|->dynaml-expr} ))](#-selectmapelem-dynaml-expr-)
 	- [Aggregations](#aggregations)
@@ -607,7 +608,8 @@ Another way to compose lists based on expressions are the functions
 
 Any expression may be preluded by any number of explicit _scope literals_. A
 scope literal describes a map whose values are available for relative reference 
-resolution of the expression (static scope). 
+resolution of the expression (static scope). It creates an additional local
+binding for given names.
 
 A scope literal might consist of any number of field assignments separated by a
 comma `,`. The key as well as the value are given by expressions, whereas the
@@ -2169,7 +2171,7 @@ value: foobar
 The argument passed to this function must either be a reference literal or
 an expression evaluating to either a string denoting a reference or a string
 list denoting the list of path elements for the reference.
-If no argument is given, the actual field path is used.
+If no argument or an undefined (`~~`) is given, the actual field path is used.
 
 Alternatively the `merge` operation could be used, for example `merge foo.bar`. The difference is that `stub` does not merge, therefore the field will still be merged (with the original path in the document).
 
@@ -4108,7 +4110,8 @@ keys:
 ### `(( map{map|elem|->dynaml-expr} ))`
 
 Using `{}` instead of `[]` in the mapping syntax, the result is again a map
-with the old keys and the new entry values.
+with the old keys and the new entry values. As for a list mapping additionally
+a key variable can be specified in the variable list.
 
 ```yaml
 persons:
@@ -4128,6 +4131,27 @@ older:
 **Remark**
 
 An alternate way to express the same is to use `sum[persons|{}|s,k,v|->s { k = v + 1 }]`.
+
+### `(( map{list|elem|->dynaml-expr} ))`
+
+Using `{}` instead of `[]` together with a list in the mapping syntax, the result is again a map
+with the list elements as key and the mapped entry values. For this all list entries must be strings.
+As for a list mapping additionally an index variable can be specified in the variable list.
+
+```yaml
+persons:
+  - alice
+  - bob
+length: (( map{persons|x|->length(x)} ) ))
+```
+
+just creates a map mapping the list entries to their length:
+
+```yaml
+length:
+  alice: 5
+  bob: 3
+```
 
 ### `(( select[expr|elem|->dynaml-expr] ))`
 
