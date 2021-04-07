@@ -44,7 +44,11 @@ func ReadFile(file string) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error getting [%s]: %s", file, err)
 		} else {
-			defer response.Body.Close()
+			if response.StatusCode != http.StatusOK {
+				defer response.Body.Close()
+				msg, _ := ioutil.ReadAll(response.Body)
+				return nil, fmt.Errorf("[status %d]: %s", response.StatusCode, msg)
+			}
 			return ioutil.ReadAll(response.Body)
 		}
 	} else {
