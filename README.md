@@ -2782,8 +2782,12 @@ The following validators are available:
 | `ca`|  none | certificate for CA |
 | `type`| list of accepted type keys | at least one [type key](#-typefoobar-) must match |
 | `valueset` | list argument with values | possible values |
-| `value` | `=` | value | check dedicated value |
-| `match` | `~=` | regular expression | string value matching regular expression |
+| `value` or `=` | value | check dedicated value |
+| `gt` or `>` | value | greater than (number/string) |
+| `lt` or `<` | value | less than (number/string) |
+| `ge` or `>=` | value | greater or equal to (number/string) |
+| `le` or `<=` | value | less or equal to (number/string) |
+| `match` or `~=` | regular expression | string value matching regular expression |
 | `list` | optional list of entry validators | is list and entries match given validators |
 | `map` | [[ &lt;key validator&gt;, ] &lt;entry validator&gt; ] | is map and keys and entries match given validators |
 | `mapfield` | &lt;field name&gt; [ , &lt;validator&gt;] | required entry in map |
@@ -2856,8 +2860,8 @@ val: (( validate( 6, [|x,m|-> [x > m, "is larger than " m, "is less than or equa
 ```
 
 Just to mention, the validator specification might be given inline as shown
-in the examples above, but as reference expressions, also. The `and` and `or`
-validators accept deeply nested validator specifications.
+in the examples above, but as reference expressions, also. The `not`, `and` 
+and `or` validators accept deeply nested validator specifications.
 
 e.g.:
 

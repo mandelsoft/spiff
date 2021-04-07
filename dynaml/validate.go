@@ -364,6 +364,179 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 		}
 		return ValidatorResult(true, "valid value")
 
+	case "gt", ">":
+		if len(args) != 1 {
+			return ValidatorErrorf("gt requires a value argument")
+		}
+		s := args[0].Value()
+
+		r := false
+		switch cv := s.(type) {
+		case string:
+			s, ok := value.(string)
+			if !ok {
+				return ValidatorErrorf("must be string to compare to string")
+			}
+			r = strings.Compare(s, cv) > 0
+		case int64:
+			s, ok := value.(int64)
+			if !ok {
+				s, ok := value.(float64)
+				if !ok {
+					return ValidatorErrorf("must be number to compare to number")
+				}
+				r = s > float64(cv)
+			} else {
+				r = s > cv
+			}
+		case float64:
+			s, ok := value.(int64)
+			if !ok {
+				s, ok := value.(float64)
+				if !ok {
+					return ValidatorErrorf("must be number to compare to number")
+				}
+				r = s > cv
+			} else {
+				r = float64(s) > cv
+			}
+		default:
+			return ValidatorErrorf("invalid type %T", s)
+		}
+		if !r {
+			return ValidatorResult(false, "less or equal to %v", s)
+		}
+		return ValidatorResult(true, "greater than %v", s)
+	case "lt", "<":
+		if len(args) != 1 {
+			return ValidatorErrorf("lt requires a value argument")
+		}
+		s := args[0].Value()
+
+		r := false
+		switch cv := s.(type) {
+		case string:
+			s, ok := value.(string)
+			if !ok {
+				return ValidatorErrorf("must be string to compare to string")
+			}
+			r = strings.Compare(s, cv) < 0
+		case int64:
+			s, ok := value.(int64)
+			if !ok {
+				s, ok := value.(float64)
+				if !ok {
+					return ValidatorErrorf("must be number to compare to number")
+				}
+				r = s < float64(cv)
+			} else {
+				r = s < cv
+			}
+		case float64:
+			s, ok := value.(int64)
+			if !ok {
+				s, ok := value.(float64)
+				if !ok {
+					return ValidatorErrorf("must be number to compare to number")
+				}
+				r = s < cv
+			} else {
+				r = float64(s) < cv
+			}
+		default:
+			return ValidatorErrorf("invalid type %T", s)
+		}
+		if !r {
+			return ValidatorResult(false, "greater than %v", s)
+		}
+		return ValidatorResult(true, "less or equal to %v", s)
+	case "ge", ">=":
+		if len(args) != 1 {
+			return ValidatorErrorf("ge requires a value argument")
+		}
+		s := args[0].Value()
+
+		r := false
+		switch cv := s.(type) {
+		case string:
+			s, ok := value.(string)
+			if !ok {
+				return ValidatorErrorf("must be string to compare to string")
+			}
+			r = strings.Compare(s, cv) >= 0
+		case int64:
+			s, ok := value.(int64)
+			if !ok {
+				s, ok := value.(float64)
+				if !ok {
+					return ValidatorErrorf("must be number to compare to number")
+				}
+				r = s >= float64(cv)
+			} else {
+				r = s >= cv
+			}
+		case float64:
+			s, ok := value.(int64)
+			if !ok {
+				s, ok := value.(float64)
+				if !ok {
+					return ValidatorErrorf("must be number to compare to number")
+				}
+				r = s >= cv
+			} else {
+				r = float64(s) >= cv
+			}
+		default:
+			return ValidatorErrorf("invalid type %T", s)
+		}
+		if !r {
+			return ValidatorResult(false, "less than %v", s)
+		}
+		return ValidatorResult(true, "greater or equal to %v", s)
+	case "le", "<=":
+		if len(args) != 1 {
+			return ValidatorErrorf("lt requires a value argument")
+		}
+		s := args[0].Value()
+
+		r := false
+		switch cv := s.(type) {
+		case string:
+			s, ok := value.(string)
+			if !ok {
+				return ValidatorErrorf("must be string to compare to string")
+			}
+			r = strings.Compare(s, cv) <= 0
+		case int64:
+			s, ok := value.(int64)
+			if !ok {
+				s, ok := value.(float64)
+				if !ok {
+					return ValidatorErrorf("must be number to compare to number")
+				}
+				r = s <= float64(cv)
+			} else {
+				r = s <= cv
+			}
+		case float64:
+			s, ok := value.(int64)
+			if !ok {
+				s, ok := value.(float64)
+				if !ok {
+					return ValidatorErrorf("must be number to compare to number")
+				}
+				r = s <= cv
+			} else {
+				r = float64(s) <= cv
+			}
+		default:
+			return ValidatorErrorf("invalid type %T", s)
+		}
+		if !r {
+			return ValidatorResult(false, "greater or equal to %v", s)
+		}
+		return ValidatorResult(true, "less than %v", s)
+
 	case "match", "~=":
 		if len(args) != 1 {
 			return ValidatorErrorf("match requires a regexp argument")

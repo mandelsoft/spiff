@@ -182,6 +182,14 @@ func (i *EvaluationInfo) PropagateError(value interface{}, state Status, msgfmt 
 	return value, *i, false //!i.LocalError
 }
 
+func (i EvaluationInfo) CleanError() EvaluationInfo {
+	i.Issue = yaml.Issue{}
+	i.LocalError = false
+	i.Failed = false
+	i.Undefined = false
+	return i
+}
+
 func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {
 	if o.RedirectPath != nil {
 		i.RedirectPath = o.RedirectPath

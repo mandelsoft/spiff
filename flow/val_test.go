@@ -290,6 +290,408 @@ val:
 			})
 		})
 
+		Context("lt", func() {
+			It("accepts string", func() {
+				source := parseYAML(`
+---
+val: (( validate("bob", [ "lt",  "peter" ]) ))
+`)
+				resolved := parseYAML(`
+---
+val: "bob"
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("rejects string", func() {
+				source := parseYAML(`
+---
+val1: (( catch(validate("bob", [ "lt", "alice" ])) ))
+val2: (( catch(validate("alice", [ "lt", "alice" ])) ))
+`)
+				resolved := parseYAML(`
+---
+val1:
+  valid: false
+  error: 'condition 1 failed: greater than alice'
+val2:
+  valid: false
+  error: 'condition 1 failed: greater than alice'
+
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("accepts int", func() {
+				source := parseYAML(`
+---
+val1: (( validate(6, [ "lt",  7 ]) ))
+val2: (( validate(6, [ "lt",  7.5 ]) ))
+`)
+				resolved := parseYAML(`
+---
+val1: 6
+val2: 6
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("rejects int", func() {
+				source := parseYAML(`
+---
+val1: (( catch(validate(6, [ "lt", 5])) ))
+val2: (( catch(validate(6, [ "lt", 5.5 ])) ))
+val3: (( catch(validate(6, [ "lt", 6])) ))
+val4: (( catch(validate(6.5, [ "lt", 6.5 ])) ))
+`)
+				resolved := parseYAML(`
+---
+val1:
+  valid: false
+  error: 'condition 1 failed: greater than 5'
+val2:
+  valid: false
+  error: 'condition 1 failed: greater than 5.5'
+val3:
+  valid: false
+  error: 'condition 1 failed: greater than 6'
+val4:
+  valid: false
+  error: 'condition 1 failed: greater than 6.5'
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("accepts float", func() {
+				source := parseYAML(`
+---
+val1: (( validate(6.6, [ "lt",  7 ]) ))
+val2: (( validate(6.6, [ "lt",  7.6 ]) ))
+`)
+				resolved := parseYAML(`
+---
+val1: 6.6
+val2: 6.6
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("rejects float", func() {
+				source := parseYAML(`
+---
+val1: (( catch(validate(6.6, [ "lt", 5 ])) ))
+val2: (( catch(validate(6.6, [ "lt", 5.6 ])) ))
+val3: (( catch(validate(6.6, [ "lt", 6.6 ])) ))
+`)
+				resolved := parseYAML(`
+---
+val1:
+  valid: false
+  error: 'condition 1 failed: greater than 5'
+val2:
+  valid: false
+  error: 'condition 1 failed: greater than 5.6'
+val3:
+  valid: false
+  error: 'condition 1 failed: greater than 6.6'
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("le", func() {
+			It("accepts string", func() {
+				source := parseYAML(`
+---
+val1: (( validate("bob", [ "le",  "peter" ]) ))
+val2: (( validate("bob", [ "le",  "bob" ]) ))
+`)
+				resolved := parseYAML(`
+---
+val1: "bob"
+val2: "bob"
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("rejects string", func() {
+				source := parseYAML(`
+---
+val: (( catch(validate("peter", [ "le", "bob" ])) ))
+`)
+				resolved := parseYAML(`
+---
+val:
+  valid: false
+  error: 'condition 1 failed: greater or equal to bob'
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("accepts int", func() {
+				source := parseYAML(`
+---
+val1: (( validate(6, [ "le",  7 ]) ))
+val2: (( validate(6, [ "le",  7.5 ]) ))
+val3: (( validate(6, [ "le",  6 ]) ))
+val4: (( validate(6, [ "le",  6.0 ]) ))
+`)
+				resolved := parseYAML(`
+---
+val1: 6
+val2: 6
+val3: 6
+val4: 6
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("rejects int", func() {
+				source := parseYAML(`
+---
+val1: (( catch(validate(6, [ "le", 5])) ))
+val2: (( catch(validate(6, [ "le", 5.5 ])) ))
+`)
+				resolved := parseYAML(`
+---
+val1:
+  valid: false
+  error: 'condition 1 failed: greater or equal to 5'
+val2:
+  valid: false
+  error: 'condition 1 failed: greater or equal to 5.5'
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("accepts float", func() {
+				source := parseYAML(`
+---
+val1: (( validate(6.6, [ "le",  7 ]) ))
+val2: (( validate(6.6, [ "le",  7.6 ]) ))
+val3: (( validate(6.6, [ "le",  6.6 ]) ))
+val4: (( validate(6.0, [ "le",  6.0]) ))
+`)
+				resolved := parseYAML(`
+---
+val1: 6.6
+val2: 6.6
+val3: 6.6
+val4: 6.0
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("rejects float", func() {
+				source := parseYAML(`
+---
+val1: (( catch(validate(6.6, [ "le", 5 ])) ))
+val2: (( catch(validate(6.6, [ "le", 5.6 ])) ))
+`)
+				resolved := parseYAML(`
+---
+val1:
+  valid: false
+  error: 'condition 1 failed: greater or equal to 5'
+val2:
+  valid: false
+  error: 'condition 1 failed: greater or equal to 5.6'
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("gt", func() {
+			It("accepts string", func() {
+				source := parseYAML(`
+---
+val: (( validate("bob", [ "gt",  "alice" ]) ))
+`)
+				resolved := parseYAML(`
+---
+val: "bob"
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("rejects string", func() {
+				source := parseYAML(`
+---
+val1: (( catch(validate("alice", [ "gt", "bob" ])) ))
+val2: (( catch(validate("alice", [ "gt", "alice" ])) ))
+`)
+				resolved := parseYAML(`
+---
+val1:
+  valid: false
+  error: 'condition 1 failed: less or equal to bob'
+val2:
+  valid: false
+  error: 'condition 1 failed: less or equal to alice'
+
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("accepts int", func() {
+				source := parseYAML(`
+---
+val1: (( validate(6, [ "gt",  5 ]) ))
+val2: (( validate(6, [ "gt",  5.5 ]) ))
+`)
+				resolved := parseYAML(`
+---
+val1: 6
+val2: 6
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("rejects int", func() {
+				source := parseYAML(`
+---
+val1: (( catch(validate(6, [ "gt", 7])) ))
+val2: (( catch(validate(6, [ "gt", 7.5 ])) ))
+val3: (( catch(validate(6, [ "gt", 6])) ))
+val4: (( catch(validate(6.5, [ "gt", 6.5 ])) ))
+`)
+				resolved := parseYAML(`
+---
+val1:
+  valid: false
+  error: 'condition 1 failed: less or equal to 7'
+val2:
+  valid: false
+  error: 'condition 1 failed: less or equal to 7.5'
+val3:
+  valid: false
+  error: 'condition 1 failed: less or equal to 6'
+val4:
+  valid: false
+  error: 'condition 1 failed: less or equal to 6.5'
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("accepts float", func() {
+				source := parseYAML(`
+---
+val1: (( validate(6.6, [ "gt",  5 ]) ))
+val2: (( validate(6.6, [ "gt",  5.6 ]) ))
+`)
+				resolved := parseYAML(`
+---
+val1: 6.6
+val2: 6.6
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("rejects float", func() {
+				source := parseYAML(`
+---
+val1: (( catch(validate(6.6, [ "gt", 7 ])) ))
+val2: (( catch(validate(6.6, [ "gt", 7.6 ])) ))
+val3: (( catch(validate(6.6, [ "gt", 6.6 ])) ))
+`)
+				resolved := parseYAML(`
+---
+val1:
+  valid: false
+  error: 'condition 1 failed: less or equal to 7'
+val2:
+  valid: false
+  error: 'condition 1 failed: less or equal to 7.6'
+val3:
+  valid: false
+  error: 'condition 1 failed: less or equal to 6.6'
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("ge", func() {
+			It("accepts string", func() {
+				source := parseYAML(`
+---
+val1: (( validate("bob", [ "ge",  "alice" ]) ))
+val2: (( validate("bob", [ "ge",  "bob" ]) ))
+`)
+				resolved := parseYAML(`
+---
+val1: "bob"
+val2: "bob"
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("rejects string", func() {
+				source := parseYAML(`
+---
+val: (( catch(validate("alice", [ "ge", "bob" ])) ))
+`)
+				resolved := parseYAML(`
+---
+val:
+  valid: false
+  error: 'condition 1 failed: less than bob'
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("accepts int", func() {
+				source := parseYAML(`
+---
+val1: (( validate(6, [ "ge",  5 ]) ))
+val2: (( validate(6, [ "ge",  5.5 ]) ))
+val3: (( validate(6, [ "ge",  6 ]) ))
+val4: (( validate(6, [ "ge",  6.0 ]) ))
+`)
+				resolved := parseYAML(`
+---
+val1: 6
+val2: 6
+val3: 6
+val4: 6
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("rejects int", func() {
+				source := parseYAML(`
+---
+val1: (( catch(validate(6, [ "ge", 7])) ))
+val2: (( catch(validate(6, [ "ge", 7.5 ])) ))
+`)
+				resolved := parseYAML(`
+---
+val1:
+  valid: false
+  error: 'condition 1 failed: less than 7'
+val2:
+  valid: false
+  error: 'condition 1 failed: less than 7.5'
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("accepts float", func() {
+				source := parseYAML(`
+---
+val1: (( validate(6.6, [ "ge",  5 ]) ))
+val2: (( validate(6.6, [ "ge",  5.6 ]) ))
+val3: (( validate(6.6, [ "ge",  6.6 ]) ))
+val4: (( validate(6.0, [ "ge",  6.0]) ))
+`)
+				resolved := parseYAML(`
+---
+val1: 6.6
+val2: 6.6
+val3: 6.6
+val4: 6.0
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+			It("rejects float", func() {
+				source := parseYAML(`
+---
+val1: (( catch(validate(6.6, [ "ge", 7 ])) ))
+val2: (( catch(validate(6.6, [ "ge", 7.6 ])) ))
+`)
+				resolved := parseYAML(`
+---
+val1:
+  valid: false
+  error: 'condition 1 failed: less than 7'
+val2:
+  valid: false
+  error: 'condition 1 failed: less than 7.6'
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
 		Context("empty", func() {
 			It("accepts string", func() {
 				source := parseYAML(`

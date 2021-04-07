@@ -134,6 +134,7 @@ A simplified certificate support can be found in the
   template using the `input` binding to generate the state value from the `state`
   field.
 - _&lt;update&gt;_: bool: (optional) setting to true enforces a value update
+- _&lt;relpath&gt;_: []: (optional) additional path segments for state access
 
 It generates a state map with two fields:
 
@@ -150,6 +151,7 @@ It generates a state map with two fields:
   template using the `input` binding to generate the state value directly
   from its value
 - _&lt;update&gt;_: bool: (optional) setting to true enforces a value update
+- _&lt;relpath&gt;_: []: (optional) additional path segments for state access
 
 ## Standard State Handling
 
@@ -159,9 +161,33 @@ It generates a state map with two fields:
 
 - _&lt;spec&gt;_: map: structure containing the specification for this state value
 - _&lt;update&gt;_: bool: (optional) setting to true enforces a value update
+- _&lt;relpath&gt;_: []: (optional) additional path segments for state access
 
 This function is a wrapper for the one above.
 The _spec_ map must contain two fields:
 - `input`: any:               the input data used to generate the state value
 - `value`: template or any:   the new value based on the input or a template
   using the `input` binding to generate the state value
+  
+## Tweaking the state access
+
+By default the old state is always accessed using the `stub()` function
+to access the same field containing the state lambda in the stub which
+is typically the state yaml. But this only works correctly if
+the state expression directly generates the state fields.
+
+The optional relpath parameter can be used to adjust the stub access
+(for accessing old state) in case of generating multiple state instances
+with `map`/`sum`  generating implicit intermediate sub structures between the
+field containing the lambda expression and the generated state field.
+
+for example, when generating wireguard keys for a dynamic set of names:
+
+```yaml
+names:
+  - alice
+  - bob
+state:
+  <<: (( &state(merge none) ))
+  wireguard: (( map{names|m|-> utilities.certs.wireguardKey(false, [m])} ))
+```

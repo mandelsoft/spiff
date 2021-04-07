@@ -26,7 +26,7 @@ when using the functions in a stateful scenario.
 ## Generate a self signed Certificate for dedicated common name
 
 ```
-    selfSignedCA(<common name>,<update>=false) -> state
+    selfSignedCA(<common name>, <update>=false, <relpath>=[]) -> state
 ```
 
 The _value_ field provides the fields:
@@ -37,7 +37,7 @@ The _value_ field provides the fields:
 ## Generate a Key/Certificate Pair
 
 ```
-    keyCertForCA(<certspec>, <ca>, <update>=false) -> state
+    keyCertForCA(<certspec>, <ca>, <update>=false, <relpath>=[]) -> state
 ```
 
 the certificate specification uses the format for the
@@ -54,7 +54,7 @@ The _value_ field provides the fields:
 ## Generate a Certificate with an explicitly managed Specification
 
 ```
-    keyCert(<certspec>,<update>=false) -> state
+    keyCert(<certspec>, <update>=false, <relpath>=[]) -> state
 ```
 
 the certificate specification uses the format for the
@@ -70,7 +70,7 @@ The _value_ field provides the fields:
 ## Generate an SSH Key Pair
 
 ```
-    sshKey(<length>=2048, <update>=false)  -> state
+    sshKey(<length>=2048, <update>=false, <relpath>=[])  -> state
 ```
 
 The _value_ field provides the fields:
@@ -81,7 +81,7 @@ The _value_ field provides the fields:
 ## Generate a Random Secret with a dedicated Length
 
 ```
-    secret(<default>, <length>, <update>=false)  -> string
+    secret(<default>, <length>, <update>=false, <relpath>=[])  -> string
 ```
 
 If no `default` (`~`) is given a random string consisting of alphanumeric
@@ -92,9 +92,33 @@ The _value_ field directly contains the secret value.
 ## Generate a Wireguard Key Pair
 
 ```
-    wireguardKey(<update>=false)  -> state
+    wireguardKey(<update>=false, <relpath>=[])  -> state
 ```
 
 The _value_ field provides the fields:
 - `key` holding the private key
 - `pub` holding the public key
+
+## Tweaking the state access
+
+By default the old state is always accessed using the `stub()` function
+to access the same field containing the state lambda in the stub which
+is typically the state yaml. This is handled in the [state](../state/README.md)
+library. But this only works correctly if
+the state expression directly generates the state fields.
+
+The optional relpath parameter can be used to adjust the stub access
+(for accessing old state) in case of generating multiple state instances
+with `map`/`sum`  generating implicit intermediate sub structures between the
+field containing the lambda expression and the generated state field.
+
+for example, when generating wireguard keys for a dynamic set of names:
+
+```yaml
+names:
+  - alice
+  - bob
+state:
+  <<: (( &state(merge none) ))
+  wireguard: (( map{names|m|-> utilities.certs.wireguardKey(false, [m])} ))
+```
