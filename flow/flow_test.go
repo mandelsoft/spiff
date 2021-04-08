@@ -8451,4 +8451,79 @@ url:
 			Expect(source).To(FlowAs(resolved))
 		})
 	})
+
+	Context("string interpolation", func() {
+		It("handles expressions in strings", func() {
+			source := parseYAML(`
+---
+data: "test"
+interpolated: this is a (( data ))
+`)
+
+			resolved := parseYAML(`
+---
+data: "test"
+interpolated: this is a test
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles expressions in strings", func() {
+			source := parseYAML(`
+---
+data: "test"
+interpolated: "this is a (( \"super \" data ))"
+`)
+
+			resolved := parseYAML(`
+---
+data: "test"
+interpolated: this is a super test
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("handles bracket expressions in strings", func() {
+			source := parseYAML(`
+---
+data: "interpol"
+interpolated: "this is a ((( ( data ( data )) ))) hell"
+`)
+
+			resolved := parseYAML(`
+---
+data: "interpol"
+interpolated: this is a (interpolinterpol) hell
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("re-evaluates expressions", func() {
+			source := parseYAML(`
+---
+data: "test"
+interpolated: "this is a (( \"(( data ))\" data ))"
+`)
+
+			resolved := parseYAML(`
+---
+data: "test"
+interpolated: this is a testtest
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("does not handle interpolation in interpolation", func() {
+			source := parseYAML(`
+---
+data: "test"
+interpolated: "this is a (( length(\"(( data ))\") data ))"
+`)
+
+			resolved := parseYAML(`
+---
+data: "test"
+interpolated: this is a 10test
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
 })

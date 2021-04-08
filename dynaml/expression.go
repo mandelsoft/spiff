@@ -24,6 +24,9 @@ type State interface {
 	FileAccessAllowed() bool
 	FileSystem() vfs.VFS
 	GetFunctions() Registry
+	InterpolationEnabled() bool
+
+	EnableInterpolation()
 }
 
 type Binding interface {

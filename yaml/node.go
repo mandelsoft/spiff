@@ -439,7 +439,7 @@ func (n AnnotatedNode) EquivalentToNode(o Node) bool {
 	return b
 }
 
-func EmbeddedDynaml(root Node) *string {
+func EmbeddedDynaml(root Node, interpol bool) *string {
 	rootString, ok := root.Value().(string)
 	if !ok {
 		return nil
@@ -450,11 +450,16 @@ func EmbeddedDynaml(root Node) *string {
 		if !strings.HasPrefix(sub, "!") {
 			return &sub
 		}
+		return nil
 	}
-	return nil
+	if !interpol {
+		return nil
+	}
+	_, expr := convertToExpression(rootString, false)
+	return expr
 }
 
-func UnescapeDynaml(root Node) Node {
+func UnescapeDynaml(root Node, interpol bool) Node {
 	if root.Value() == nil {
 		return root
 	}
@@ -465,6 +470,13 @@ func UnescapeDynaml(root Node) Node {
 			sub := value[2 : len(value)-2]
 			if strings.HasPrefix(sub, "!") {
 				return NewNode("(("+sub[1:]+"))", root.SourceName())
+			}
+			return root
+		}
+		if interpol {
+			str, _ := convertToExpression(value, true)
+			if str != nil && *str != value {
+				return NewNode(*str, root.SourceName())
 			}
 		}
 	case map[string]Node:

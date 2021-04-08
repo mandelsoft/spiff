@@ -177,6 +177,7 @@ Contents:
 	- [Special Literals](#special-literals)
 	- [Access to evaluation context](#access-to-evaluation-context)
 	- [Operation Priorities](#operation-priorities)
+	- [String Interpolation](#string-interpolation)
 - [Structural Auto-Merge](#structural-auto-merge)
 - [Bringing it all together](#bringing-it-all-together)
 - [Useful to Know](#useful-to-know)
@@ -5002,6 +5003,62 @@ The following levels are supported (from low priority to high priority)
 7. Grouping `( )`, `!`, constants, references (`foo.bar`), `merge`, `auto`, `lambda`, `map[]`, and [functions](#functions)
 
 The complete grammar can be found in [dynaml.peg](dynaml/dynaml.peg).
+
+## String Interpolation
+
+**Attention:** This is an alpha feature. It must be enabled on the command
+line with the `--interpolation` option. Also for the spiff library it must
+explicitly be enabled.
+
+Typically a complete value can either be a literal or a dynaml expression.
+For string literals it is possible to use an interpolation syntax to embed
+dynaml expressions into strings.
+
+For example
+
+```yaml
+data: test
+interpolation: this is a (( data ))
+```
+
+replaces the part between the double brackets by the result
+of the described expression evaluation. Here the brackets can be escaped
+by the usual escaping (`((!`) syntax.
+
+Those string literals will implicitly be converted to complete flat dynaml
+expressions. The example above will therefore be converted into
+
+`(( "this is a " data ))`
+
+which is the regular dynaml equivalent. The escaping is very ticky, and
+may be there are still problems. Quotes inside an embedded dynaml expression
+can be escaped to enable quotes in string literals.
+
+Incomplete or partial interpolation expressions will be ignored and 
+just used a s string.
+
+Strings inside a dynaml expression are NOT directly interpolated again, thus
+
+```yaml
+data: "test"
+interpolated: "this is a (( length(\"(( data ))\") data ))"
+```
+ 
+will resolve `interpolation` to `this is 10test` and not to `this is 4test`.
+ 
+But if the final string after the expression evaluation again describes a string
+interpolation it will be processed, again.
+
+```yaml
+data: test
+interpolation: this is a (( "(( data ))" data ))
+```
+
+will resolve `interpolation` to `this is testtest`.
+
+The embedded dynaml expression must be concatenatable with strings.
+
+
 
 # Structural Auto-Merge
 

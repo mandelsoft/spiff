@@ -188,7 +188,7 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (result []Unresolved
 		//		)
 
 	case string:
-		if s := yaml.EmbeddedDynaml(root); s != nil {
+		if s := yaml.EmbeddedDynaml(root, false); s != nil {
 			_, err := Parse(*s, dummy, dummy)
 			if err != nil {
 				nodes = append(nodes, UnresolvedNode{
@@ -312,7 +312,7 @@ func isResolvedValue(val interface{}) bool {
 		return true
 
 	case string:
-		if yaml.EmbeddedDynaml(NewNode(val, nil)) != nil {
+		if yaml.EmbeddedDynaml(NewNode(val, nil), false) != nil {
 			return false
 		}
 		return true

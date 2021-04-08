@@ -128,6 +128,9 @@ func (e DefaultEnvironment) CurrentSourceName() string {
 }
 
 func (e DefaultEnvironment) GetRootBinding() map[string]yaml.Node {
+	if e.scope == nil {
+		return nil
+	}
 	return e.scope.root.local
 }
 
@@ -400,7 +403,9 @@ func getOuters(env *DefaultEnvironment) (yaml.Node, yaml.Node) {
 			if e, ok := outer.(DefaultEnvironment); ok && e.binding {
 				bindings = outer
 			}
-			list = append(list, node(outer.GetRootBinding()))
+			if b := outer.GetRootBinding(); b != nil {
+				list = append(list, node(b))
+			}
 			outer = outer.Outer()
 		}
 	}

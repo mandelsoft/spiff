@@ -2,6 +2,7 @@ package flow
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/mandelsoft/spiff/yaml"
 )
@@ -20,8 +21,8 @@ func (matcher *CascadeAsMatcher) Match(source interface{}) (success bool, err er
 	if source == nil && matcher.Expected == nil {
 		return false, fmt.Errorf("Refusing to compare <nil> to <nil>.")
 	}
-
-	matcher.actual, err = Cascade(nil, source.(yaml.Node), Options{}, matcher.Stubs...)
+	env := NewEnvironment(nil, "", NewState(os.Getenv("SPIFF_ENCRYPTION_KEY"), MODE_OS_ACCESS|MODE_FILE_ACCESS).SetInterpolation(true))
+	matcher.actual, err = Cascade(env, source.(yaml.Node), Options{}, matcher.Stubs...)
 	if err != nil {
 		return false, err
 	}
