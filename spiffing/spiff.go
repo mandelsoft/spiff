@@ -5,12 +5,11 @@
 package spiffing
 
 import (
-	"os"
-
 	"github.com/mandelsoft/vfs/pkg/osfs"
 	"github.com/mandelsoft/vfs/pkg/vfs"
 
 	"github.com/mandelsoft/spiff/dynaml"
+	"github.com/mandelsoft/spiff/features"
 	"github.com/mandelsoft/spiff/flow"
 	"github.com/mandelsoft/spiff/yaml"
 )
@@ -80,9 +79,12 @@ func NewFunctions() Functions {
 
 // New create a new default spiff context.
 func New() Spiff {
+	set := features.Features()
+	_, interpolation := set[features.INTERPOLATION]
 	return &spiff{
-		key:  os.Getenv("SPIFF_ENCRYPTION_KEY"),
-		mode: MODE_DEFAULT,
+		key:           features.EncryptionKey(),
+		mode:          MODE_DEFAULT,
+		interpolation: interpolation,
 	}
 }
 

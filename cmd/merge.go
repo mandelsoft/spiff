@@ -14,6 +14,7 @@ import (
 
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/dynaml"
+	"github.com/mandelsoft/spiff/features"
 	"github.com/mandelsoft/spiff/flow"
 	"github.com/mandelsoft/spiff/legacy/candiedyaml"
 	"github.com/mandelsoft/spiff/yaml"
@@ -52,9 +53,12 @@ var mergeCmd = &cobra.Command{
 }
 
 func init() {
+
+	set := features.Features()
+	_, interpolation = set[features.INTERPOLATION]
 	rootCmd.AddCommand(mergeCmd)
 
-	mergeCmd.Flags().BoolVar(&interpolation, "interpolation", false, "enable interpolation alpha feature")
+	mergeCmd.Flags().BoolVar(&interpolation, "interpolation", interpolation, "enable interpolation alpha feature")
 	mergeCmd.Flags().BoolVar(&asJSON, "json", false, "print output in json format")
 	mergeCmd.Flags().BoolVar(&debug.DebugFlag, "debug", false, "Print state info")
 	mergeCmd.Flags().BoolVar(&processingOptions.Partial, "partial", false, "Allow partial evaluation only")
@@ -200,8 +204,7 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 
 	var binding dynaml.Binding
 	if bindingYAML != nil || interpolation {
-		defstate := flow.NewState(os.Getenv("SPIFF_ENCRYPTION_KEY"), flow.MODE_OS_ACCESS|flow.MODE_FILE_ACCESS).
-			SetInterpolation(interpolation)
+		defstate := flow.NewDefaultState().SetInterpolation(interpolation)
 		binding = flow.NewEnvironment(
 			nil, "context", defstate)
 		if bindingYAML != nil {

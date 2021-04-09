@@ -2,13 +2,13 @@ package flow
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/dynaml"
+	"github.com/mandelsoft/spiff/features"
 	"github.com/mandelsoft/spiff/yaml"
 )
 
@@ -303,13 +303,13 @@ func NewEnvironment(stubs []yaml.Node, source string, optstate ...*State) dynaml
 		state = optstate[0]
 	}
 	if state == nil {
-		state = NewState(os.Getenv("SPIFF_ENCRYPTION_KEY"), MODE_OS_ACCESS|MODE_FILE_ACCESS)
+		state = NewState(features.EncryptionKey(), MODE_OS_ACCESS|MODE_FILE_ACCESS)
 	}
 	return DefaultEnvironment{state: state, stubs: stubs, sourceName: source, currentSourceName: source, outer: nil, active: true, binding: true}
 }
 
 func NewProcessLocalEnvironment(stubs []yaml.Node, source string) dynaml.Binding {
-	state := NewState(os.Getenv("SPIFF_ENCRYPTION_KEY"), 0)
+	state := NewState(features.EncryptionKey(), 0)
 	return DefaultEnvironment{state: state, stubs: stubs, sourceName: source, currentSourceName: source, outer: nil, active: true}
 }
 
@@ -323,7 +323,7 @@ func CleanupEnvironment(binding dynaml.Binding) {
 func NewNestedEnvironment(stubs []yaml.Node, source string, outer dynaml.Binding) dynaml.Binding {
 	var state *State
 	if outer == nil {
-		state = NewState(os.Getenv("SPIFF_ENCRYPTION_KEY"), MODE_OS_ACCESS|MODE_FILE_ACCESS)
+		state = NewDefaultState()
 	}
 	return DefaultEnvironment{state: state, stubs: stubs, sourceName: source, currentSourceName: source, outer: outer, active: true}
 }

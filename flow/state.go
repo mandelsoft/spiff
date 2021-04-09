@@ -14,6 +14,7 @@ import (
 
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/dynaml"
+	"github.com/mandelsoft/spiff/features"
 )
 
 const MODE_FILE_ACCESS = 1 // support file system access
@@ -48,6 +49,10 @@ func NewState(key string, mode int, optfs ...vfs.FileSystem) *State {
 		mode:       mode,
 		fileSystem: vfs.New(fs),
 	}
+}
+
+func NewDefaultState() *State {
+	return NewState(features.EncryptionKey(), MODE_OS_ACCESS|MODE_FILE_ACCESS)
 }
 
 func (s *State) SetFunctions(f dynaml.Registry) *State {

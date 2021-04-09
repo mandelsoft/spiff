@@ -5008,7 +5008,9 @@ The complete grammar can be found in [dynaml.peg](dynaml/dynaml.peg).
 
 **Attention:** This is an alpha feature. It must be enabled on the command
 line with the `--interpolation` option. Also for the spiff library it must
-explicitly be enabled.
+explicitly be enabled. By adding the key `interpolation` to the feature list
+stored in the environment variable `SPIFF_FEATURES` this feature will be enabled
+by default.
 
 Typically a complete value can either be a literal or a dynaml expression.
 For string literals it is possible to use an interpolation syntax to embed

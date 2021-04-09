@@ -2,10 +2,10 @@ package flow
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
+
 	"github.com/mandelsoft/spiff/yaml"
 )
 
@@ -24,7 +24,7 @@ func (matcher *FlowAsMatcher) Match(source interface{}) (success bool, err error
 		return false, fmt.Errorf("Refusing to compare <nil> to <nil>.")
 	}
 
-	env := NewEnvironment(nil, "", NewState(os.Getenv("SPIFF_ENCRYPTION_KEY"), MODE_OS_ACCESS|MODE_FILE_ACCESS).SetInterpolation(true))
+	env := NewEnvironment(nil, "", NewDefaultState().SetInterpolation(true))
 	matcher.actual, err = NestedFlow(env, source.(yaml.Node), matcher.Stubs...)
 	if err != nil {
 		return false, err
