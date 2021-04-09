@@ -17,14 +17,21 @@ utilities:
     # offered fields in the value field:
     #   key and pub
     #
-    sshKey: (( |size=2048,update=false|->utilities.state.standard(_.sshKeySpec(size),update) ))
+    wireguardKey: (( |update=false,relpath=[]|->utilities.state.data("",_.templates.wireguard_value,update,relpath) ))
+
+    #
+    # generate a ssh key with the state library
+    # offered fields in the value field:
+    #   key and pub
+    #
+    sshKey: (( |size=2048,update=false,relpath=[]|->utilities.state.standard(_.sshKeySpec(size),update,relpath) ))
 
     #
     # generate a self signed CA with the state library
     # offered fields in the value field:
     #   key, pub and cert
     #
-    selfSignedCA: (( |cn,update=false|->_.keyCert(_.caSpec(cn),update) ))
+    selfSignedCA: (( |cn,update=false,relpath=[]|->_.keyCert(_.caSpec(cn),update,relpath) ))
 
     #
     # generate a key and cert signed by the given ca.
@@ -33,7 +40,7 @@ utilities:
     # offered fields in the value field:
     #   key, pub and cert
     #
-    keyCertForCA: (( |certspec,ca,update=false|->_.keyCert({$caCert=ca.value.cert, $caPrivateKey=ca.value.key} certspec,update) ))
+    keyCertForCA: (( |certspec,ca,update=false,relpath=[]|->_.keyCert({$caCert=ca.value.cert, $caPrivateKey=ca.value.key} certspec,update,relpath) ))
 
     #
     # generate a certificate state for a given cert spec
@@ -42,14 +49,14 @@ utilities:
     # offered fields in the value field:
     #   key, pub and cert
     #
-    keyCert: (( |certspec,update=false|->utilities.state.standard(_.keyCertSpec(certspec),update) ))
+    keyCert: (( |certspec,update=false,relpath=[]|->utilities.state.standard(_.keyCertSpec(certspec),update, relpath) ))
 
 
     #
     # generate a secret value, if no default is given
     # the length parameter specifies the length of the generated secret.
     #
-    secret: (( |default,length,update=false|->utilities.state.valuedata(default,_.templates.secret, update) ))
+    secret: (( |default,length,update=false,relpath=[]|->utilities.state.valuedata(default,_.templates.secret, update,relpath) ))
 
     #######################
     # helper funcions
@@ -78,6 +85,17 @@ utilities:
     # helper templates
     #
     templates:
+      #
+      # the value template used by the state library
+      # to generate a new wireguard key containing
+      # private key (key), public key (pub)
+      wireguard_value:
+        <<: (( &template ))
+        state:
+          key: (( wggenkey() ))
+          pub: (( wgpublickey(key) ))
+
+
       #
       # the value template used by the state library
       # to generate a new ssh key containing

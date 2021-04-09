@@ -22,7 +22,7 @@ The package name is `utilities.generate`.
           `values` or `settings`
           
 The given values are processed as top-level stub for the given stubs to produce
-the value setiings for the manifest template processing.
+the value settings for the manifest template processing.
 
 The result is a list of processed manifests taken from the template file.
 

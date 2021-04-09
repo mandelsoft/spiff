@@ -15,6 +15,12 @@
 # The actual state should be derived from this field
 # and used as stub for successive merge calls.
 #
+# The optional relpath parameter can be used to adjust
+# the stub access (for accessing old state) in case
+# of generating multiple instances with map/sum
+# aggregations generating implicit intermediate sub
+# structures between the field containing the lambda
+# expression and the generated state field.
 #
 # lambdas:
 #
@@ -24,14 +30,27 @@
 #                                  value
 #    new:         template or and: the new value based on the input or
 #                                  a template using the `input` binding to
-#                                  generate the state value
+#                                  generate the state value using the state field
 #    forceupdate: bool:            setting to true encorces a value update
+#    relpath:     []:              optional relative stub path
+#
+#  - utilities.state.valuedata(input,new,forceupdate=false)
+#
+#    input:       any:             the input data used to generate the state
+#                                  value
+#    new:         template or and: the new value based on the input or
+#                                  a template using the `input` binding to
+#                                  directly generate the state value
+#    forceupdate: bool:            setting to true encorces a value update
+#    relpath:     []:              optional relative stub path
+#
 #
 #  - utilities.state.standard(spec,forceupdate=false)
 #
 #    spec:        map:             structure containing the specification
 #                                  for this state value
 #    forceupdate: bool:            setting to true encorces a value update
+#    relpath:     []:              optional relative stub path
 #
 #    the _spec_ map must contain two fields:
 #         input: any               the input data used to generate the state
@@ -45,8 +64,8 @@ utilities:
   <<: (( &inject &temporary(merge || ~) ))
 
   state:
-    valuedata: (( |input,new,update=false|-> { $input=input, $value= ( !update -and stub().input == input ? stub().value :~) // type(new) == "template" ? (*new) :new } ))
-    data: (( |input,new,update=false|-> { $input=input, $value= ( !update -and stub().input == input ? stub().value :~) // type(new) == "template" ? (*new).state :new } ))
+    valuedata: (( |input,new,update=false,relpath=[]|-> ($old=stub(__ctx.PATH relpath) || ~~) { $input=input, $value= ( !update -and old.input == input ? old.value :~) // type(new) == "template" ? (*new) :new } ))
+    data: (( |input,new,update=false,relpath=[]|-> ($old=stub(__ctx.PATH relpath) || ~~) { $input=input, $value= ( !update -and old.input == input ? old.value :~) // type(new) == "template" ? (*new).state :new } ))
 
-    standard: (( |data,update=false|-> _.data(data.input, data.value,update) ))
+    standard: (( |data,update=false,relpath=[]|-> _.data(data.input, data.value,update) ))
 

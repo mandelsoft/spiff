@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/md5"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"strconv"
@@ -26,6 +25,7 @@ func func_exec(cached bool, arguments []interface{}, binding Binding) (interface
 		return info.DenyOSOperation("exec")
 	}
 	args := []string{}
+	wopt := WriteOpts{}
 	debug.Debug("exec: found %d arguments for call\n", len(arguments))
 	for i, arg := range arguments {
 		list, ok := arg.([]yaml.Node)
@@ -34,9 +34,9 @@ func func_exec(cached bool, arguments []interface{}, binding Binding) (interface
 			if len(arguments) == 1 && len(list) > 0 {
 				// handle single list argument to gain command and argument
 				for j, arg := range list {
-					v, _, ok := getArg(j, arg.Value(), j != 0)
-					if !ok {
-						return info.Error("command argument must be string")
+					v, _, err := getArg(j, arg.Value(), wopt, j != 0)
+					if err != nil {
+						return info.Error("invalid command argument: %s", err)
 					}
 					args = append(args, v)
 				}
@@ -44,9 +44,9 @@ func func_exec(cached bool, arguments []interface{}, binding Binding) (interface
 				return info.Error("list not allowed for command argument")
 			}
 		} else {
-			v, _, ok := getArg(i, arg, i != 0)
-			if !ok {
-				return info.Error("command argument must be string")
+			v, _, err := getArg(i, arg, wopt, i != 0)
+			if err != nil {
+				return info.Error("invalid command argument: %s", err)
 			}
 			args = append(args, v)
 		}
@@ -83,24 +83,41 @@ func convertOutput(data []byte) (interface{}, EvaluationInfo, bool) {
 	}
 }
 
-func getArg(key interface{}, value interface{}, yaml bool) (string, bool, bool) {
+func getArg(key interface{}, value interface{}, wopt WriteOpts, allowyaml bool) (string, bool, error) {
 	debug.Debug("arg %v: %+v\n", key, value)
 	switch v := value.(type) {
 	case string:
-		return v, true, true
+		return v, true, nil
 	case int64:
-		return strconv.FormatInt(v, 10), false, true
+		return strconv.FormatInt(v, 10), false, nil
+	case float64:
+		return strconv.FormatFloat(v, 'e', 64, 64), false, nil
 	case bool:
-		return strconv.FormatBool(v), false, true
+		return strconv.FormatBool(v), false, nil
 	default:
-		if !yaml || value == nil {
-			return "", false, false
+		if !allowyaml || value == nil {
+			return "", false, fmt.Errorf("yaml or empty data not supported")
+		}
+		if wopt.Multi {
+			if list, ok := value.([]yaml.Node); ok {
+				result := ""
+				for i, d := range list {
+					yaml, err := candiedyaml.Marshal(d)
+					if err != nil {
+						return "", false, fmt.Errorf("error marshalling entry %d: %s", i, err)
+					}
+					result = result + "---\n" + string(yaml)
+				}
+				return result, false, nil
+			} else {
+				return "", false, fmt.Errorf("multi document mode requires a list")
+			}
 		}
 		yaml, err := candiedyaml.Marshal(NewNode(value, nil))
 		if err != nil {
-			log.Fatalln("error marshalling manifest:", err)
+			return "", false, fmt.Errorf("error marshalling manifest: %s", err)
 		}
-		return "---\n" + string(yaml), false, true
+		return "---\n" + string(yaml), false, nil
 	}
 }
 

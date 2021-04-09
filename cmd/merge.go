@@ -22,6 +22,7 @@ import (
 var asJSON bool
 var outputPath string
 var selection []string
+var expr string
 var split bool
 var processingOptions flow.Options
 var state string
@@ -63,6 +64,7 @@ func init() {
 	mergeCmd.Flags().StringVar(&bindings, "bindings", "", "yaml file with additional bindings to use")
 	mergeCmd.Flags().StringArrayVarP(&values, "define", "D", nil, "key/value bindings")
 	mergeCmd.Flags().StringArrayVar(&selection, "select", []string{}, "filter dedicated output fields")
+	mergeCmd.Flags().StringVar(&expr, "evaluate", "", "evaluation expression")
 }
 
 func createValuesFromArgs(values []string) (map[string]string, error) {
@@ -263,6 +265,24 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 					log.Fatalln(fmt.Sprintf("cannot write state file %q", stateFilePath))
 				}
 			}
+
+			if len(expr) > 0 {
+				e, err := dynaml.Parse(expr, []string{}, []string{})
+				if err != nil {
+					log.Fatalln(fmt.Sprintf("invalid expression %q: %s", expr, err))
+				}
+				if m, ok := flowed.Value().(map[string]yaml.Node); ok {
+					binding := flow.NewNestedEnvironment(nil, "context", binding).WithLocalScope(m)
+					v, err := flow.Cascade(binding, yaml.NewNode(e, "<expr>"), flow.Options{})
+					if err != nil {
+						log.Fatalln(fmt.Sprintf("expression %q failed: %s", expr, err))
+					}
+					flowed = v
+				} else {
+					log.Fatalln("no map document")
+				}
+			}
+
 			if len(selection) > 0 {
 				new := map[string]yaml.Node{}
 				for _, p := range selection {
@@ -276,6 +296,7 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 				}
 				flowed = yaml.NewNode(new, "")
 			}
+
 			if split {
 				if list, ok := flowed.Value().([]yaml.Node); ok {
 					for _, d := range list {

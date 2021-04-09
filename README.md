@@ -133,6 +133,9 @@ Contents:
 		    - [(( x509genkey(spec) ))](#-x509genkeyspec-)
 		    - [(( x509publickey(key) ))](#-x509publickeykey-)
 		    - [(( x509cert(spec) ))](#-x509certspec-)
+		- [Wireguard Functions](#wireguard-functions)
+            - [(( wggenkey() ))](#-wggenkey-)
+        	- [(( wgpublickey(key) ))](#-wgpublickey-)
 	- [(( lambda |x|->x ":" port ))](#-lambda-x-x--port-)
 	    - [Positional versus Named Argunments](#positional-versus-named-arguments)
 	    - [Scopes and Lambda Expressions](#scopes-and-lambda-expressions)
@@ -147,6 +150,7 @@ Contents:
 		- [(( map[list|idx,elem|->dynaml-expr] ))](#-maplistidxelem-dynaml-expr-)
 		- [(( map[map|key,value|->dynaml-expr] ))](#-mapmapkeyvalue-dynaml-expr-)
 		- [(( map{map|elem|->dynaml-expr} ))](#-mapmapelem-dynaml-expr-)
+		- [(( map{list|elem|->dynaml-expr} ))](#-maplistelem-dynaml-expr-)
 		- [(( select[expr|elem|->dynaml-expr] ))](#-selectexprelem-dynaml-expr-)
 		- [(( select{map|elem|->dynaml-expr} ))](#-selectmapelem-dynaml-expr-)
 	- [Aggregations](#aggregations)
@@ -182,7 +186,7 @@ Contents:
 
 # Installation
 
-Official release executable binaries can be downloaded via [Github releases](https://github.com/mandelsoft/spiff/releases) for Darwin and Linux machines (and virtual machines).
+Official release executable binaries can be downloaded via [Github releases](https://github.com/mandelsoft/spiff/releases) for Darwin, Linux and PowerPC machines (and virtual machines).
 
 Some of spiff's dependencies have changed since the last official release, and spiff will not be updated to keep up with these dependencies.  Working dependencies are vendored in the `Godeps` directory (more information on the `godep` tool is available [here](https://github.com/tools/godep)).  As such, trying to `go get` spiff will likely fail; the only supported way to use spiff is to use an official binary release.
 
@@ -227,10 +231,16 @@ The ` merge` command offers several options:
   separate documen. The _yaml_ format uses as usual `---` as separator line.
   The _json_ format outputs a sequence of _json_ documents, one per line.
   
-- With `--select <field path>` is is possible to select a dedicated field of the
+- With `--select <field path>` it is possible to select a dedicated field of the
   processed document for the output
   
+- With `--evaluate <dynaml expression>` it is possible to evaluate a given dynaml
+  expression on the processed document for the output. The expression is evaluated
+  before the selection path is applied, which will then work on the evaluation
+  result.
+  
 - The option `--state <path>` enables the state support of _spiff_. If the
+  given file exists it is put on top of the configured stub list for the
   given file exists it is put on top of the configured stub list for the
   merge processing. Additionally to the output of the processed document
   it is filtered for nodes marked with the [`&state` marker](#-state-).
@@ -598,7 +608,8 @@ Another way to compose lists based on expressions are the functions
 
 Any expression may be preluded by any number of explicit _scope literals_. A
 scope literal describes a map whose values are available for relative reference 
-resolution of the expression (static scope). 
+resolution of the expression (static scope). It creates an additional local
+binding for given names.
 
 A scope literal might consist of any number of field assignments separated by a
 comma `,`. The key as well as the value are given by expressions, whereas the
@@ -2160,7 +2171,7 @@ value: foobar
 The argument passed to this function must either be a reference literal or
 an expression evaluating to either a string denoting a reference or a string
 list denoting the list of path elements for the reference.
-If no argument is given, the actual field path is used.
+If no argument or an undefined (`~~`) is given, the actual field path is used.
 
 Alternatively the `merge` operation could be used, for example `merge foo.bar`. The difference is that `stub` does not merge, therefore the field will still be merged (with the original path in the document).
 
@@ -2771,8 +2782,12 @@ The following validators are available:
 | `ca`|  none | certificate for CA |
 | `type`| list of accepted type keys | at least one [type key](#-typefoobar-) must match |
 | `valueset` | list argument with values | possible values |
-| `value` | `=` | value | check dedicated value |
-| `match` | `~=` | regular expression | string value matching regular expression |
+| `value` or `=` | value | check dedicated value |
+| `gt` or `>` | value | greater than (number/string) |
+| `lt` or `<` | value | less than (number/string) |
+| `ge` or `>=` | value | greater or equal to (number/string) |
+| `le` or `<=` | value | less or equal to (number/string) |
+| `match` or `~=` | regular expression | string value matching regular expression |
 | `list` | optional list of entry validators | is list and entries match given validators |
 | `map` | [[ &lt;key validator&gt;, ] &lt;entry validator&gt; ] | is map and keys and entries match given validators |
 | `mapfield` | &lt;field name&gt; [ , &lt;validator&gt;] | required entry in map |
@@ -2845,8 +2860,8 @@ val: (( validate( 6, [|x,m|-> [x > m, "is larger than " m, "is less than or equa
 ```
 
 Just to mention, the validator specification might be given inline as shown
-in the examples above, but as reference expressions, also. The `and` and `or`
-validators accept deeply nested validator specifications.
+in the examples above, but as reference expressions, also. The `not`, `and` 
+and `or` validators accept deeply nested validator specifications.
 
 e.g.:
 
@@ -3452,6 +3467,50 @@ cert:
   validity: 99  # yepp, that's right, there has already time passed since the creation
 ```
 
+### Wireguard Functions
+
+spiff supports some useful functions to work with _wireguard_ keys.
+Please refer also to the [Useful to Know](#useful-to-know) section to find some
+tips for providing state.
+
+#### `(( wggenkey() ))`
+
+This function can be used generate private wireguard key. The result will
+base64 encoded.
+
+e.g.:
+
+```yaml
+keys:
+  key: (( wggenkey() ))
+```
+
+resolves to something like
+
+```yaml
+key: WH9xNVJuSuh7sDVIyUAlmxc+woFDJg4QA6tGUVBtGns=
+```
+
+#### `(( wgpublickey(key) ))`
+
+For a given key (for example generated with the [wggenkey](#-wggenkey-)
+function) this function extracts the public key and returns it again in base64 format-
+
+e.g.:
+
+```yaml
+keys:
+  key: (( wggenkey() ))
+  public: (( wgpublickey(key)
+```
+
+resolves to something like
+
+```yaml
+key: WH9xNVJuSuh7sDVIyUAlmxc+woFDJg4QA6tGUVBtGns=
+public: n405KfwLpfByhU9pOu0A/ENwp0njcEmmQQJvfYHHQ2M=
+```
+
 ## `(( lambda |x|->x ":" port ))`
 
 Lambda expressions can be used to define additional anonymous functions. They
@@ -4055,7 +4114,8 @@ keys:
 ### `(( map{map|elem|->dynaml-expr} ))`
 
 Using `{}` instead of `[]` in the mapping syntax, the result is again a map
-with the old keys and the new entry values.
+with the old keys and the new entry values. As for a list mapping additionally
+a key variable can be specified in the variable list.
 
 ```yaml
 persons:
@@ -4075,6 +4135,27 @@ older:
 **Remark**
 
 An alternate way to express the same is to use `sum[persons|{}|s,k,v|->s { k = v + 1 }]`.
+
+### `(( map{list|elem|->dynaml-expr} ))`
+
+Using `{}` instead of `[]` together with a list in the mapping syntax, the result is again a map
+with the list elements as key and the mapped entry values. For this all list entries must be strings.
+As for a list mapping additionally an index variable can be specified in the variable list.
+
+```yaml
+persons:
+  - alice
+  - bob
+length: (( map{persons|x|->length(x)} ) ))
+```
+
+just creates a map mapping the list entries to their length:
+
+```yaml
+length:
+  alice: 5
+  bob: 3
+```
 
 ### `(( select[expr|elem|->dynaml-expr] ))`
 

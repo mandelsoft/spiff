@@ -1,9 +1,9 @@
 package wireguard
 
 import (
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"math/rand"
 
 	"golang.org/x/crypto/curve25519"
 )
