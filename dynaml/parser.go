@@ -1,3 +1,5 @@
+//go:generate go run -v  ../vendor/github.com/pointlander/peg dynaml.peg
+
 package dynaml
 
 import (
