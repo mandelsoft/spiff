@@ -135,6 +135,7 @@ A simplified certificate support can be found in the
   field.
 - _&lt;update&gt;_: bool: (optional) setting to true enforces a value update
 - _&lt;relpath&gt;_: []: (optional) additional path segments for state access
+- _&lt;relindex&gt;_: 0: (optional) relative location (from the end) to insert the additional path segments
 
 It generates a state map with two fields:
 
@@ -152,6 +153,7 @@ It generates a state map with two fields:
   from its value
 - _&lt;update&gt;_: bool: (optional) setting to true enforces a value update
 - _&lt;relpath&gt;_: []: (optional) additional path segments for state access
+- _&lt;relindex&gt;_: 0: (optional) relative location (from the end) to insert the additional path segments
 
 ## Standard State Handling
 
@@ -162,6 +164,7 @@ It generates a state map with two fields:
 - _&lt;spec&gt;_: map: structure containing the specification for this state value
 - _&lt;update&gt;_: bool: (optional) setting to true enforces a value update
 - _&lt;relpath&gt;_: []: (optional) additional path segments for state access
+- _&lt;relindex&gt;_: 0: (optional) relative location (from the end) to insert the additional path segments
 
 This function is a wrapper for the one above.
 The _spec_ map must contain two fields:
@@ -176,7 +179,7 @@ to access the same field containing the state lambda in the stub which
 is typically the state yaml. But this only works correctly if
 the state expression directly generates the state fields.
 
-The optional relpath parameter can be used to adjust the stub access
+The optional `relpath` parameter can be used to adjust the stub access
 (for accessing old state) in case of generating multiple state instances
 with `map`/`sum`  generating implicit intermediate sub structures between the
 field containing the lambda expression and the generated state field.
@@ -191,3 +194,6 @@ state:
   <<: (( &state(merge none) ))
   wireguard: (( map{names|m|-> utilities.certs.wireguardKey(false, [m])} ))
 ```
+The optional `relindex` parameter is used together with the `relpath` parameter.
+It specifies the relative location (from the end) where the relative path
+should be inserted into the path.

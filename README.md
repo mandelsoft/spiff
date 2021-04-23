@@ -2174,6 +2174,10 @@ an expression evaluating to either a string denoting a reference or a string
 list denoting the list of path elements for the reference.
 If no argument or an undefined (`~~`) is given, the actual field path is used.
 
+Please note, that a given sole reference will not be evaluated as expression,
+if its value should be used, it must be transformed to an expression, for example 
+by denoting `(ref)` or `[] ref` for a list expression.
+  
 Alternatively the `merge` operation could be used, for example `merge foo.bar`. The difference is that `stub` does not merge, therefore the field will still be merged (with the original path in the document).
 
 ### `(( eval(foo "." bar ) ))`

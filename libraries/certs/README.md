@@ -26,7 +26,7 @@ when using the functions in a stateful scenario.
 ## Generate a self signed Certificate for dedicated common name
 
 ```
-    selfSignedCA(<common name>, <update>=false, <relpath>=[]) -> state
+    selfSignedCA(<common name>, <update>=false, <relpath>=[], relindex=0) -> state
 ```
 
 The _value_ field provides the fields:
@@ -37,7 +37,7 @@ The _value_ field provides the fields:
 ## Generate a Key/Certificate Pair
 
 ```
-    keyCertForCA(<certspec>, <ca>, <update>=false, <relpath>=[]) -> state
+    keyCertForCA(<certspec>, <ca>, <update>=false, <relpath>=[], relindex=0) -> state
 ```
 
 the certificate specification uses the format for the
@@ -54,7 +54,7 @@ The _value_ field provides the fields:
 ## Generate a Certificate with an explicitly managed Specification
 
 ```
-    keyCert(<certspec>, <update>=false, <relpath>=[]) -> state
+    keyCert(<certspec>, <update>=false, <relpath>=[], relindex=0) -> state
 ```
 
 the certificate specification uses the format for the
@@ -70,7 +70,7 @@ The _value_ field provides the fields:
 ## Generate an SSH Key Pair
 
 ```
-    sshKey(<length>=2048, <update>=false, <relpath>=[])  -> state
+    sshKey(<length>=2048, <update>=false, <relpath>=[], relindex=0)  -> state
 ```
 
 The _value_ field provides the fields:
@@ -81,7 +81,7 @@ The _value_ field provides the fields:
 ## Generate a Random Secret with a dedicated Length
 
 ```
-    secret(<default>, <length>, <update>=false, <relpath>=[])  -> string
+    secret(<default>, <length>, <update>=false, <relpath>=[], relindex=0)  -> string
 ```
 
 If no `default` (`~`) is given a random string consisting of alphanumeric
@@ -92,7 +92,7 @@ The _value_ field directly contains the secret value.
 ## Generate a Wireguard Key Pair
 
 ```
-    wireguardKey(<update>=false, <relpath>=[])  -> state
+    wireguardKey(<update>=false, <relpath>=[], relindex=0)  -> state
 ```
 
 The _value_ field provides the fields:
@@ -107,7 +107,7 @@ is typically the state yaml. This is handled in the [state](../state/README.md)
 library. But this only works correctly if
 the state expression directly generates the state fields.
 
-The optional relpath parameter can be used to adjust the stub access
+The optional `relpath` parameter can be used to adjust the stub access
 (for accessing old state) in case of generating multiple state instances
 with `map`/`sum`  generating implicit intermediate sub structures between the
 field containing the lambda expression and the generated state field.
@@ -122,3 +122,7 @@ state:
   <<: (( &state(merge none) ))
   wireguard: (( map{names|m|-> utilities.certs.wireguardKey(false, [m])} ))
 ```
+
+The optional `relindex` parameter is used together with the `relpath` parameter.
+It specifies the relative location (from the end) where the relative path
+should be inserted into the path.

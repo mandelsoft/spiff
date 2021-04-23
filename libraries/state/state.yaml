@@ -33,6 +33,7 @@
 #                                  generate the state value using the state field
 #    forceupdate: bool:            setting to true encorces a value update
 #    relpath:     []:              optional relative stub path
+#    relindex:    0:               path index to insert relative path
 #
 #  - utilities.state.valuedata(input,new,forceupdate=false)
 #
@@ -43,6 +44,7 @@
 #                                  directly generate the state value
 #    forceupdate: bool:            setting to true encorces a value update
 #    relpath:     []:              optional relative stub path
+#    relindex:    0:               path index to insert relative path
 #
 #
 #  - utilities.state.standard(spec,forceupdate=false)
@@ -51,6 +53,7 @@
 #                                  for this state value
 #    forceupdate: bool:            setting to true encorces a value update
 #    relpath:     []:              optional relative stub path
+#    relindex:    0:               path index to insert relative path
 #
 #    the _spec_ map must contain two fields:
 #         input: any               the input data used to generate the state
@@ -59,13 +62,19 @@
 #                                  a template using the `input` binding to
 #                                  generate the state value
 #
+#  
+#  - utilities.state.state(state)
+#
+#    state:       state ref:       state value for given state ref
 
 utilities:
   <<: (( &inject &temporary(merge || ~) ))
 
   state:
-    valuedata: (( |input,new,update=false,relpath=[]|-> ($old=stub(__ctx.PATH relpath) || ~~) { $input=input, $value= ( !update -and old.input == input ? old.value :~) // type(new) == "template" ? (*new) :new } ))
-    data: (( |input,new,update=false,relpath=[]|-> ($old=stub(__ctx.PATH relpath) || ~~) { $input=input, $value= ( !update -and old.input == input ? old.value :~) // type(new) == "template" ? (*new).state :new } ))
+    adjustPath: (( |relpath,n|->($p=__ctx.PATH) p[..length(p) - n - 1] relpath p[length(p) - n..] ))
+    state: (( |state|-> state.value ))
+    valuedata: (( |input,new,update=false,relpath=[],relindex=0|-> ($path=_.adjustPath(relpath,relindex)) ($old=stub((path)) || ~~) { $input=input, $value= ( !update -and old.input == input ? old.value :~) // type(new) == "template" ? (*new) :new } ))
+    data: (( |input,new,update=false,relpath=[],relindex=0|-> ($path=_.adjustPath(relpath,relindex)) ($old=stub((path)) || ~~) { $input=input, $value= ( !update -and old.input == input ? old.value :~) // type(new) == "template" ? (*new).state :new } ))
 
-    standard: (( |data,update=false,relpath=[]|-> _.data(data.input, data.value,update) ))
+    standard: (( |data,update=false,relpath=[],relindex=0|-> _.data(data.input, data.value,update,relpath,relindex) ))
 

@@ -1,8 +1,9 @@
 package dynaml
 
 import (
-	"github.com/mandelsoft/spiff/yaml"
 	"strings"
+
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 func (e CallExpr) stub(binding Binding) (interface{}, EvaluationInfo, bool) {

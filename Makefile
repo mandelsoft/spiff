@@ -1,6 +1,6 @@
 VERBOSE=-v
 
-all: grammar test release
+all: vendor grammar test release
 
 grammar:
 	go generate ./...
@@ -31,6 +31,7 @@ spiff_linux_ppc64le.zip:
 	(cd spiff++; zip spiff_linux_ppc64le.zip spiff++)
 	rm spiff++/spiff++
 
+.PHONY: vendor
 vendor:
 	go mod vendor
 
