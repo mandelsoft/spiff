@@ -119,6 +119,8 @@ Contents:
 		- [(( validate(value,"dnsdomain") ))](#-validatevaluednsdomain-)
 		- [(( check(value,"dnsdomain") ))](#-checkvaluednsdomain-)
 		- [(( error("message") ))](#-errormessage-)
+		- [Math](#math)
+		- [Conversions](#conversions)
 		- [Accessing External Content](#accessing-external-content)
 		    - [(( read("file.yml") ))](#-readfileyml-)
 		    - [(( exec("command", arg1, arg2) ))](#-execcommand-arg1-arg2-)
@@ -2909,6 +2911,37 @@ value: (( <some complex potentially failing expression> || error("this was an er
 Another scenario could be omitting a descriptive message for missing required
 fields by using an error expression as (default) value for a field intended to
 be defined in an upstream stub.
+
+### Math
+
+*dynaml* support various math functions:
+
+returning integers: `ceil`, `floor`, `round` and `roundtoeven`
+
+returning floats or integers: `abs`
+
+returning floats: `sin`,`cos`, `sinh`, `cosh`, `asin`, `acos`, `asinh`,`acosh`,
+           `sqrt`, `exp`, `log`, `log10`,
+
+### Conversions
+
+*dynaml* supports various type conversions between `integer`, `float`, `bool`
+and `string` values by appropriate functions.
+
+e.g.:
+
+
+```yaml
+value: (( integer("5") ))
+```
+
+converts a string to an integer value.
+
+Converting an integer to a string accepts an optional additional integer
+argument for specifying the base for conversion, for example `string(55,2)`
+will result in `"110111"`. The default base is 10. The base must be between
+2 and 36.
+
 
 ### Accessing External Content
 

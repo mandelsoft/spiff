@@ -8526,4 +8526,44 @@ interpolated: this is a 10test
 			Expect(source).To(FlowAs(resolved))
 		})
 	})
+	Context("math", func() {
+		It("sqrt", func() {
+			source := parseYAML(`
+---
+data: (( sqrt(25) ))
+fail: (( catch(sqrt(-1)) ))
+`)
+
+			resolved := parseYAML(`
+---
+data: 5.0
+fail: 
+  error: 'sqrt: NaN'
+  valid: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("int/float", func() {
+			source := parseYAML(`
+---
+int: (( abs(-25) ))
+float: (( abs(-1.5) ))
+ceil: (( ceil(1.5) ))
+floor: (( floor(1.5) ))
+round1: (( round(1.4) ))
+round2: (( round(1.5) ))
+`)
+
+			resolved := parseYAML(`
+---
+int: 25
+float: 1.5
+ceil: 2
+floor: 1
+round1: 1
+round2: 2
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
 })
