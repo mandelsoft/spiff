@@ -7528,6 +7528,17 @@ fail:
 `)
 				Expect(source).To(FlowAs(resolved))
 			})
+			It("catch error message", func() {
+				source := parseYAML(`
+---
+fail: (( catch( 1 / 0 ).error ))
+`)
+				resolved := parseYAML(`
+---
+fail: division by zero
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
 		Context("valid expressions", func() {
 			It("provide value", func() {
