@@ -34,7 +34,7 @@ func Apply(outer dynaml.Binding, template yaml.Node, prepared []yaml.Node, opts 
 			result = Cleanup(result, discardTemporary)
 		}
 		if !opts.PreserveEscapes {
-			result = Cleanup(result, unescapeDynaml)
+			result = Cleanup(result, unescapeDynamlFunc(outer))
 		}
 	}
 	return result, err
@@ -56,8 +56,13 @@ func discardTemporary(node yaml.Node) (yaml.Node, CleanupFunction) {
 	return node, discardTemporary
 }
 
-func unescapeDynaml(node yaml.Node) (yaml.Node, CleanupFunction) {
-	return yaml.UnescapeDynaml(node), unescapeDynaml
+func unescapeDynamlFunc(binding dynaml.Binding) CleanupFunction {
+	interpol := binding != nil && binding.GetState().InterpolationEnabled()
+	var f CleanupFunction
+	f = func(node yaml.Node) (yaml.Node, CleanupFunction) {
+		return yaml.UnescapeDynaml(node, interpol), f
+	}
+	return f
 }
 
 func discardLocal(node yaml.Node) (yaml.Node, CleanupFunction) {

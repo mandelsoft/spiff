@@ -5,12 +5,11 @@
 package spiffing
 
 import (
-	"os"
-
 	"github.com/mandelsoft/vfs/pkg/osfs"
 	"github.com/mandelsoft/vfs/pkg/vfs"
 
 	"github.com/mandelsoft/spiff/dynaml"
+	"github.com/mandelsoft/spiff/features"
 	"github.com/mandelsoft/spiff/flow"
 	"github.com/mandelsoft/spiff/yaml"
 )
@@ -62,12 +61,13 @@ func (s *sourceData) Data() ([]byte, error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 type spiff struct {
-	key       string
-	mode      int
-	fs        vfs.FileSystem
-	opts      flow.Options
-	values    map[string]yaml.Node
-	functions Functions
+	key           string
+	mode          int
+	fs            vfs.FileSystem
+	opts          flow.Options
+	values        map[string]yaml.Node
+	functions     Functions
+	interpolation bool
 
 	binding dynaml.Binding
 }
@@ -79,15 +79,25 @@ func NewFunctions() Functions {
 
 // New create a new default spiff context.
 func New() Spiff {
+	set := features.Features()
+	_, interpolation := set[features.INTERPOLATION]
 	return &spiff{
-		key:  os.Getenv("SPIFF_ENCRYPTION_KEY"),
-		mode: MODE_DEFAULT,
+		key:           features.EncryptionKey(),
+		mode:          MODE_DEFAULT,
+		interpolation: interpolation,
 	}
 }
 
 func (s *spiff) reset() Spiff {
 	s.binding = nil
 	return s
+}
+
+// WithInterpolation creates a new context with
+// enabled/disabled string interpolation feature
+func (s spiff) WithInterpolation(b bool) Spiff {
+	s.interpolation = b
+	return s.reset()
 }
 
 // WithEncryptionKey creates a new context with
@@ -160,7 +170,10 @@ func (s *spiff) FileSource(path string) Source {
 func (s *spiff) Cascade(template Node, stubs []Node, states ...Node) (Node, error) {
 	if s.binding == nil {
 		s.binding = flow.NewEnvironment(
-			nil, "context", flow.NewState(s.key, s.mode, s.fs).SetFunctions(s.functions))
+			nil, "context",
+			flow.NewState(s.key, s.mode, s.fs).
+				SetFunctions(s.functions).
+				SetInterpolation(s.interpolation))
 		if s.values != nil {
 			s.binding = s.binding.WithLocalScope(s.values)
 		}

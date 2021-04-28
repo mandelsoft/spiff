@@ -17,21 +17,21 @@ utilities:
     # offered fields in the value field:
     #   key and pub
     #
-    wireguardKey: (( |update=false,relpath=[]|->utilities.state.data("",_.templates.wireguard_value,update,relpath) ))
+    wireguardKey: (( |update=false,relpath=[],relindex=0|->utilities.state.data("",_.templates.wireguard_value,update,relpath,relindex) ))
 
     #
     # generate a ssh key with the state library
     # offered fields in the value field:
     #   key and pub
     #
-    sshKey: (( |size=2048,update=false,relpath=[]|->utilities.state.standard(_.sshKeySpec(size),update,relpath) ))
+    sshKey: (( |size=2048,update=false,relpath=[],relindex=0|->utilities.state.standard(_.sshKeySpec(size),update,relpath,relindex) ))
 
     #
     # generate a self signed CA with the state library
     # offered fields in the value field:
     #   key, pub and cert
     #
-    selfSignedCA: (( |cn,update=false,relpath=[]|->_.keyCert(_.caSpec(cn),update,relpath) ))
+    selfSignedCA: (( |cn,update=false,relpath=[],relindex=0|->_.keyCert(_.caSpec(cn),update,relpath,relindex) ))
 
     #
     # generate a key and cert signed by the given ca.
@@ -40,7 +40,7 @@ utilities:
     # offered fields in the value field:
     #   key, pub and cert
     #
-    keyCertForCA: (( |certspec,ca,update=false,relpath=[]|->_.keyCert({$caCert=ca.value.cert, $caPrivateKey=ca.value.key} certspec,update,relpath) ))
+    keyCertForCA: (( |certspec,ca,update=false,relpath=[],relindex=0|->_.keyCert({$caCert=ca.value.cert, $caPrivateKey=ca.value.key} certspec,update,relpath,relindex) ))
 
     #
     # generate a certificate state for a given cert spec
@@ -49,14 +49,14 @@ utilities:
     # offered fields in the value field:
     #   key, pub and cert
     #
-    keyCert: (( |certspec,update=false,relpath=[]|->utilities.state.standard(_.keyCertSpec(certspec),update, relpath) ))
+    keyCert: (( |certspec,update=false,relpath=[],relindex=0|->utilities.state.standard(_.keyCertSpec(certspec),update, relpath, relindex) ))
 
 
     #
     # generate a secret value, if no default is given
     # the length parameter specifies the length of the generated secret.
     #
-    secret: (( |default,length,update=false,relpath=[]|->utilities.state.valuedata(default,_.templates.secret, update,relpath) ))
+    secret: (( |default,length,update=false,relpath=[],relindex=0|->utilities.state.valuedata(default,_.templates.secret, update,relpath,relindex) ))
 
     #######################
     # helper funcions

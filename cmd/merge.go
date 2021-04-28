@@ -14,6 +14,7 @@ import (
 
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/dynaml"
+	"github.com/mandelsoft/spiff/features"
 	"github.com/mandelsoft/spiff/flow"
 	"github.com/mandelsoft/spiff/legacy/candiedyaml"
 	"github.com/mandelsoft/spiff/yaml"
@@ -24,6 +25,7 @@ var outputPath string
 var selection []string
 var expr string
 var split bool
+var interpolation bool
 var processingOptions flow.Options
 var state string
 var bindings string
@@ -51,8 +53,12 @@ var mergeCmd = &cobra.Command{
 }
 
 func init() {
+
+	set := features.Features()
+	_, interpolation = set[features.INTERPOLATION]
 	rootCmd.AddCommand(mergeCmd)
 
+	mergeCmd.Flags().BoolVar(&interpolation, "interpolation", interpolation, "enable interpolation alpha feature")
 	mergeCmd.Flags().BoolVar(&asJSON, "json", false, "print output in json format")
 	mergeCmd.Flags().BoolVar(&debug.DebugFlag, "debug", false, "Print state info")
 	mergeCmd.Flags().BoolVar(&processingOptions.Partial, "partial", false, "Allow partial evaluation only")
@@ -197,14 +203,19 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 		" -: depending on a node with an error"
 
 	var binding dynaml.Binding
-	if bindingYAML != nil {
-		values, ok := bindingYAML.Value().(map[string]yaml.Node)
-		if !ok {
-			log.Fatalln("bindings must be given as map")
-		}
+	if bindingYAML != nil || interpolation {
+		defstate := flow.NewDefaultState().SetInterpolation(interpolation)
 		binding = flow.NewEnvironment(
-			nil, "context").WithLocalScope(values)
+			nil, "context", defstate)
+		if bindingYAML != nil {
+			values, ok := bindingYAML.Value().(map[string]yaml.Node)
+			if !ok {
+				log.Fatalln("bindings must be given as map")
+			}
+			binding = binding.WithLocalScope(values)
+		}
 	}
+
 	prepared, err := flow.PrepareStubs(binding, processingOptions.Partial, stubs...)
 	if !processingOptions.Partial && err != nil {
 		log.Fatalln("error generating manifest:", err, legend)

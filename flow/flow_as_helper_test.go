@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
+
 	"github.com/mandelsoft/spiff/yaml"
 )
 
@@ -23,7 +24,8 @@ func (matcher *FlowAsMatcher) Match(source interface{}) (success bool, err error
 		return false, fmt.Errorf("Refusing to compare <nil> to <nil>.")
 	}
 
-	matcher.actual, err = Flow(source.(yaml.Node), matcher.Stubs...)
+	env := NewEnvironment(nil, "", NewDefaultState().SetInterpolation(true))
+	matcher.actual, err = NestedFlow(env, source.(yaml.Node), matcher.Stubs...)
 	if err != nil {
 		return false, err
 	}

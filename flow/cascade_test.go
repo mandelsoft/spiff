@@ -1313,6 +1313,19 @@ foo:
 				Expect(source).To(CascadeAs(resolved))
 			})
 
+			It("ignores nodes with escape", func() {
+				source := parseYAML(`
+---
+foo: ((!template_only.foo))
+`)
+
+				resolved := parseYAML(`
+---
+foo: ((template_only.foo))
+`)
+
+				Expect(source).To(CascadeAs(resolved))
+			})
 			It("ignores nodes with escaped escape", func() {
 				source := parseYAML(`
 ---
@@ -1322,6 +1335,19 @@ foo: ((!!template_only.foo))
 				resolved := parseYAML(`
 ---
 foo: ((!template_only.foo))
+`)
+
+				Expect(source).To(CascadeAs(resolved))
+			})
+			It("ignores nodes with escaped interpolation", func() {
+				source := parseYAML(`
+---
+foo: x ((!template_only.foo))
+`)
+
+				resolved := parseYAML(`
+---
+foo: x ((template_only.foo))
 `)
 
 				Expect(source).To(CascadeAs(resolved))

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+current_dir="$(pwd)"
+if ! readlink -f . &>/dev/null; then
+    echo "you're probably on OSX.  Please install gnu readlink -- otherwise you're missing the most useful readlink flag."
+    exit 1
+fi
+tool_dir="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+cd "${tool_dir}/../vendor/github.com/pointlander/peg"
+echo go run -v . "${current_dir}/$1"
+go run -v . "${current_dir}/$1"

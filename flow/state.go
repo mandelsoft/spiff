@@ -14,18 +14,20 @@ import (
 
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/dynaml"
+	"github.com/mandelsoft/spiff/features"
 )
 
 const MODE_FILE_ACCESS = 1 // support file system access
 const MODE_OS_ACCESS = 2   // support os commands like pipe and exec
 
 type State struct {
-	files      map[string]string // content hash to temp file name
-	fileCache  map[string][]byte // file content cache
-	key        string            // default encryption key
-	mode       int
-	fileSystem vfs.VFS // virtual filesystem to use for filesystem based operations
-	functions  dynaml.Registry
+	files         map[string]string // content hash to temp file name
+	fileCache     map[string][]byte // file content cache
+	key           string            // default encryption key
+	mode          int
+	fileSystem    vfs.VFS // virtual filesystem to use for filesystem based operations
+	functions     dynaml.Registry
+	interpolation bool
 }
 
 var _ dynaml.State = &State{}
@@ -49,9 +51,26 @@ func NewState(key string, mode int, optfs ...vfs.FileSystem) *State {
 	}
 }
 
+func NewDefaultState() *State {
+	return NewState(features.EncryptionKey(), MODE_OS_ACCESS|MODE_FILE_ACCESS)
+}
+
 func (s *State) SetFunctions(f dynaml.Registry) *State {
 	s.functions = f
 	return s
+}
+
+func (s *State) EnableInterpolation() {
+	s.interpolation = true
+}
+
+func (s *State) SetInterpolation(b bool) *State {
+	s.interpolation = b
+	return s
+}
+
+func (s *State) InterpolationEnabled() bool {
+	return s.interpolation
 }
 
 func (s *State) OSAccessAllowed() bool {

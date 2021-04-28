@@ -312,7 +312,7 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 				}
 				// still ignore non dynaml value (might be strange but compatible)
 				replace = base.ReplaceFlag()
-				parseError := yaml.EmbeddedDynaml(base) != nil
+				parseError := yaml.EmbeddedDynaml(base, env.GetState().InterpolationEnabled()) != nil
 				if !ok && base.Value() != nil && !parseError {
 					err = fmt.Errorf("require map value for '<<' insert, found '%s'", dynaml.ExpressionType(base.Value()))
 				}
@@ -449,7 +449,7 @@ func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
 
 func FlowString(root yaml.Node, env dynaml.Binding) (yaml.Node, error) {
 
-	sub := yaml.EmbeddedDynaml(root)
+	sub := yaml.EmbeddedDynaml(root, env.GetState().InterpolationEnabled())
 	if sub == nil {
 		return root, nil
 	}
@@ -560,7 +560,7 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 						spliced = append(spliced, inlineNew...)
 					}
 				}
-				if ok || result.Value() == nil || yaml.EmbeddedDynaml(result) == nil {
+				if ok || result.Value() == nil || yaml.EmbeddedDynaml(result, env.GetState().InterpolationEnabled()) == nil {
 					// still ignore non dynaml value (might be strange but compatible)
 					redirectPath = result.RedirectPath()
 					if result.Merged() {

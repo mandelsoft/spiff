@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mandelsoft/spiff/dynaml/passwd"
+	"github.com/mandelsoft/spiff/features"
 	"github.com/mandelsoft/spiff/yaml"
 )
 
@@ -55,7 +56,7 @@ func encrypt(decrypt bool, args []string) {
 		log.Fatalln(fmt.Sprintf("error reading data [%s]:", path.Clean(filePath)), err)
 	}
 
-	key := os.Getenv("SPIFF_ENCRYPTION_KEY")
+	key := features.EncryptionKey()
 	method := passwd.TRIPPLEDES
 	v := ""
 	if len(args) > 1 {

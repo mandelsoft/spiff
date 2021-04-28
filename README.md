@@ -119,6 +119,8 @@ Contents:
 		- [(( validate(value,"dnsdomain") ))](#-validatevaluednsdomain-)
 		- [(( check(value,"dnsdomain") ))](#-checkvaluednsdomain-)
 		- [(( error("message") ))](#-errormessage-)
+		- [Math](#math)
+		- [Conversions](#conversions)
 		- [Accessing External Content](#accessing-external-content)
 		    - [(( read("file.yml") ))](#-readfileyml-)
 		    - [(( exec("command", arg1, arg2) ))](#-execcommand-arg1-arg2-)
@@ -177,6 +179,7 @@ Contents:
 	- [Special Literals](#special-literals)
 	- [Access to evaluation context](#access-to-evaluation-context)
 	- [Operation Priorities](#operation-priorities)
+	- [String Interpolation](#string-interpolation)
 - [Structural Auto-Merge](#structural-auto-merge)
 - [Bringing it all together](#bringing-it-all-together)
 - [Useful to Know](#useful-to-know)
@@ -2173,6 +2176,10 @@ an expression evaluating to either a string denoting a reference or a string
 list denoting the list of path elements for the reference.
 If no argument or an undefined (`~~`) is given, the actual field path is used.
 
+Please note, that a given sole reference will not be evaluated as expression,
+if its value should be used, it must be transformed to an expression, for example 
+by denoting `(ref)` or `[] ref` for a list expression.
+  
 Alternatively the `merge` operation could be used, for example `merge foo.bar`. The difference is that `stub` does not merge, therefore the field will still be merged (with the original path in the document).
 
 ### `(( eval(foo "." bar ) ))`
@@ -2904,6 +2911,37 @@ value: (( <some complex potentially failing expression> || error("this was an er
 Another scenario could be omitting a descriptive message for missing required
 fields by using an error expression as (default) value for a field intended to
 be defined in an upstream stub.
+
+### Math
+
+*dynaml* support various math functions:
+
+returning integers: `ceil`, `floor`, `round` and `roundtoeven`
+
+returning floats or integers: `abs`
+
+returning floats: `sin`,`cos`, `sinh`, `cosh`, `asin`, `acos`, `asinh`,`acosh`,
+           `sqrt`, `exp`, `log`, `log10`,
+
+### Conversions
+
+*dynaml* supports various type conversions between `integer`, `float`, `bool`
+and `string` values by appropriate functions.
+
+e.g.:
+
+
+```yaml
+value: (( integer("5") ))
+```
+
+converts a string to an integer value.
+
+Converting an integer to a string accepts an optional additional integer
+argument for specifying the base for conversion, for example `string(55,2)`
+will result in `"110111"`. The default base is 10. The base must be between
+2 and 36.
+
 
 ### Accessing External Content
 
@@ -5002,6 +5040,64 @@ The following levels are supported (from low priority to high priority)
 7. Grouping `( )`, `!`, constants, references (`foo.bar`), `merge`, `auto`, `lambda`, `map[]`, and [functions](#functions)
 
 The complete grammar can be found in [dynaml.peg](dynaml/dynaml.peg).
+
+## String Interpolation
+
+**Attention:** This is an alpha feature. It must be enabled on the command
+line with the `--interpolation` option. Also for the spiff library it must
+explicitly be enabled. By adding the key `interpolation` to the feature list
+stored in the environment variable `SPIFF_FEATURES` this feature will be enabled
+by default.
+
+Typically a complete value can either be a literal or a dynaml expression.
+For string literals it is possible to use an interpolation syntax to embed
+dynaml expressions into strings.
+
+For example
+
+```yaml
+data: test
+interpolation: this is a (( data ))
+```
+
+replaces the part between the double brackets by the result
+of the described expression evaluation. Here the brackets can be escaped
+by the usual escaping (`((!`) syntax.
+
+Those string literals will implicitly be converted to complete flat dynaml
+expressions. The example above will therefore be converted into
+
+`(( "this is a " data ))`
+
+which is the regular dynaml equivalent. The escaping is very ticky, and
+may be there are still problems. Quotes inside an embedded dynaml expression
+can be escaped to enable quotes in string literals.
+
+Incomplete or partial interpolation expressions will be ignored and 
+just used a s string.
+
+Strings inside a dynaml expression are NOT directly interpolated again, thus
+
+```yaml
+data: "test"
+interpolated: "this is a (( length(\"(( data ))\") data ))"
+```
+ 
+will resolve `interpolation` to `this is 10test` and not to `this is 4test`.
+ 
+But if the final string after the expression evaluation again describes a string
+interpolation it will be processed, again.
+
+```yaml
+data: test
+interpolation: this is a (( "(( data ))" data ))
+```
+
+will resolve `interpolation` to `this is testtest`.
+
+The embedded dynaml expression must be concatenatable with strings.
+
+
 
 # Structural Auto-Merge
 

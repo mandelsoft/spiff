@@ -13,7 +13,6 @@ type QualifiedExpr struct {
 }
 
 func (e QualifiedExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
-
 	root, info, ok := e.Expression.Evaluate(binding, locally)
 	if !ok {
 		debug.Debug("base of qualified expression failed: %s\n", info.Issue.Issue)
@@ -22,6 +21,11 @@ func (e QualifiedExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 	locally = locally || info.Raw
 	if !isLocallyResolvedValue(root) {
 		debug.Debug("not locally resolved: %v\n", root)
+		if root != nil {
+			if ex, ok := root.(Expression); ok {
+				return QualifiedExpr{ex, e.Reference}, info, true
+			}
+		}
 		return e, info, true
 	}
 	if !locally && !isResolvedValue(root) {

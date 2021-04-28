@@ -7528,6 +7528,17 @@ fail:
 `)
 				Expect(source).To(FlowAs(resolved))
 			})
+			It("catch error message", func() {
+				source := parseYAML(`
+---
+fail: (( catch( 1 / 0 ).error ))
+`)
+				resolved := parseYAML(`
+---
+fail: division by zero
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
 		})
 		Context("valid expressions", func() {
 			It("provide value", func() {
@@ -8447,6 +8458,121 @@ url:
   userinfo:
     username: user
     password: pass
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Context("string interpolation", func() {
+		It("handles expressions in strings", func() {
+			source := parseYAML(`
+---
+data: "test"
+interpolated: this is a (( data ))
+`)
+
+			resolved := parseYAML(`
+---
+data: "test"
+interpolated: this is a test
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles expressions in strings", func() {
+			source := parseYAML(`
+---
+data: "test"
+interpolated: "this is a (( \"super \" data ))"
+`)
+
+			resolved := parseYAML(`
+---
+data: "test"
+interpolated: this is a super test
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("handles bracket expressions in strings", func() {
+			source := parseYAML(`
+---
+data: "interpol"
+interpolated: "this is a ((( ( data ( data )) ))) hell"
+`)
+
+			resolved := parseYAML(`
+---
+data: "interpol"
+interpolated: this is a (interpolinterpol) hell
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("re-evaluates expressions", func() {
+			source := parseYAML(`
+---
+data: "test"
+interpolated: "this is a (( \"(( data ))\" data ))"
+`)
+
+			resolved := parseYAML(`
+---
+data: "test"
+interpolated: this is a testtest
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("does not handle interpolation in interpolation", func() {
+			source := parseYAML(`
+---
+data: "test"
+interpolated: "this is a (( length(\"(( data ))\") data ))"
+`)
+
+			resolved := parseYAML(`
+---
+data: "test"
+interpolated: this is a 10test
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+	Context("math", func() {
+		It("sqrt", func() {
+			source := parseYAML(`
+---
+data: (( sqrt(25) ))
+fail: (( catch(sqrt(-1)) ))
+`)
+
+			resolved := parseYAML(`
+---
+data: 5.0
+fail: 
+  error: 'sqrt: NaN'
+  valid: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("int/float", func() {
+			source := parseYAML(`
+---
+int: (( abs(-25) ))
+float: (( abs(-1.5) ))
+ceil: (( ceil(1.5) ))
+floor: (( floor(1.5) ))
+round1: (( round(1.4) ))
+round2: (( round(1.5) ))
+`)
+
+			resolved := parseYAML(`
+---
+int: 25
+float: 1.5
+ceil: 2
+floor: 1
+round1: 1
+round2: 2
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
