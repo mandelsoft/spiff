@@ -8,24 +8,51 @@ import (
 )
 
 type ReferenceExpr struct {
+	Tag  string
 	Path []string
 }
 
+func NewReferenceExpr(path ...string) ReferenceExpr {
+	return ReferenceExpr{"", path}
+}
+
+func NewTaggedReferenceExpr(tag string, path ...string) ReferenceExpr {
+	return ReferenceExpr{tag, path}
+}
+
 func (e ReferenceExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
+	var tag *Tag
 	fromRoot := e.Path[0] == ""
 
-	debug.Debug("reference: %v\n", e.Path)
+	debug.Debug("reference: (%s)%v\n", e.Tag, e.Path)
+	if e.Tag != "" {
+		tag = binding.GetState().GetTag(e.Tag)
+		info := DefaultInfo()
+		if tag == nil {
+			return info.Error("tag '%s' not found", e.Tag)
+		}
+		if len(e.Path) == 1 && e.Path[0] == "" {
+			return tag.Node().Value(), info, true
+		}
+	}
 	return e.find(func(end int, path []string) (yaml.Node, bool) {
 		if fromRoot {
 			return binding.FindFromRoot(path[1 : end+1])
 		} else {
+			if tag != nil {
+				return yaml.Find(tag.Node(), path...)
+			}
 			return binding.FindReference(path[:end+1])
 		}
 	}, binding, locally)
 }
 
 func (e ReferenceExpr) String() string {
-	return strings.Join(e.Path, ".")
+	tag := ""
+	if e.Tag != "" {
+		tag = e.Tag + "::"
+	}
+	return tag + strings.Join(e.Path, ".")
 }
 
 func (e ReferenceExpr) find(f func(int, []string) (node yaml.Node, x bool), binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {

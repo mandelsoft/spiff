@@ -33,6 +33,24 @@ func get_inherited_flags(env dynaml.Binding) (yaml.NodeFlags, yaml.Node) {
 }
 
 func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
+	node := _flow(root, env, shouldOverride)
+	tag := node.GetAnnotation().Tag()
+	if tag != "" {
+		debug.Debug("found tag %q at %v\n", tag, env.Path())
+	}
+	if dynaml.IsResolvedNode(node) && tag != "" {
+		err := env.GetState().SetTag(tag, node, env.Path())
+		if err != nil {
+			if node.Value() == nil {
+				node = yaml.ReplaceValue(root.Value(), node)
+			}
+			node = yaml.IssueNode(node, true, true, yaml.NewIssue("%s", err))
+		}
+	}
+	return node
+}
+
+func _flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 	if root == nil {
 		return root
 	}
@@ -73,6 +91,11 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 			info := dynaml.DefaultInfo()
 			var eval interface{} = nil
 			m, ok := val.(dynaml.MarkerExpr)
+			if ok {
+				if tag := m.GetTag(); tag != "" && root.GetAnnotation().Tag() == "" {
+					root = yaml.SetTag(root, tag)
+				}
+			}
 			if ok && m.Has(dynaml.TEMPLATE) {
 				debug.Debug("found template declaration\n")
 				val := m.TemplateExpression(root)
@@ -109,6 +132,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 				if info.SourceName() != "" {
 					source = info.SourceName()
 				}
+				tag := root.GetAnnotation().Tag()
 				result := yaml.NewNode(eval, source)
 				_, ok = eval.(string)
 				if ok {
@@ -152,9 +176,8 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 						result = yaml.MergedNode(result)
 					}
 				}
-				if (flags | result.Flags()) != result.Flags() {
-					result = yaml.AddFlags(result, flags)
-				}
+
+				result = updateNode(result, flags, tag)
 				if expr || result.Merged() || !shouldOverride || result.Preferred() {
 					debug.Debug("   prefer expression over override")
 					debug.Debug("??? ---> %+v\n", result)
@@ -221,6 +244,7 @@ func simpleMergeCompatibilityCheck(initial bool, node yaml.Node) bool {
 func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 	var err error
 	flags, stub := get_inherited_flags(env)
+	tag := root.GetAnnotation().Tag()
 	processed := true
 	template := false
 	merged := false
@@ -251,7 +275,7 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 			mergefound = true
 			debug.Debug("handle map merge %#v\n", val)
 			_, initial := val.Value().(string)
-			base := flow(val, env, false)
+			base := _flow(val, env, false)
 			if base.Undefined() {
 				return yaml.UndefinedNode(root)
 			}
@@ -261,6 +285,10 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 				m, ok := base.Value().(dynaml.MarkerExpr)
 				if ok {
 					debug.Debug("found marker\n")
+					if t := m.GetTag(); t != "" {
+						debug.Debug("found tag %q\n", t)
+						tag = t
+					}
 					flags |= m.GetFlags()
 					if flags.Temporary() {
 						debug.Debug("found temporary declaration\n")
@@ -377,18 +405,14 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 			node = yaml.IssueNode(node, true, true, issue)
 		}
 	}
-	if (flags | node.Flags()) != node.Flags() {
-		node = yaml.AddFlags(node, flags)
-	}
-
-	return node
+	return updateNode(node, flags, tag)
 }
 
 func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
 	rootList := root.Value().([]yaml.Node)
 
 	debug.Debug("HANDLE LIST %v\n", env.Path())
-	merged, process, replaced, redirectPath, keyName, ismerged, flags, stub := processMerges(root, rootList, env)
+	merged, process, replaced, redirectPath, keyName, ismerged, flags, tag, stub := processMerges(root, rootList, env)
 
 	if process {
 		debug.Debug("process list (key: %s) %v\n", keyName, env.Path())
@@ -444,6 +468,9 @@ func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
 	if (flags | root.Flags()) != root.Flags() {
 		return yaml.AddFlags(root, flags)
 	}
+	if tag != "" && tag != root.GetAnnotation().Tag() {
+		root = yaml.SetTag(root, tag)
+	}
 	return root
 }
 
@@ -494,10 +521,11 @@ func stepName(index int, value yaml.Node, keyName string, env dynaml.Binding) (s
 	return step, true
 }
 
-func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interface{}, bool, bool, []string, string, bool, yaml.NodeFlags, yaml.Node) {
+func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interface{}, bool, bool, []string, string, bool, yaml.NodeFlags, string, yaml.Node) {
 	var flags yaml.NodeFlags
 	var stub yaml.Node
 	flags, stub = get_inherited_flags(env)
+	tag := orig.GetAnnotation().Tag()
 	spliced := []yaml.Node{}
 	process := true
 	template := false
@@ -515,7 +543,7 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 		if ok {
 			debug.Debug("*** %+v\n", inlineNode.Value())
 			_, initial := inlineNode.Value().(string)
-			result := flow(inlineNode, env, false)
+			result := _flow(inlineNode, env, false)
 			if result.KeyName() != "" {
 				keyName = result.KeyName()
 			}
@@ -528,6 +556,9 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 				m, ok := result.Value().(dynaml.MarkerExpr)
 				if ok {
 					flags |= m.GetFlags()
+					if t := m.GetTag(); t != "" {
+						tag = t
+					}
 					if ok && m.Has(dynaml.TEMPLATE) {
 						debug.Debug("found template declaration\n")
 						template = true
@@ -587,7 +618,7 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 	}
 
 	debug.Debug("--> %+v  proc=%v replaced=%v redirect=%v key=%s\n", result, process, replaced, redirectPath, keyName)
-	return result, process, replaced, redirectPath, keyName, merged, flags, stub
+	return result, process, replaced, redirectPath, keyName, merged, flags, tag, stub
 }
 
 func ProcessKeyTag(val yaml.Node) (yaml.Node, string) {
@@ -653,4 +684,14 @@ func getSortedKeys(unsortedMap map[string]yaml.Node) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+func updateNode(node yaml.Node, flags yaml.NodeFlags, tag string) yaml.Node {
+	if (flags | node.Flags()) != node.Flags() {
+		node = yaml.AddFlags(node, flags)
+	}
+	if tag != "" && tag != node.GetAnnotation().Tag() {
+		node = yaml.SetTag(node, tag)
+	}
+	return node
 }

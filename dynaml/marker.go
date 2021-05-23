@@ -29,6 +29,15 @@ func (e MarkerExpr) String() string {
 	return fmt.Sprintf("%s", strings.Join(e.list, " "))
 }
 
+func (e MarkerExpr) GetTag() string {
+	for _, m := range e.list {
+		if strings.HasPrefix(m, "&tag:") {
+			return m[5:]
+		}
+	}
+	return ""
+}
+
 func (e MarkerExpr) GetFlags() yaml.NodeFlags {
 	var flags yaml.NodeFlags
 	for _, m := range e.list {

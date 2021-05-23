@@ -139,9 +139,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		for i, v := range values {
 			args[i] = ValueExpr{v}
 		}
-		args[len(values)] = ListExpansionExpr{ReferenceExpr{[]string{"__args"}}}
+		args[len(values)] = ListExpansionExpr{NewReferenceExpr("__args")}
 		expr := CallExpr{
-			Function:  ReferenceExpr{[]string{funcName}},
+			Function:  NewReferenceExpr(funcName),
 			Arguments: args,
 		}
 

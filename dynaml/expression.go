@@ -16,6 +16,37 @@ type SourceProvider interface {
 	SourceName() string
 }
 
+type Tag struct {
+	name  string
+	node  yaml.Node
+	path  []string
+	local bool
+}
+
+func NewTag(name string, node yaml.Node, path []string) *Tag {
+	return &Tag{name, node, path, true}
+}
+
+func (t *Tag) Name() string {
+	return t.name
+}
+
+func (t *Tag) Node() yaml.Node {
+	return t.node
+}
+
+func (t *Tag) Path() []string {
+	return t.path
+}
+
+func (t *Tag) Local() bool {
+	return t.local
+}
+
+func (t *Tag) ResetLocal() {
+	t.local = false
+}
+
 type State interface {
 	GetTempName(data []byte) (string, error)
 	GetFileContent(file string, cached bool) ([]byte, error)
@@ -25,6 +56,8 @@ type State interface {
 	FileSystem() vfs.VFS
 	GetFunctions() Registry
 	InterpolationEnabled() bool
+	SetTag(name string, node yaml.Node, path []string) error
+	GetTag(name string) *Tag
 
 	EnableInterpolation()
 }

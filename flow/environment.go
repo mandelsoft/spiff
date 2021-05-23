@@ -320,6 +320,20 @@ func CleanupEnvironment(binding dynaml.Binding) {
 	}
 }
 
+func ResetTags(binding dynaml.Binding) {
+	env, ok := binding.(DefaultEnvironment)
+	if ok && env.state != nil {
+		env.state.ResetTags()
+	}
+}
+
+func ResetLocalTags(binding dynaml.Binding) {
+	env, ok := binding.(DefaultEnvironment)
+	if ok && env.state != nil {
+		env.state.ResetLocal()
+	}
+}
+
 func NewNestedEnvironment(stubs []yaml.Node, source string, outer dynaml.Binding) dynaml.Binding {
 	var state *State
 	if outer == nil {

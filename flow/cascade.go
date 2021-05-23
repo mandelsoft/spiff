@@ -23,6 +23,7 @@ func PrepareStubs(outer dynaml.Binding, partial bool, stubs ...yaml.Node) ([]yam
 		}
 
 		stubs[i] = Cleanup(flowed, discardLocal)
+		ResetTags(outer)
 	}
 	return stubs, nil
 }

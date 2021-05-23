@@ -35,7 +35,7 @@ func (e QualifiedExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 
 	debug.Debug("qualified reference (%t): %v\n", locally, e.Reference.Path)
 	return e.Reference.find(func(end int, path []string) (yaml.Node, bool) {
-		return yaml.Find(NewNode(root, nil), e.Reference.Path[0:end+1]...)
+		return yaml.Find(NewNode(root, nil), path[:end+1]...)
 	}, binding, locally)
 }
 

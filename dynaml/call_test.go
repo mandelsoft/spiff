@@ -26,7 +26,7 @@ var _ = Describe("calls", func() {
 	Describe("CIDR functions", func() {
 		It("contains IP", func() {
 			expr := CallExpr{
-				Function: ReferenceExpr{[]string{"contains_ip"}},
+				Function: ReferenceExpr{Path: []string{"contains_ip"}},
 				Arguments: []Expression{
 					StringExpr{"192.168.1.1/24"},
 					StringExpr{"192.168.1.2"},
@@ -42,7 +42,7 @@ var _ = Describe("calls", func() {
 		})
 		It("not contains IP", func() {
 			expr := CallExpr{
-				Function: ReferenceExpr{[]string{"contains_ip"}},
+				Function: ReferenceExpr{Path: []string{"contains_ip"}},
 				Arguments: []Expression{
 					StringExpr{"192.168.1.1/24"},
 					StringExpr{"192.168.2.0"},
@@ -58,7 +58,7 @@ var _ = Describe("calls", func() {
 		})
 		It("not contains IP", func() {
 			expr := CallExpr{
-				Function: ReferenceExpr{[]string{"contains_ip"}},
+				Function: ReferenceExpr{Path: []string{"contains_ip"}},
 				Arguments: []Expression{
 					StringExpr{"192.168.1.1/24"},
 					StringExpr{"192.168.0.255"},
@@ -75,7 +75,7 @@ var _ = Describe("calls", func() {
 
 		It("determines minimal IP", func() {
 			expr := CallExpr{
-				Function: ReferenceExpr{[]string{"min_ip"}},
+				Function: ReferenceExpr{Path: []string{"min_ip"}},
 				Arguments: []Expression{
 					StringExpr{"192.168.0.1/24"},
 				},
@@ -91,7 +91,7 @@ var _ = Describe("calls", func() {
 
 		It("determines maximal IP", func() {
 			expr := CallExpr{
-				Function: ReferenceExpr{[]string{"max_ip"}},
+				Function: ReferenceExpr{Path: []string{"max_ip"}},
 				Arguments: []Expression{
 					StringExpr{"192.168.0.1/24"},
 				},
@@ -107,7 +107,7 @@ var _ = Describe("calls", func() {
 
 		It("determines number of IPs", func() {
 			expr := CallExpr{
-				Function: ReferenceExpr{[]string{"num_ip"}},
+				Function: ReferenceExpr{Path: []string{"num_ip"}},
 				Arguments: []Expression{
 					StringExpr{"192.168.0.1/24"},
 				},
@@ -123,7 +123,7 @@ var _ = Describe("calls", func() {
 
 		It("determines number of IPs for /22", func() {
 			expr := CallExpr{
-				Function: ReferenceExpr{[]string{"num_ip"}},
+				Function: ReferenceExpr{Path: []string{"num_ip"}},
 				Arguments: []Expression{
 					StringExpr{"192.168.0.1/22"},
 				},
@@ -140,11 +140,11 @@ var _ = Describe("calls", func() {
 
 	Describe("join(\", \"...)", func() {
 		expr := CallExpr{
-			Function: ReferenceExpr{[]string{"join"}},
+			Function: ReferenceExpr{Path: []string{"join"}},
 			Arguments: []Expression{
 				StringExpr{", "},
-				ReferenceExpr{[]string{"alice"}},
-				ReferenceExpr{[]string{"bob"}},
+				ReferenceExpr{Path: []string{"alice"}},
+				ReferenceExpr{Path: []string{"bob"}},
 			},
 		}
 
@@ -203,7 +203,7 @@ var _ = Describe("calls", func() {
 
 		It("joins nothing", func() {
 			expr := CallExpr{
-				Function: ReferenceExpr{[]string{"join"}},
+				Function: ReferenceExpr{Path: []string{"join"}},
 				Arguments: []Expression{
 					StringExpr{", "},
 				},
@@ -219,7 +219,7 @@ var _ = Describe("calls", func() {
 
 		It("fails for missing args", func() {
 			expr := CallExpr{
-				Function:  ReferenceExpr{[]string{"join"}},
+				Function:  ReferenceExpr{Path: []string{"join"}},
 				Arguments: []Expression{},
 			}
 
@@ -228,7 +228,7 @@ var _ = Describe("calls", func() {
 
 		It("fails for wrong separator type", func() {
 			expr := CallExpr{
-				Function: ReferenceExpr{[]string{"join"}},
+				Function: ReferenceExpr{Path: []string{"join"}},
 				Arguments: []Expression{
 					ListExpr{[]Expression{IntegerExpr{0}}},
 				},
@@ -240,7 +240,7 @@ var _ = Describe("calls", func() {
 
 	Describe("static_ips(ips...)", func() {
 		expr := CallExpr{
-			Function: ReferenceExpr{[]string{"static_ips"}},
+			Function: ReferenceExpr{Path: []string{"static_ips"}},
 			Arguments: []Expression{
 				IntegerExpr{0},
 				IntegerExpr{4},
@@ -316,7 +316,7 @@ var _ = Describe("calls", func() {
 `)
 
 				expr := CallExpr{
-					Function: ReferenceExpr{[]string{"static_ips"}},
+					Function: ReferenceExpr{Path: []string{"static_ips"}},
 					Arguments: []Expression{
 						IntegerExpr{0},
 						IntegerExpr{4},

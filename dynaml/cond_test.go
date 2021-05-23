@@ -102,7 +102,7 @@ var _ = Describe("conditional operator", func() {
 				"bar": NewNode("alice", nil),
 			}, nil)
 			expr := CondExpr{
-				C: ReferenceExpr{[]string{"foo"}},
+				C: ReferenceExpr{Path: []string{"foo"}},
 				T: IntegerExpr{2},
 				F: IntegerExpr{3},
 			}
@@ -113,7 +113,7 @@ var _ = Describe("conditional operator", func() {
 		It("returns second if length == 0", func() {
 			mapNode := NewNode(map[string]yaml.Node{}, nil)
 			expr := CondExpr{
-				C: ReferenceExpr{[]string{"foo"}},
+				C: ReferenceExpr{Path: []string{"foo"}},
 				T: IntegerExpr{2},
 				F: IntegerExpr{3},
 			}

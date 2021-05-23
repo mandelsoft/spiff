@@ -8,10 +8,10 @@ import (
 var _ = Describe("sum expressions", func() {
 	It("prints sum expression", func() {
 		desc := SumExpr{
-			ReferenceExpr{[]string{"list"}},
+			ReferenceExpr{Path: []string{"list"}},
 			IntegerExpr{0},
 			ConcatenationExpr{
-				ReferenceExpr{[]string{"x"}},
+				ReferenceExpr{Path: []string{"x"}},
 				StringExpr{".*"},
 			},
 		}.String()
@@ -20,13 +20,13 @@ var _ = Describe("sum expressions", func() {
 
 	It("simplifies lambda sum expression", func() {
 		desc := SumExpr{
-			ReferenceExpr{[]string{"list"}},
+			ReferenceExpr{Path: []string{"list"}},
 			IntegerExpr{0},
 			LambdaExpr{
 				[]Parameter{Parameter{Name: "x"}},
 				false,
 				ConcatenationExpr{
-					ReferenceExpr{[]string{"x"}},
+					ReferenceExpr{Path: []string{"x"}},
 					StringExpr{".*"},
 				},
 			},

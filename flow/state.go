@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path"
+	"reflect"
 	"strings"
 
 	"github.com/mandelsoft/vfs/pkg/osfs"
@@ -15,6 +16,7 @@ import (
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/dynaml"
 	"github.com/mandelsoft/spiff/features"
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 const MODE_FILE_ACCESS = 1 // support file system access
@@ -28,6 +30,7 @@ type State struct {
 	fileSystem    vfs.VFS // virtual filesystem to use for filesystem based operations
 	functions     dynaml.Registry
 	interpolation bool
+	tags          map[string]*dynaml.Tag
 }
 
 var _ dynaml.State = &State{}
@@ -43,6 +46,7 @@ func NewState(key string, mode int, optfs ...vfs.FileSystem) *State {
 		mode = mode & ^MODE_OS_ACCESS
 	}
 	return &State{
+		tags:       map[string]*dynaml.Tag{},
 		files:      map[string]string{},
 		fileCache:  map[string][]byte{},
 		key:        key,
@@ -112,7 +116,37 @@ func (s *State) GetTempName(data []byte) (string, error) {
 	return name, nil
 }
 
+func (s *State) SetTag(name string, node yaml.Node, path []string) error {
+	debug.Debug("setting tag: %v\n", path)
+	old := s.tags[name]
+	if old != nil {
+		if !old.Local() {
+			return fmt.Errorf("duplicate tag %q: %s in foreign document", name, strings.Join(path, "."))
+		}
+		if !reflect.DeepEqual(path, old.Path()) {
+			return fmt.Errorf("duplicate tag %q: %s <-> %s", name, strings.Join(path, "."), strings.Join(old.Path(), "."))
+		}
+	}
+	s.tags[name] = dynaml.NewTag(name, node, path)
+	return nil
+}
+
+func (s *State) GetTag(name string) *dynaml.Tag {
+	return s.tags[name]
+}
+
+func (s *State) ResetTags() {
+	s.tags = map[string]*dynaml.Tag{}
+}
+
+func (s *State) ResetLocal() {
+	for _, t := range s.tags {
+		t.ResetLocal()
+	}
+}
+
 func (s *State) Cleanup() {
+	s.ResetLocal()
 	for _, n := range s.files {
 		s.fileSystem.Remove(n)
 	}

@@ -155,6 +155,7 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (
 		case ruleDynaml:
 			return tokens.Pop(), nil
 
+		case ruleTagMarker:
 		case ruleMarker:
 			tokens.Push(newMarkerExpr(contents))
 		case ruleSubsequentMarker:
@@ -200,13 +201,22 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (
 			keyName = tokens.Pop().(nameHelper).name
 		case ruleFollowUpRef:
 		case ruleReference:
-			tokens.Push(ReferenceExpr{PathComponents(contents, true)})
+			tag := ""
+			if i := strings.Index(contents, "::"); i > 0 {
+				tag = contents[:i]
+				contents = contents[i+2:]
+				if contents != "." && strings.HasPrefix(contents, ".") {
+					contents = contents[1:]
+				}
+			}
+			comps := PathComponents(contents, true)
+			tokens.Push(NewTaggedReferenceExpr(tag, comps...))
 
 		case ruleChained:
 		case ruleChainedQualifiedExpression:
 		case rulePathComponent:
 		case ruleChainedRef:
-			ref := ReferenceExpr{PathComponents(contents, false)}
+			ref := NewReferenceExpr(PathComponents(contents, false)...)
 			expr := tokens.Pop()
 			tokens.Push(QualifiedExpr{expr, ref})
 		case ruleChainedDynRef:
@@ -504,6 +514,7 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (
 			tokens.Push(expressionListHelper{})
 
 		case ruleKey, ruleIndex:
+		case ruleTag, ruleTagName:
 		case ruleLevel0, ruleLevel1, ruleLevel2, ruleLevel3, ruleLevel4, ruleLevel5, ruleLevel6, ruleLevel7:
 		case ruleExpression:
 		case ruleExpressionList:
