@@ -57,6 +57,13 @@ func discardTemporary(node yaml.Node) (yaml.Node, CleanupFunction) {
 	return node, discardTemporary
 }
 
+func discardTags(node yaml.Node) (yaml.Node, CleanupFunction) {
+	if node.GetAnnotation().Tag() != "" {
+		return yaml.SetTag(node, ""), discardTags
+	}
+	return node, discardTags
+}
+
 func unescapeDynamlFunc(binding dynaml.Binding) CleanupFunction {
 	interpol := binding != nil && binding.GetState().InterpolationEnabled()
 	var f CleanupFunction

@@ -55,6 +55,27 @@ data:
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
+		It("handles simple value tag", func() {
+			source := parseYAML(`
+---
+data:
+  nested:
+    v: (( tag::. ))
+  a:
+    b:
+      c: (( &tag:tag("value") ))
+`)
+			resolved := parseYAML(`
+---
+data:
+  a:
+    b:
+      c: value
+  nested:
+    v: value
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
 	})
 
 	Context("Failure", func() {

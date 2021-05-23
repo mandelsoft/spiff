@@ -64,6 +64,14 @@ func (s *State) SetFunctions(f dynaml.Registry) *State {
 	return s
 }
 
+func (s *State) SetTags(tags ...*dynaml.Tag) *State {
+	s.tags = map[string]*dynaml.Tag{}
+	for _, v := range tags {
+		s.tags[v.Name()] = v
+	}
+	return s
+}
+
 func (s *State) EnableInterpolation() {
 	s.interpolation = true
 }
@@ -127,7 +135,7 @@ func (s *State) SetTag(name string, node yaml.Node, path []string) error {
 			return fmt.Errorf("duplicate tag %q: %s <-> %s", name, strings.Join(path, "."), strings.Join(old.Path(), "."))
 		}
 	}
-	s.tags[name] = dynaml.NewTag(name, node, path)
+	s.tags[name] = dynaml.NewTag(name, Cleanup(node, discardTags), path)
 	return nil
 }
 

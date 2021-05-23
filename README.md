@@ -168,6 +168,12 @@ Contents:
     	- [(( &inject ))](#-inject-)
     	- [(( &default ))](#-default-)
     	- [(( &state ))](#-state-)
+    	- [(( &tag:name ))](#-tagname-)
+    - [Tags](#tags)
+        - [(( &tag:name(value) ))](#-tagnamevalue-)
+        - [(( name::path ))](#-namepath-)
+        - [(( name::. ))](#-name-)
+        - [Tags in Multi-Document Streams](#tags-in-multi-document-streams)
 	- [Templates](#templates)
 		- [<<: (( &template ))](#--template-)
 		- [(( *foo.bar ))](#-foobar-)
@@ -212,10 +218,12 @@ name `-`. It may be used only once. This allows using spiff as part of a
 pipeline to just process a single stream or to process a stream based on
 several templates/stubs.
 
-The template file (first argument) may be a multiple document stream
+The template file (first argument) may be a multiple-document stream
 containing multiple YAML documents separated by a line containing only `---`.
 Each YAML document will be processed independently with the given stub files.
 The result is the stream of processed documents in the same order.
+If a document's root node is marked as temporary, the document is omitted
+from the output stream.
 For example, this can be used to generate *kubernetes* manifests to be used
 by `kubectl`.
 
@@ -2986,7 +2994,7 @@ dynaml expressions will be evaluated in the context of the reading expression.
 This means that the same file included at different places in a yaml document
 may result in different sub trees, depending on the used dynaml expressions.
 
-If is poassible to read a multi-document yaml, also. If the type `multiyaml`
+If is possible to read a multi-document yaml, also. If the type `multiyaml`
 is given, a list node with the yaml document root nodes is returned.
 
 The yaml or json document can also read as _template_ by specifying the type
@@ -3034,7 +3042,7 @@ will not fail, because the `second` section is never evaluated.
 This mode should be taken with caution, because it often leads to unexpected
 results.
 
-The read type `importmulti` can be used to import multi document yaml files as a 
+The read type `importmulti` can be used to import multi-document yaml files as a 
 list of nodes.
 
 ##### text documents
@@ -4700,6 +4708,146 @@ Nodes marked as *template* will not be evaluated at the place of their
 occurrence. Instead, they will result in a template value stored as value for
 the node. They can later be instantiated inside a _dynaml_ expression
 (see [below](#templates)).
+
+### `(( &tag:name ))`
+
+The tag marker can be used to assign a logical name to a node value.
+This name can then be used in tagged reference expressions to refer to this
+node value (see [below](#tags)).
+
+A tagged reference has the form `<tagname>::<path>`. The `<path>` may denote any
+sub node of a tagged node. If the value of a complete node
+(or a simple value node) should be used, the `<path>` must denote the root path
+(`.`).
+
+## Tags
+
+Tags can be used to label node values in multi-document streams
+(used as template). After defined for a document the tag can then be used to
+reference node values from the actual or previous document(s) of a
+document sequence in a multi-document stream. Tags can be added for complex or
+simple value nodes. A tagged reference may be used to refer to the tagged
+value as a whole or sub structure.
+
+### `(( &tag:name(value) ))`
+
+This syntax is used to tag a node whose value is defined by a dynaml expression.
+It can also be used to denote tagged simple value nodes.
+
+e.g.:
+
+**template.yaml**
+```yaml
+data:
+  <<: (( &tag:persons ))
+  alice: (( &tag:alice(25)
+```
+
+### `(( name::path ))`
+
+Reference a sub path of the value of a tagged node.
+
+e.g.:
+
+**template.yaml**
+```yaml
+data:
+  <<: (( &tag:persons ))
+  alice: 25
+
+tagref: (( persons::alice ))
+```
+
+resolves `tagref` to `25`
+
+### `(( name::. ))`
+
+Reference the value of tagged node.
+
+e.g.:
+
+**template.yaml**
+```yaml
+data:
+  alice: (( &tag:alice(25) ))
+
+tagref: (( alice::. ))
+```
+
+resolves `tagref` to `25`
+
+### Tags in Multi-Document Streams
+
+If the template file is a multi-document stream the tags are preserved during
+the complete processing. This means tags defined in a earlier document can be used 
+in all following documents, also. But the tag names must be unique across all
+documents in a multi-document stream.
+
+e.g.:
+
+**template.yaml**
+```yaml
+<<: (( &temporary ))
+data:
+  <<: (( &tag:persons ))
+  alice: 25
+  bob: 24
+---
+alice: (( persons::alice ))
+---
+bob: (( persons::bob ))
+```
+
+resolves to
+
+```yaml
+---
+alice: 25
+---
+bob: 24
+```
+
+Tags defined by tag markers are available for stubs and templates.
+Additionally to the tags explicitly set by tag markers, there are implicit
+document tags given by the document index during the processing of a 
+(multi-document) template.
+
+e.g.:
+
+**template.yaml**
+```yaml
+<<: (( &temporary ))
+data:
+  <<: (( &tag:persons ))
+  alice: 25
+  bob: 24
+---
+alice: (( persons::alice ))
+prev: (( 1::. ))
+---
+bob: (( persons::bob ))
+prev: (( 2::. ))
+```
+
+resolves to
+
+```yaml
+---
+alice: 25
+prev:
+  data:
+    alice: 25
+    bob: 24
+---
+bob: 24
+prev:
+  alice: 25
+  prev:
+    data:
+      alice: 25
+      bob: 24
+```
+
 
 ## Templates
 

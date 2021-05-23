@@ -67,6 +67,7 @@ type spiff struct {
 	opts          flow.Options
 	values        map[string]yaml.Node
 	functions     Functions
+	tags          map[string]*dynaml.Tag
 	interpolation bool
 
 	binding dynaml.Binding
@@ -88,23 +89,43 @@ func New() Spiff {
 	}
 }
 
-func (s *spiff) reset() Spiff {
+func (s *spiff) Reset() Spiff {
 	s.binding = nil
 	return s
+}
+
+func (s *spiff) assureBinding(useTags bool) {
+	if s.binding == nil {
+		state := flow.NewState(s.key, s.mode, s.fs).
+			SetFunctions(s.functions).
+			SetInterpolation(s.interpolation)
+		if useTags && len(s.tags) > 0 {
+			var tags []*dynaml.Tag
+			for _, t := range s.tags {
+				tags = append(tags, t)
+			}
+			state.SetTags(tags...)
+		}
+		s.binding = flow.NewEnvironment(
+			nil, "context", state)
+		if s.values != nil {
+			s.binding = s.binding.WithLocalScope(s.values)
+		}
+	}
 }
 
 // WithInterpolation creates a new context with
 // enabled/disabled string interpolation feature
 func (s spiff) WithInterpolation(b bool) Spiff {
 	s.interpolation = b
-	return s.reset()
+	return s.Reset()
 }
 
 // WithEncryptionKey creates a new context with
 // dedicated encryption key used for the spiff encryption feature
 func (s spiff) WithEncryptionKey(key string) Spiff {
 	s.key = key
-	return s.reset()
+	return s.Reset()
 }
 
 // WithMode creates a new context with the given processing mode.
@@ -114,7 +135,7 @@ func (s spiff) WithMode(mode int) Spiff {
 		mode = mode & ^MODE_OS_ACCESS
 	}
 	s.mode = mode
-	return s.reset()
+	return s.Reset()
 }
 
 // WithFileSystem creates a new context with the given
@@ -126,14 +147,14 @@ func (s spiff) WithFileSystem(fs vfs.FileSystem) Spiff {
 	if fs != nil {
 		s.mode = s.mode & ^MODE_OS_ACCESS
 	}
-	return s.reset()
+	return s.Reset()
 }
 
 // WithFunctions creates a new context with the given
 // additional function definitions
 func (s spiff) WithFunctions(functions Functions) Spiff {
 	s.functions = functions
-	return s.reset()
+	return s.Reset()
 }
 
 // WithValues creates a new context with the given
@@ -152,7 +173,15 @@ func (s spiff) WithValues(values map[string]interface{}) (Spiff, error) {
 	} else {
 		s.values = nil
 	}
-	return s.reset(), nil
+	return s.Reset(), nil
+}
+
+// SetTag sets/resets a tag for subsequent processings.
+// This can be used to set implicit document tags
+// when simulating a multi-document processing
+func (s spiff) SetTag(tag string, node yaml.Node) Spiff {
+	s.tags[tag] = dynaml.NewTag(tag, node, nil)
+	return s.Reset()
 }
 
 // FileSystem return the virtual filesystem set for the execution context.
@@ -165,30 +194,35 @@ func (s *spiff) FileSource(path string) Source {
 	return NewSourceFile(path, s.fs)
 }
 
+// CleanupTags deletes all gathered tags
+func (s *spiff) CleanupTags() Spiff {
+	s.binding = nil
+	s.tags = map[string]*dynaml.Tag{}
+	return s
+}
+
 // Cascade processes a template with a list of given subs and state
 // documents
 func (s *spiff) Cascade(template Node, stubs []Node, states ...Node) (Node, error) {
-	if s.binding == nil {
-		s.binding = flow.NewEnvironment(
-			nil, "context",
-			flow.NewState(s.key, s.mode, s.fs).
-				SetFunctions(s.functions).
-				SetInterpolation(s.interpolation))
-		if s.values != nil {
-			s.binding = s.binding.WithLocalScope(s.values)
-		}
-	}
+	s.Reset()
+	s.assureBinding(false)
+	defer s.Reset()
 	return flow.Cascade(s.binding, template, s.opts, append(stubs, states...)...)
 }
 
 // PrepareStubs processes a list a stubs and returns a prepared
 // represenation usable to process a template
 func (s *spiff) PrepareStubs(stubs ...Node) ([]Node, error) {
+	s.Reset()
+	s.assureBinding(false)
+	defer s.Reset()
 	return flow.PrepareStubs(s.binding, s.opts.Partial, stubs...)
 }
 
 // ApplyStubs uses already prepared subs to process a template.
+// It uses the configured implicit tag settings.
 func (s *spiff) ApplyStubs(template Node, preparedstubs []Node) (Node, error) {
+	s.assureBinding(true)
 	return flow.Apply(s.binding, template, preparedstubs, s.opts)
 }
 

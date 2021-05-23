@@ -63,7 +63,7 @@ func init() {
 	mergeCmd.Flags().BoolVar(&debug.DebugFlag, "debug", false, "Print state info")
 	mergeCmd.Flags().BoolVar(&processingOptions.Partial, "partial", false, "Allow partial evaluation only")
 	mergeCmd.Flags().StringVar(&outputPath, "path", "", "output is taken from given path")
-	mergeCmd.Flags().BoolVar(&split, "split", false, "if the output is alist it will be split into separate documents")
+	mergeCmd.Flags().BoolVar(&split, "split", false, "if the output is a list it will be split into separate documents")
 	mergeCmd.Flags().BoolVar(&processingOptions.PreserveEscapes, "preserve-escapes", false, "preserve escaping for escaped expressions and merges")
 	mergeCmd.Flags().BoolVar(&processingOptions.PreserveTemporary, "preserve-temporary", false, "preserve temporary fields")
 	mergeCmd.Flags().StringVar(&state, "state", "", "select state file to maintain")
@@ -237,6 +237,13 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 			}
 			if err != nil {
 				flowed = dynaml.ResetUnresolvedNodes(flowed)
+			} else {
+				if binding != nil {
+					binding.GetState().SetTag(fmt.Sprintf("%d", count), flowed, nil)
+				}
+			}
+			if !opts.PreserveTemporary && flowed.Temporary() {
+				continue
 			}
 			if subpath != "" {
 				comps := dynaml.PathComponents(subpath, false)

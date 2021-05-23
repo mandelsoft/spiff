@@ -42,6 +42,8 @@ var _ = Describe("parsing", func() {
 			"&temporary",
 			"&state",
 			"&inject",
+			"&local",
+			"&default",
 			"&tag:test",
 		}
 		var entries []TableEntry
