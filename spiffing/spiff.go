@@ -94,12 +94,17 @@ func (s *spiff) Reset() Spiff {
 	return s
 }
 
-func (s *spiff) assureBinding(useTags bool) {
+func (s *spiff) ResetStream() Spiff {
+	flow.ResetStream(s.binding)
+	return s
+}
+
+func (s *spiff) assureBinding() {
 	if s.binding == nil {
 		state := flow.NewState(s.key, s.mode, s.fs).
 			SetFunctions(s.functions).
 			SetInterpolation(s.interpolation)
-		if useTags && len(s.tags) > 0 {
+		if len(s.tags) > 0 {
 			var tags []*dynaml.Tag
 			for _, t := range s.tags {
 				tags = append(tags, t)
@@ -176,11 +181,9 @@ func (s spiff) WithValues(values map[string]interface{}) (Spiff, error) {
 	return s.Reset(), nil
 }
 
-// SetTag sets/resets a tag for subsequent processings.
-// This can be used to set implicit document tags
-// when simulating a multi-document processing
+// SetTag sets/resets a global tag for subsequent processings.
 func (s spiff) SetTag(tag string, node yaml.Node) Spiff {
-	s.tags[tag] = dynaml.NewTag(tag, node, nil)
+	s.tags[tag] = dynaml.NewTag(tag, node, nil, true)
 	return s.Reset()
 }
 
@@ -204,25 +207,25 @@ func (s *spiff) CleanupTags() Spiff {
 // Cascade processes a template with a list of given subs and state
 // documents
 func (s *spiff) Cascade(template Node, stubs []Node, states ...Node) (Node, error) {
-	s.Reset()
-	s.assureBinding(false)
-	defer s.Reset()
+	s.assureBinding()
+	defer s.ResetStream()
 	return flow.Cascade(s.binding, template, s.opts, append(stubs, states...)...)
 }
 
 // PrepareStubs processes a list a stubs and returns a prepared
 // represenation usable to process a template
 func (s *spiff) PrepareStubs(stubs ...Node) ([]Node, error) {
-	s.Reset()
-	s.assureBinding(false)
-	defer s.Reset()
+	s.assureBinding()
 	return flow.PrepareStubs(s.binding, s.opts.Partial, stubs...)
 }
 
 // ApplyStubs uses already prepared subs to process a template.
 // It uses the configured implicit tag settings.
-func (s *spiff) ApplyStubs(template Node, preparedstubs []Node) (Node, error) {
-	s.assureBinding(true)
+func (s *spiff) ApplyStubs(template Node, preparedstubs []Node, stream ...bool) (Node, error) {
+	s.assureBinding()
+	if len(stream) == 0 || !stream[0] {
+		s.ResetStream()
+	}
 	return flow.Apply(s.binding, template, preparedstubs, s.opts)
 }
 

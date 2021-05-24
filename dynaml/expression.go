@@ -16,15 +16,25 @@ type SourceProvider interface {
 	SourceName() string
 }
 
+const TAG_GLOBAL = TagScope(1)
+const TAG_STREAM = TagScope(2)
+const TAG_LOCAL = TagScope(3)
+
+type TagScope int
+
 type Tag struct {
 	name  string
 	node  yaml.Node
 	path  []string
-	local bool
+	scope TagScope
 }
 
-func NewTag(name string, node yaml.Node, path []string) *Tag {
-	return &Tag{name, node, path, true}
+func NewTag(name string, node yaml.Node, path []string, global bool) *Tag {
+	scope := TAG_LOCAL
+	if global {
+		scope = TAG_GLOBAL
+	}
+	return &Tag{name, node, path, scope}
 }
 
 func (t *Tag) Name() string {
@@ -39,12 +49,14 @@ func (t *Tag) Path() []string {
 	return t.path
 }
 
-func (t *Tag) Local() bool {
-	return t.local
+func (t *Tag) Scope() TagScope {
+	return t.scope
 }
 
 func (t *Tag) ResetLocal() {
-	t.local = false
+	if t.scope == TAG_LOCAL {
+		t.scope = TAG_STREAM
+	}
 }
 
 type State interface {

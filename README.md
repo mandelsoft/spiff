@@ -264,6 +264,12 @@ The ` merge` command offers several options:
   consist of a map. Each key is used as additional binding. The bindings document
   is not processed, the values are used as defined.
 
+- With option `--tag <tag>:<path>` a yaml file can be specified, whose content
+  is used as value for a predefined global tag (see [Tags](#tags)).
+  Tags can be accessed by reference expressions of the form `<tag>::<ref>`.
+  In contrast to bindings tagged content does not compete with the nodes
+  in the document, it uses another reference namespace.
+
 - With option `--define <key>=<value>` (shorthand`-D`) additional binding values
   can be specified on the command line overriding binding values from the
   binding file. The option may occur multiple times.
@@ -4848,6 +4854,11 @@ prev:
       bob: 24
 ```
 
+If the given document index is negative it denotes the document relative to the
+one actually processed (so, the tag `-1` denotes the previous document).
+The index `0` can be used to denote the actual document. Here always a path
+must be specified, it is not possible to refer to the  complete document
+(with `.`). 
 
 ## Templates
 

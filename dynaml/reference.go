@@ -26,18 +26,29 @@ func (e ReferenceExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 
 	debug.Debug("reference: (%s)%v\n", e.Tag, e.Path)
 	if e.Tag != "" {
-		tag = binding.GetState().GetTag(e.Tag)
 		info := DefaultInfo()
-		if tag == nil {
-			return info.Error("tag '%s' not found", e.Tag)
-		}
-		if len(e.Path) == 1 && e.Path[0] == "" {
-			return tag.Node().Value(), info, true
+		if e.Tag != "0" {
+			tag = binding.GetState().GetTag(e.Tag)
+			if tag == nil {
+				return info.Error("tag '%s' not found", e.Tag)
+			}
+			if len(e.Path) == 1 && e.Path[0] == "" {
+				return tag.Node().Value(), info, true
+			}
+		} else {
+			if len(e.Path) == 1 && e.Path[0] == "" {
+				return info.Error("no reference to actual document possible")
+			}
+			fromRoot = true
 		}
 	}
 	return e.find(func(end int, path []string) (yaml.Node, bool) {
 		if fromRoot {
-			return binding.FindFromRoot(path[1 : end+1])
+			start := 0
+			if e.Path[0] == "" {
+				start = 1
+			}
+			return binding.FindFromRoot(path[start : end+1])
 		} else {
 			if tag != nil {
 				return yaml.Find(tag.Node(), path...)

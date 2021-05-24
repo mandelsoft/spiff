@@ -23,6 +23,7 @@ import (
 var asJSON bool
 var outputPath string
 var selection []string
+var tagdefs []string
 var expr string
 var split bool
 var interpolation bool
@@ -70,6 +71,7 @@ func init() {
 	mergeCmd.Flags().StringVar(&bindings, "bindings", "", "yaml file with additional bindings to use")
 	mergeCmd.Flags().StringArrayVarP(&values, "define", "D", nil, "key/value bindings")
 	mergeCmd.Flags().StringArrayVar(&selection, "select", []string{}, "filter dedicated output fields")
+	mergeCmd.Flags().StringArrayVar(&tagdefs, "tag", []string{}, "tag files (tag:path)")
 	mergeCmd.Flags().StringVar(&expr, "evaluate", "", "evaluation expression")
 }
 
@@ -164,6 +166,27 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 		}
 	}
 
+	tags := []*dynaml.Tag{}
+
+	for _, tagDef := range tagdefs {
+		i := strings.Index(tagDef, ":")
+		if i <= 0 {
+			log.Fatalln(fmt.Sprintf("tag file must be preceeded by a tag (<tag>:<path>)"))
+		}
+		tagFilePath := tagDef[i+1:]
+		tagFile, err := ReadFile(tagFilePath)
+		if err != nil {
+			log.Fatalln(fmt.Sprintf("error reading tag gile [%s]:", path.Clean(tagFilePath)), err)
+		}
+
+		tagYAML, err := yaml.Parse(tagFilePath, tagFile)
+		if err != nil {
+			log.Fatalln(fmt.Sprintf("error parsing tag gile [%s]:", path.Clean(tagFilePath)), err)
+		}
+
+		tags = append(tags, dynaml.NewTag(tagDef[:i], tagYAML, nil, true))
+	}
+
 	if stubs == nil {
 		stubs = []yaml.Node{}
 	}
@@ -203,8 +226,9 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 		" -: depending on a node with an error"
 
 	var binding dynaml.Binding
-	if bindingYAML != nil || interpolation {
+	if bindingYAML != nil || interpolation || len(tags) > 0 || len(templateYAMLs) > 1 {
 		defstate := flow.NewDefaultState().SetInterpolation(interpolation)
+		defstate.SetTags(tags...)
 		binding = flow.NewEnvironment(
 			nil, "context", defstate)
 		if bindingYAML != nil {
@@ -237,10 +261,6 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 			}
 			if err != nil {
 				flowed = dynaml.ResetUnresolvedNodes(flowed)
-			} else {
-				if binding != nil {
-					binding.GetState().SetTag(fmt.Sprintf("%d", count), flowed, nil)
-				}
 			}
 			if !opts.PreserveTemporary && flowed.Temporary() {
 				continue

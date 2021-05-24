@@ -66,6 +66,9 @@ type Spiff interface {
 	CleanupTags() Spiff
 	// Reset flushes the binding state
 	Reset() Spiff
+	// ResetStream flushes the document history
+	// and removes all implicit document stream tags.
+	ResetStream() Spiff
 
 	// FileSystem return the virtual filesystem set for the execution context.
 	FileSystem() vfs.FileSystem
@@ -97,15 +100,21 @@ type Spiff interface {
 
 	// Cascade processes a template with a list of given subs and state
 	// documents.
-	// Please note: configured implicit tag settings are ignored.
+	// The document stream history (implicit tags) is resetted prior
+	// to the execution.
 	Cascade(template Node, stubs []Node, states ...Node) (Node, error)
 	// PrepareStubs processes a list a stubs and returns a prepared
-	// represenation usable to process a template
-	// Please note: configured implicit tag settings are ignored.
+	// represenation usable to process a template.
+	// The document stream history (implicit tags) is resetted prior
+	// to the execution.
 	PrepareStubs(stubs ...Node) ([]Node, error)
 	// ApplyStubs uses already prepared subs to process a template.
-	// Please note: configured implicit tag settings are obeyed.
-	ApplyStubs(template Node, preparedstubs []Node) (Node, error)
+	// The document stream history (implicit tags) is resetted prior
+	// to the execution. If the call is part of the processing
+	// of a document stream, the optional argument must be set to
+	// true. In this case every call add an entry to the document
+	// history.
+	ApplyStubs(template Node, preparedstubs []Node, stream ...bool) (Node, error)
 }
 
 // Source is used to get access to a template or stub source data and name

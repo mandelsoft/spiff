@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"path"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/mandelsoft/vfs/pkg/osfs"
@@ -31,6 +32,7 @@ type State struct {
 	functions     dynaml.Registry
 	interpolation bool
 	tags          map[string]*dynaml.Tag
+	docno         int // document number
 }
 
 var _ dynaml.State = &State{}
@@ -52,6 +54,7 @@ func NewState(key string, mode int, optfs ...vfs.FileSystem) *State {
 		key:        key,
 		mode:       mode,
 		fileSystem: vfs.New(fs),
+		docno:      1,
 	}
 }
 
@@ -128,33 +131,58 @@ func (s *State) SetTag(name string, node yaml.Node, path []string) error {
 	debug.Debug("setting tag: %v\n", path)
 	old := s.tags[name]
 	if old != nil {
-		if !old.Local() {
+		if old.Scope() != dynaml.TAG_LOCAL {
 			return fmt.Errorf("duplicate tag %q: %s in foreign document", name, strings.Join(path, "."))
 		}
 		if !reflect.DeepEqual(path, old.Path()) {
 			return fmt.Errorf("duplicate tag %q: %s <-> %s", name, strings.Join(path, "."), strings.Join(old.Path(), "."))
 		}
 	}
-	s.tags[name] = dynaml.NewTag(name, Cleanup(node, discardTags), path)
+	s.tags[name] = dynaml.NewTag(name, Cleanup(node, discardTags), path, false)
 	return nil
 }
 
 func (s *State) GetTag(name string) *dynaml.Tag {
+	i, err := strconv.Atoi(name)
+	if err == nil {
+		if i <= 0 {
+			i += s.docno
+			if i <= 0 {
+				return nil
+			}
+			name = fmt.Sprintf("%d", i)
+		}
+	}
 	return s.tags[name]
 }
 
 func (s *State) ResetTags() {
 	s.tags = map[string]*dynaml.Tag{}
+	s.docno = 1
 }
 
-func (s *State) ResetLocal() {
+func (s *State) ResetStream() {
+	n := map[string]*dynaml.Tag{}
+	for _, v := range s.tags {
+		if v.Scope() == dynaml.TAG_GLOBAL {
+			n[v.Name()] = v
+		}
+	}
+	s.docno = 1
+	s.tags = n
+}
+
+func (s *State) PushDocument(node yaml.Node) {
 	for _, t := range s.tags {
 		t.ResetLocal()
 	}
+	if node != nil {
+		s.SetTag(fmt.Sprintf("%d", s.docno), node, nil)
+	}
+	s.docno++
 }
 
 func (s *State) Cleanup() {
-	s.ResetLocal()
 	for _, n := range s.files {
 		s.fileSystem.Remove(n)
 	}

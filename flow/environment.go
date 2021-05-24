@@ -327,10 +327,17 @@ func ResetTags(binding dynaml.Binding) {
 	}
 }
 
-func ResetLocalTags(binding dynaml.Binding) {
+func ResetStream(binding dynaml.Binding) {
 	env, ok := binding.(DefaultEnvironment)
 	if ok && env.state != nil {
-		env.state.ResetLocal()
+		env.state.ResetStream()
+	}
+}
+
+func PushDocument(binding dynaml.Binding, doc yaml.Node) {
+	env, ok := binding.(DefaultEnvironment)
+	if ok && env.state != nil {
+		env.state.PushDocument(doc)
 	}
 }
 
