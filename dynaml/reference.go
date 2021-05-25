@@ -27,7 +27,7 @@ func (e ReferenceExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 	debug.Debug("reference: (%s)%v\n", e.Tag, e.Path)
 	if e.Tag != "" {
 		info := DefaultInfo()
-		if e.Tag != "0" {
+		if e.Tag != "doc:0" {
 			tag = binding.GetState().GetTag(e.Tag)
 			if tag == nil {
 				return info.Error("tag '%s' not found", e.Tag)

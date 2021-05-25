@@ -184,7 +184,7 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 			log.Fatalln(fmt.Sprintf("error parsing tag gile [%s]:", path.Clean(tagFilePath)), err)
 		}
 
-		tags = append(tags, dynaml.NewTag(tagDef[:i], tagYAML, nil, true))
+		tags = append(tags, dynaml.NewTag(tagDef[:i], tagYAML, nil, dynaml.TAG_SCOPE_GLOBAL))
 	}
 
 	if stubs == nil {

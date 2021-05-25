@@ -39,7 +39,14 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 		debug.Debug("found tag %q at %v\n", tag, env.Path())
 	}
 	if dynaml.IsResolvedNode(node) && tag != "" {
-		err := env.GetState().SetTag(tag, node, env.Path())
+		scope := dynaml.TAG_LOCAL
+		if strings.HasPrefix(tag, "*") {
+			tag = tag[1:]
+			scope |= dynaml.TAG_SCOPE_GLOBAL
+		} else {
+			scope |= dynaml.TAG_SCOPE_STREAM
+		}
+		err := env.GetState().SetTag(tag, node, env.Path(), scope)
 		if err != nil {
 			if node.Value() == nil {
 				node = yaml.ReplaceValue(root.Value(), node)

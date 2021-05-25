@@ -127,30 +127,33 @@ func (s *State) GetTempName(data []byte) (string, error) {
 	return name, nil
 }
 
-func (s *State) SetTag(name string, node yaml.Node, path []string) error {
+func (s *State) SetTag(name string, node yaml.Node, path []string, scope dynaml.TagScope) error {
 	debug.Debug("setting tag: %v\n", path)
 	old := s.tags[name]
 	if old != nil {
-		if old.Scope() != dynaml.TAG_LOCAL {
+		if !old.IsLocal() {
 			return fmt.Errorf("duplicate tag %q: %s in foreign document", name, strings.Join(path, "."))
 		}
 		if !reflect.DeepEqual(path, old.Path()) {
 			return fmt.Errorf("duplicate tag %q: %s <-> %s", name, strings.Join(path, "."), strings.Join(old.Path(), "."))
 		}
 	}
-	s.tags[name] = dynaml.NewTag(name, Cleanup(node, discardTags), path, false)
+	s.tags[name] = dynaml.NewTag(name, Cleanup(node, discardTags), path, scope)
 	return nil
 }
 
 func (s *State) GetTag(name string) *dynaml.Tag {
-	i, err := strconv.Atoi(name)
-	if err == nil {
+	if strings.HasPrefix(name, "doc:") {
+		i, err := strconv.Atoi(name[4:])
+		if err != nil {
+			return nil
+		}
 		if i <= 0 {
 			i += s.docno
 			if i <= 0 {
 				return nil
 			}
-			name = fmt.Sprintf("%d", i)
+			name = fmt.Sprintf("doc:%d", i)
 		}
 	}
 	return s.tags[name]
@@ -164,7 +167,7 @@ func (s *State) ResetTags() {
 func (s *State) ResetStream() {
 	n := map[string]*dynaml.Tag{}
 	for _, v := range s.tags {
-		if v.Scope() == dynaml.TAG_GLOBAL {
+		if !v.IsStream() {
 			n[v.Name()] = v
 		}
 	}
@@ -173,11 +176,11 @@ func (s *State) ResetStream() {
 }
 
 func (s *State) PushDocument(node yaml.Node) {
+	if node != nil {
+		s.SetTag(fmt.Sprintf("doc:%d", s.docno), node, nil, dynaml.TAG_SCOPE_GLOBAL)
+	}
 	for _, t := range s.tags {
 		t.ResetLocal()
-	}
-	if node != nil {
-		s.SetTag(fmt.Sprintf("%d", s.docno), node, nil)
 	}
 	s.docno++
 }

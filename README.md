@@ -102,6 +102,7 @@ Contents:
 		- [(( valid(foobar) ))](#-validfoobar-)
 		- [(( require(foobar) ))](#-requirefoobar-)
 		- [(( stub(foo.bar) ))](#-stubfoobar-)
+		- [(( tagdef("tag", value) ))](#-tagdeftag-valiue-)
 		- [(( eval(foo "." bar ) ))](#-evalfoo--bar--)
 		- [(( env( HOME" ) ))](#-envHOME--)
 		- [(( static_ips(0, 1, 3) ))](#-static_ips0-1-3-)
@@ -2195,6 +2196,39 @@ if its value should be used, it must be transformed to an expression, for exampl
 by denoting `(ref)` or `[] ref` for a list expression.
   
 Alternatively the `merge` operation could be used, for example `merge foo.bar`. The difference is that `stub` does not merge, therefore the field will still be merged (with the original path in the document).
+
+
+### `(( tagdef("tag", value) ))`
+
+The function `tagdef` can be used to define dynamic tags (see [Tags](#tags)).
+In contrast to the tag marker this function aloows to specify the tag name 
+and its intended value by an expression. Therefit can be used in composing
+elements like `map` or `sum` to create dynamic tag with calculated values.
+
+An optional third argument can be used to specify the intended scope
+(`local` or `global`). By default a local tag is created. Local tags are visible
+only at the actual processing level (template or sub), while global tags,
+once defined, can be used in all further processing levels (stub or template).
+
+Alternatively the tag name can be prefixed with a start (`*`) to declare
+a global tag.
+
+The specified tag value will be used as result for the function.
+
+e.g.:
+
+**template.yml**
+```yaml
+value: (( tagdef("tag:alice", 25) ))
+alice: (( tag:alice::. ))
+```
+
+evaluates to
+
+```yaml
+value: 25
+alice: 25
+```
 
 ### `(( eval(foo "." bar ) ))`
 
@@ -4749,6 +4783,12 @@ data:
   alice: (( &tag:alice(25)
 ```
 
+If the name is prefixed with a star (`*`), the tag is defined globally.
+Gobal tags surive stub processing and their value is visible in sub sequent
+stub (and template) processings.
+
+A tag name may consist of multiple components separated by a colon (`:`).
+
 ### `(( name::path ))`
 
 Reference a sub path of the value of a tagged node.
@@ -4814,9 +4854,13 @@ bob: 24
 ```
 
 Tags defined by tag markers are available for stubs and templates.
+Global tags are available down the stub processing to the templates.
+Local tags are only avaialble on the processing level they are declared.
+ 
 Additionally to the tags explicitly set by tag markers, there are implicit
 document tags given by the document index during the processing of a 
-(multi-document) template.
+(multi-document) template. The implicit document tags are qualified with the
+prefix `doc:`. This prefix should not be used to own tags in the documents
 
 e.g.:
 
@@ -4829,10 +4873,10 @@ data:
   bob: 24
 ---
 alice: (( persons::alice ))
-prev: (( 1::. ))
+prev: (( doc:1::. ))
 ---
 bob: (( persons::bob ))
-prev: (( 2::. ))
+prev: (( doc:2::. ))
 ```
 
 resolves to
@@ -4855,9 +4899,9 @@ prev:
 ```
 
 If the given document index is negative it denotes the document relative to the
-one actually processed (so, the tag `-1` denotes the previous document).
-The index `0` can be used to denote the actual document. Here always a path
-must be specified, it is not possible to refer to the  complete document
+one actually processed (so, the tag `doc:-1` denotes the previous document).
+The index `doc:0` can be used to denote the actual document. Here always a path
+must be specified, it is not possible to refer to the complete document
 (with `.`). 
 
 ## Templates

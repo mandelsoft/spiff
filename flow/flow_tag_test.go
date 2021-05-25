@@ -6,6 +6,73 @@ import (
 )
 
 var _ = Describe("Tags", func() {
+	Context("dynamic", func() {
+		It("handles two arg form", func() {
+			source := parseYAML(`
+---
+data: (( tagdef("tag:alice", 25) ))
+alice: (( tag:alice::. ))
+`)
+			resolved := parseYAML(`
+---
+data: 25
+alice: 25
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("handles two arg global form", func() {
+			source := parseYAML(`
+---
+data: (( tagdef("*tag:alice", 25) ))
+alice: (( tag:alice::. ))
+`)
+			resolved := parseYAML(`
+---
+data: 25
+alice: 25
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("handles local three arg form", func() {
+			source := parseYAML(`
+---
+data: (( tagdef("tag:alice", 25, "local") ))
+alice: (( tag:alice::. ))
+`)
+			resolved := parseYAML(`
+---
+data: 25
+alice: 25
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("handles global three arg form", func() {
+			source := parseYAML(`
+---
+data: (( tagdef("tag:alice", 25, "global") ))
+alice: (( tag:alice::. ))
+`)
+			resolved := parseYAML(`
+---
+data: 25
+alice: 25
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("fails stared three arg form", func() {
+			source := parseYAML(`
+---
+data: (( catch(tagdef("*tag:alice", 25, "global")) ))
+`)
+			resolved := parseYAML(`
+---
+data:
+  error: "invalid tag name \"*tag:alice\" for tagdef: invalid character \"*\" in tag component"
+  valid: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
 
 	Context("Regular", func() {
 		It("handles tag field", func() {

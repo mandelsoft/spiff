@@ -202,7 +202,7 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (
 		case ruleFollowUpRef:
 		case ruleReference:
 			tag := ""
-			if i := strings.Index(contents, "::"); i > 0 {
+			if i := strings.LastIndex(contents, "::"); i > 0 {
 				tag = contents[:i]
 				contents = contents[i+2:]
 				if contents != "." && strings.HasPrefix(contents, ".") {

@@ -207,14 +207,18 @@ func (s *spiff) CleanupTags() Spiff {
 // Cascade processes a template with a list of given subs and state
 // documents
 func (s *spiff) Cascade(template Node, stubs []Node, states ...Node) (Node, error) {
+	s.Reset()
 	s.assureBinding()
-	defer s.ResetStream()
+	defer s.Reset()
 	return flow.Cascade(s.binding, template, s.opts, append(stubs, states...)...)
 }
 
 // PrepareStubs processes a list a stubs and returns a prepared
-// represenation usable to process a template
+// representation usable to process a template
+// Global tags provided by the stubs are kept until the next
+// Prepare or Cascade processing.
 func (s *spiff) PrepareStubs(stubs ...Node) ([]Node, error) {
+	s.Reset()
 	s.assureBinding()
 	return flow.PrepareStubs(s.binding, s.opts.Partial, stubs...)
 }
