@@ -173,18 +173,23 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 		if i <= 0 {
 			log.Fatalln(fmt.Sprintf("tag file must be preceeded by a tag (<tag>:<path>)"))
 		}
+		tagName := tagDef[:i]
+		err := dynaml.CheckTagName(tagName)
+		if err != nil {
+			log.Fatalln(fmt.Sprintf("invalid tag name [%s]:", path.Clean(tagName)), err)
+		}
 		tagFilePath := tagDef[i+1:]
 		tagFile, err := ReadFile(tagFilePath)
 		if err != nil {
-			log.Fatalln(fmt.Sprintf("error reading tag gile [%s]:", path.Clean(tagFilePath)), err)
+			log.Fatalln(fmt.Sprintf("error reading tag file [%s]:", path.Clean(tagFilePath)), err)
 		}
 
 		tagYAML, err := yaml.Parse(tagFilePath, tagFile)
 		if err != nil {
-			log.Fatalln(fmt.Sprintf("error parsing tag gile [%s]:", path.Clean(tagFilePath)), err)
+			log.Fatalln(fmt.Sprintf("error parsing tag file [%s]:", path.Clean(tagFilePath)), err)
 		}
 
-		tags = append(tags, dynaml.NewTag(tagDef[:i], tagYAML, nil, dynaml.TAG_SCOPE_GLOBAL))
+		tags = append(tags, dynaml.NewTag(tagName, tagYAML, nil, dynaml.TAG_SCOPE_GLOBAL))
 	}
 
 	if stubs == nil {

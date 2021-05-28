@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"path"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -31,7 +32,7 @@ type State struct {
 	fileSystem    vfs.VFS // virtual filesystem to use for filesystem based operations
 	functions     dynaml.Registry
 	interpolation bool
-	tags          map[string]*dynaml.Tag
+	tags          map[string]*dynaml.TagInfo
 	docno         int // document number
 }
 
@@ -48,7 +49,7 @@ func NewState(key string, mode int, optfs ...vfs.FileSystem) *State {
 		mode = mode & ^MODE_OS_ACCESS
 	}
 	return &State{
-		tags:       map[string]*dynaml.Tag{},
+		tags:       map[string]*dynaml.TagInfo{},
 		files:      map[string]string{},
 		fileCache:  map[string][]byte{},
 		key:        key,
@@ -68,9 +69,9 @@ func (s *State) SetFunctions(f dynaml.Registry) *State {
 }
 
 func (s *State) SetTags(tags ...*dynaml.Tag) *State {
-	s.tags = map[string]*dynaml.Tag{}
+	s.tags = map[string]*dynaml.TagInfo{}
 	for _, v := range tags {
-		s.tags[v.Name()] = v
+		s.tags[v.Name()] = dynaml.NewTagInfo(v)
 	}
 	return s
 }
@@ -138,7 +139,7 @@ func (s *State) SetTag(name string, node yaml.Node, path []string, scope dynaml.
 			return fmt.Errorf("duplicate tag %q: %s <-> %s", name, strings.Join(path, "."), strings.Join(old.Path(), "."))
 		}
 	}
-	s.tags[name] = dynaml.NewTag(name, Cleanup(node, discardTags), path, scope)
+	s.tags[name] = dynaml.NewTagInfo(dynaml.NewTag(name, Cleanup(node, discardTags), path, scope))
 	return nil
 }
 
@@ -156,16 +157,56 @@ func (s *State) GetTag(name string) *dynaml.Tag {
 			name = fmt.Sprintf("doc:%d", i)
 		}
 	}
-	return s.tags[name]
+	tag := s.tags[name]
+	if tag == nil {
+		return nil
+	}
+	return tag.Tag()
+}
+
+func (s *State) GetTags(name string) []*dynaml.TagInfo {
+	if strings.HasPrefix(name, "doc:") {
+		i, err := strconv.Atoi(name[4:])
+		if err != nil {
+			return nil
+		}
+		if i <= 0 {
+			i += s.docno
+			if i <= 0 {
+				return nil
+			}
+			name = fmt.Sprintf("doc:%d", i)
+		}
+		tag := s.tags[name]
+		if tag == nil {
+			return nil
+		}
+		return []*dynaml.TagInfo{tag}
+	}
+
+	var list []*dynaml.TagInfo
+	prefix := name + ":"
+	for _, t := range s.tags {
+		if t.Name() == name || strings.HasPrefix(t.Name(), prefix) {
+			list = append(list, t)
+		}
+	}
+	sort.Slice(list, func(i, j int) bool {
+		if list[i].Level() != list[j].Level() {
+			return list[i].Level() < list[j].Level()
+		}
+		return strings.Compare(list[i].Name(), list[j].Name()) < 0
+	})
+	return list
 }
 
 func (s *State) ResetTags() {
-	s.tags = map[string]*dynaml.Tag{}
+	s.tags = map[string]*dynaml.TagInfo{}
 	s.docno = 1
 }
 
 func (s *State) ResetStream() {
-	n := map[string]*dynaml.Tag{}
+	n := map[string]*dynaml.TagInfo{}
 	for _, v := range s.tags {
 		if !v.IsStream() {
 			n[v.Name()] = v

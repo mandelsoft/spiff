@@ -25,24 +25,7 @@ func (e ReferenceExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 	fromRoot := e.Path[0] == ""
 
 	debug.Debug("reference: (%s)%v\n", e.Tag, e.Path)
-	if e.Tag != "" {
-		info := DefaultInfo()
-		if e.Tag != "doc:0" {
-			tag = binding.GetState().GetTag(e.Tag)
-			if tag == nil {
-				return info.Error("tag '%s' not found", e.Tag)
-			}
-			if len(e.Path) == 1 && e.Path[0] == "" {
-				return tag.Node().Value(), info, true
-			}
-		} else {
-			if len(e.Path) == 1 && e.Path[0] == "" {
-				return info.Error("no reference to actual document possible")
-			}
-			fromRoot = true
-		}
-	}
-	return e.find(func(end int, path []string) (yaml.Node, bool) {
+	sel := func(end int, path []string) (yaml.Node, bool) {
 		if fromRoot {
 			start := 0
 			if e.Path[0] == "" {
@@ -55,7 +38,54 @@ func (e ReferenceExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 			}
 			return binding.FindReference(path[:end+1])
 		}
-	}, binding, locally)
+	}
+
+	if e.Tag != "" {
+		info := DefaultInfo()
+		if e.Tag != "doc:0" {
+			tags := binding.GetState().GetTags(e.Tag)
+			if len(tags) == 0 {
+				return info.Error("tag '%s' not found", e.Tag)
+			}
+			if len(e.Path) == 1 && e.Path[0] == "" {
+				if len(tags) == 1 || tags[0].Name() == e.Tag {
+					return tags[0].Node().Value(), info, true
+				}
+				return info.Error("found multiple tags for '%s': %s", e.Tag, tagList(tags))
+			}
+			var val interface{}
+			var info EvaluationInfo
+			var found *TagInfo
+			for _, t := range tags {
+				tag = t.Tag()
+				if found != nil && found.Level() < t.Level() {
+					break
+				}
+				val1, info1, ok1 := e.find(sel, binding, locally)
+				if ok1 {
+					if tag.Name() == e.Tag {
+						return val1, info1, ok1
+					}
+					if found != nil {
+						if found.Level() == t.Level() {
+							return info.Error("ambigious tag resolution for %s: %s <-> %s", e.String(),
+								found.Name(), t.Name())
+						}
+					}
+					found = t
+					val = val1
+					info = info1
+				}
+			}
+			return val, info, found != nil
+		} else {
+			if len(e.Path) == 1 && e.Path[0] == "" {
+				return info.Error("no reference to actual document possible")
+			}
+			fromRoot = true
+		}
+	}
+	return e.find(sel, binding, locally)
 }
 
 func (e ReferenceExpr) String() string {
@@ -102,4 +132,14 @@ func (e ReferenceExpr) find(f func(int, []string) (node yaml.Node, x bool), bind
 	debug.Debug("reference %v -> %+v\n", e.Path, step)
 	info.KeyName = step.KeyName()
 	return value(yaml.ReferencedNode(step)), info, true
+}
+
+func tagList(list []*TagInfo) string {
+	s := ""
+	sep := ""
+	for _, l := range list {
+		s = s + sep + l.Name()
+		sep = ", "
+	}
+	return s
 }

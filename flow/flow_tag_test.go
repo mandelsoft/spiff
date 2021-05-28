@@ -182,4 +182,66 @@ data:
 			))
 		})
 	})
+
+	Context("Tag Scopes", func() {
+		It("propagates tag content", func() {
+			source := parseYAML(`
+---
+tags:
+  - <<: (( &temporary ))
+  - <<: (( &tag:lib:alice ))
+    data: alice.alice
+  - <<: (( &tag:lib:alice:v1 ))
+    data: alice.v1
+usage:
+   data: (( lib::data ))
+`)
+			resolved := parseYAML(`
+---
+usage:
+  data: alice.alice
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("detects nonuniqe path resolution", func() {
+			source := parseYAML(`
+---
+tags:
+  - <<: (( &temporary ))
+  - <<: (( &tag:lib:alice ))
+    data: alice.alice
+  - <<: (( &tag:lib:bob))
+    data: bob
+usage:
+   data: (( catch(lib::data) ))
+`)
+			resolved := parseYAML(`
+---
+usage:
+  data:
+    error: 'ambigious tag resolution for lib::data: lib:alice <-> lib:bob'
+    valid: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("handles context", func() {
+			source := parseYAML(`
+---
+tags:
+  - <<: (( &temporary ))
+  - <<: (( &tag:lib:alice ))
+    func: (( |x|->x * _.multiplier ))
+    multiplier: 2
+usage:
+   data: (( lib::func(2) ))
+`)
+			resolved := parseYAML(`
+---
+usage:
+  data: 4
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
 })

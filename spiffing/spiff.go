@@ -183,7 +183,7 @@ func (s spiff) WithValues(values map[string]interface{}) (Spiff, error) {
 
 // SetTag sets/resets a global tag for subsequent processings.
 func (s spiff) SetTag(tag string, node yaml.Node) Spiff {
-	s.tags[tag] = dynaml.NewTag(tag, node, nil, true)
+	s.tags[tag] = dynaml.NewTag(tag, node, nil, dynaml.TAG_SCOPE_GLOBAL)
 	return s.Reset()
 }
 

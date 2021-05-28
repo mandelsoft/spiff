@@ -174,6 +174,7 @@ Contents:
         - [(( &tag:name(value) ))](#-tagnamevalue-)
         - [(( name::path ))](#-namepath-)
         - [(( name::. ))](#-name-)
+        - [Path Resolution for Tags](#path-resolution-for-tags)
         - [Tags in Multi-Document Streams](#tags-in-multi-document-streams)
 	- [Templates](#templates)
 		- [<<: (( &template ))](#--template-)
@@ -4821,6 +4822,59 @@ tagref: (( alice::. ))
 ```
 
 resolves `tagref` to `25`
+
+### Path Resolution for Tags
+
+A tag reference always contains a tag name and a path separated by a double 
+colon (`::`).
+The standard usecase is to describe a dedicated sub node for a tagged
+node value.
+
+for example, if the tag `X` describes the value
+
+```yaml
+data:
+  alice: 25
+  bob: 24
+```
+
+the tagged reference `tag::data.alice` describes the value `25`.
+
+For tagged reference with a path other the `.` (the whole tag value),
+structured tags feature a more sophisticated resolution mechanism. A structured
+tag consist of multiple tag components separated by a colon (`:`), for
+example `lib:mylib`.
+Evaluation of a path reference for a tag tries to resolve the path in the
+first unique nested tag, if it cannot be resolved directly by the given tag.
+
+For example:
+
+```yaml
+tags:
+  - <<: (( &tag:lib:alice ))
+    data: alice.alice
+  - <<: (( &tag:lib:alice:v1))
+    data: alice.v1
+  - <<: (( &tag:lib:bob))
+    other: bob
+usage:
+   data: (( lib::data ))
+```
+
+effectively resolves `usage.data` to `lib:alice::data` and therefore to the value
+`alice.alice`.
+
+To achieve this all matching sub tags are orderd by their number of
+tag components. The first sub-level tag containing such a
+given path is selected. For this level, the matching tag must be non-ambigious.
+There must only be one tag with this level containing a matching path.
+If there are multiple ones the evaluation fails. In the above example this would
+be the case if tag `lib:bob` would contain a field `data` instead of or
+additional to `other`.
+
+This feature can be used in library stubs to provide qualified names for their
+elements that can be used with merging the containing document nodes into
+the template.
 
 ### Tags in Multi-Document Streams
 

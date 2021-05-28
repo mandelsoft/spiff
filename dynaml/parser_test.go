@@ -116,6 +116,18 @@ var _ = Describe("parsing", func() {
 		})
 	})
 
+	Describe("tagged expressions", func() {
+		It("parses tagged function", func() {
+			parsesAs(
+				`lib::func(1)`,
+				CallExpr{
+					Function:  ReferenceExpr{Tag: "lib", Path: []string{"func"}},
+					Arguments: []Expression{IntegerExpr{Value: 1}},
+				},
+			)
+		})
+	})
+
 	Describe("concatenation", func() {
 		It("parses adjacent nodes as concatenation", func() {
 			parsesAs(
