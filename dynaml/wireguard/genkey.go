@@ -32,7 +32,7 @@ func func_genkey(arguments []interface{}, binding Binding) (interface{}, Evaluat
 	case "preshared":
 		key, err = GenerateKey()
 	default:
-		return info.Error("ainvalid key type %q, use private or preshared", ktype)
+		return info.Error("invalid key type %q, use private or preshared", ktype)
 	}
 	if err != nil {
 		return info.Error("error generating key: %s", err)

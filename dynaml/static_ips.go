@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	refName      = ReferenceExpr{[]string{"name"}}
-	refInstances = ReferenceExpr{[]string{"instances"}}
+	refName      = NewReferenceExpr("name")
+	refInstances = NewReferenceExpr("instances")
 )
 
 func func_static_ips(arguments []Expression, binding Binding) (interface{}, EvaluationInfo, bool) {
@@ -120,7 +120,7 @@ func findStaticIPRanges(binding Binding) ([]string, EvaluationInfo, bool) {
 		return nil, info, false
 	}
 
-	subnetsRef := ReferenceExpr{[]string{"", "networks", networkName, "subnets"}}
+	subnetsRef := ReferenceExpr{"", []string{"", "networks", networkName, "subnets"}}
 	subnets, info, found := subnetsRef.Evaluate(binding, false)
 
 	if !found {

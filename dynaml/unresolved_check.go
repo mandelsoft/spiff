@@ -144,6 +144,7 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (result []Unresolved
 
 	var nodes []UnresolvedNode
 	dummy := []string{"dummy"}
+	found := false
 
 	switch val := root.Value().(type) {
 	case map[string]yaml.Node:
@@ -178,6 +179,7 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (result []Unresolved
 			Context: context,
 			Path:    path,
 		})
+		found = true
 
 	case TemplateValue:
 		//		context := addContext(context, fmt.Sprintf("&"))
@@ -196,16 +198,19 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (result []Unresolved
 					Context: context,
 					Path:    []string{},
 				})
+				found = true
 			}
 		}
 	}
 
 	if root.Failed() {
-		nodes = append(nodes, UnresolvedNode{
-			Node:    root,
-			Context: context,
-			Path:    []string{},
-		})
+		if !found {
+			nodes = append(nodes, UnresolvedNode{
+				Node:    root,
+				Context: context,
+				Path:    []string{},
+			})
+		}
 	}
 
 	for _, n := range nodes {
@@ -283,6 +288,16 @@ func isLocallyResolvedValue(value interface{}) bool {
 	}
 
 	return true
+}
+
+func IsResolvedNode(node yaml.Node) bool {
+	if node == nil {
+		return false
+	}
+	if node.Failed() || node.Undefined() {
+		return false
+	}
+	return isResolvedValue(node.Value())
 }
 
 func isResolved(node yaml.Node) bool {

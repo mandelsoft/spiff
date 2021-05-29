@@ -95,7 +95,7 @@ var _ = Describe("concatenation", func() {
 				It("appends to the lists", func() {
 					expr := ConcatenationExpr{
 						ListExpr{[]Expression{StringExpr{"two"}}},
-						ReferenceExpr{[]string{"foo"}},
+						ReferenceExpr{Path: []string{"foo"}},
 					}
 
 					binding := FakeBinding{
@@ -129,8 +129,8 @@ var _ = Describe("concatenation", func() {
 		Context("and the right-hand side is a map", func() {
 			It("merges both maps", func() {
 				expr := ConcatenationExpr{
-					ReferenceExpr{[]string{"foo"}},
-					ReferenceExpr{[]string{"bar"}},
+					ReferenceExpr{Path: []string{"foo"}},
+					ReferenceExpr{Path: []string{"bar"}},
 				}
 
 				binding := FakeBinding{
@@ -147,8 +147,8 @@ var _ = Describe("concatenation", func() {
 
 			It("overwrites existing map entries", func() {
 				expr := ConcatenationExpr{
-					ReferenceExpr{[]string{"foo"}},
-					ReferenceExpr{[]string{"bar"}},
+					ReferenceExpr{Path: []string{"foo"}},
+					ReferenceExpr{Path: []string{"bar"}},
 				}
 
 				binding := FakeBinding{

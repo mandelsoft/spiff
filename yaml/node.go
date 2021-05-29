@@ -150,6 +150,7 @@ type Annotation struct {
 	failed       bool
 	undefined    bool
 	issue        Issue
+	tag          string
 	NodeFlags
 }
 
@@ -221,6 +222,10 @@ func AddFlags(node Node, flags NodeFlags) Node {
 	return copyNodeAnnotated(node, node.GetAnnotation().AddFlags(flags))
 }
 
+func SetTag(node Node, tag string) Node {
+	return copyNodeAnnotated(node, node.GetAnnotation().SetTag(tag))
+}
+
 func TemporaryNode(node Node) Node {
 	return copyNodeAnnotated(node, node.GetAnnotation().SetTemporary())
 }
@@ -242,11 +247,11 @@ func MassageType(value interface{}) interface{} {
 }
 
 func EmptyAnnotation() Annotation {
-	return Annotation{nil, false, false, false, "", false, false, false, Issue{}, 0}
+	return Annotation{nil, false, false, false, "", false, false, false, Issue{}, "", 0}
 }
 
 func NewReferencedAnnotation(node Node) Annotation {
-	return Annotation{nil, false, false, false, node.KeyName(), node.HasError(), node.Failed(), node.Undefined(), node.Issue(), 0}
+	return Annotation{nil, false, false, false, node.KeyName(), node.HasError(), node.Failed(), node.Undefined(), node.Issue(), "", 0}
 }
 
 func (n Annotation) Flags() NodeFlags {
@@ -275,6 +280,10 @@ func (n Annotation) StandardOverride() bool {
 
 func (n Annotation) KeyName() string {
 	return n.keyName
+}
+
+func (n Annotation) Tag() string {
+	return n.tag
 }
 
 func (n Annotation) HasError() bool {
@@ -330,6 +339,11 @@ func (n Annotation) SetPreferred() Annotation {
 
 func (n Annotation) SetMerged() Annotation {
 	n.merged = true
+	return n
+}
+
+func (n Annotation) SetTag(tag string) Annotation {
+	n.tag = tag
 	return n
 }
 

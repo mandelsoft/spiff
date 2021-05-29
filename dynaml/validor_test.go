@@ -74,7 +74,7 @@ var _ = Describe("or", func() {
 	Context("when the left side evaluates to itself (i.e. reference)", func() {
 		It("fails assuming the left hand side cannot be determined yet", func() {
 			expr := ValidOrExpr{
-				ReferenceExpr{[]string{"foo", "bar"}},
+				ReferenceExpr{Path: []string{"foo", "bar"}},
 				NilExpr{},
 			}
 

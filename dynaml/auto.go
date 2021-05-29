@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	refJobs = ReferenceExpr{[]string{"", "jobs"}}
+	refJobs = NewReferenceExpr("", "jobs")
 )
 
 type AutoExpr struct {

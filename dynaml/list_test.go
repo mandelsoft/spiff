@@ -29,7 +29,7 @@ var _ = Describe("lists", func() {
 		It("fails", func() {
 			expr := ListExpr{
 				[]Expression{
-					ReferenceExpr{[]string{"foo"}},
+					ReferenceExpr{Path: []string{"foo"}},
 				},
 			}
 

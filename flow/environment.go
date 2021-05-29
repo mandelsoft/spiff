@@ -320,6 +320,27 @@ func CleanupEnvironment(binding dynaml.Binding) {
 	}
 }
 
+func ResetTags(binding dynaml.Binding) {
+	env, ok := binding.(DefaultEnvironment)
+	if ok && env.state != nil {
+		env.state.ResetTags()
+	}
+}
+
+func ResetStream(binding dynaml.Binding) {
+	env, ok := binding.(DefaultEnvironment)
+	if ok && env.state != nil {
+		env.state.ResetStream()
+	}
+}
+
+func PushDocument(binding dynaml.Binding, doc yaml.Node) {
+	env, ok := binding.(DefaultEnvironment)
+	if ok && env.state != nil {
+		env.state.PushDocument(doc)
+	}
+}
+
 func NewNestedEnvironment(stubs []yaml.Node, source string, outer dynaml.Binding) dynaml.Binding {
 	var state *State
 	if outer == nil {

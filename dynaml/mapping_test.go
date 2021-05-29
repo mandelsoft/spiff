@@ -8,9 +8,9 @@ import (
 var _ = Describe("mapping expressions", func() {
 	It("prints mapping expression", func() {
 		desc := MappingExpr{
-			ReferenceExpr{[]string{"list"}},
+			ReferenceExpr{Path: []string{"list"}},
 			ConcatenationExpr{
-				ReferenceExpr{[]string{"x"}},
+				ReferenceExpr{Path: []string{"x"}},
 				StringExpr{".*"},
 			},
 			MapToListContext,
@@ -20,12 +20,12 @@ var _ = Describe("mapping expressions", func() {
 
 	It("simplifies lambda mapping expression", func() {
 		desc := MappingExpr{
-			ReferenceExpr{[]string{"list"}},
+			ReferenceExpr{Path: []string{"list"}},
 			LambdaExpr{
 				[]Parameter{Parameter{Name: "x"}},
 				false,
 				ConcatenationExpr{
-					ReferenceExpr{[]string{"x"}},
+					ReferenceExpr{Path: []string{"x"}},
 					StringExpr{".*"},
 				},
 			},

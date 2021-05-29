@@ -102,6 +102,7 @@ Contents:
 		- [(( valid(foobar) ))](#-validfoobar-)
 		- [(( require(foobar) ))](#-requirefoobar-)
 		- [(( stub(foo.bar) ))](#-stubfoobar-)
+		- [(( tagdef("tag", value) ))](#-tagdeftag-valiue-)
 		- [(( eval(foo "." bar ) ))](#-evalfoo--bar--)
 		- [(( env( HOME" ) ))](#-envHOME--)
 		- [(( static_ips(0, 1, 3) ))](#-static_ips0-1-3-)
@@ -168,6 +169,13 @@ Contents:
     	- [(( &inject ))](#-inject-)
     	- [(( &default ))](#-default-)
     	- [(( &state ))](#-state-)
+    	- [(( &tag:name ))](#-tagname-)
+    - [Tags](#tags)
+        - [(( &tag:name(value) ))](#-tagnamevalue-)
+        - [(( name::path ))](#-namepath-)
+        - [(( name::. ))](#-name-)
+        - [Path Resolution for Tags](#path-resolution-for-tags)
+        - [Tags in Multi-Document Streams](#tags-in-multi-document-streams)
 	- [Templates](#templates)
 		- [<<: (( &template ))](#--template-)
 		- [(( *foo.bar ))](#-foobar-)
@@ -212,10 +220,12 @@ name `-`. It may be used only once. This allows using spiff as part of a
 pipeline to just process a single stream or to process a stream based on
 several templates/stubs.
 
-The template file (first argument) may be a multiple document stream
+The template file (first argument) may be a multiple-document stream
 containing multiple YAML documents separated by a line containing only `---`.
 Each YAML document will be processed independently with the given stub files.
 The result is the stream of processed documents in the same order.
+If a document's root node is marked as temporary, the document is omitted
+from the output stream.
 For example, this can be used to generate *kubernetes* manifests to be used
 by `kubectl`.
 
@@ -255,6 +265,12 @@ The ` merge` command offers several options:
   is used to build additional bindings for the processing. The yaml document must
   consist of a map. Each key is used as additional binding. The bindings document
   is not processed, the values are used as defined.
+
+- With option `--tag <tag>:<path>` a yaml file can be specified, whose content
+  is used as value for a predefined global tag (see [Tags](#tags)).
+  Tags can be accessed by reference expressions of the form `<tag>::<ref>`.
+  In contrast to bindings tagged content does not compete with the nodes
+  in the document, it uses another reference namespace.
 
 - With option `--define <key>=<value>` (shorthand`-D`) additional binding values
   can be specified on the command line overriding binding values from the
@@ -2182,6 +2198,39 @@ by denoting `(ref)` or `[] ref` for a list expression.
   
 Alternatively the `merge` operation could be used, for example `merge foo.bar`. The difference is that `stub` does not merge, therefore the field will still be merged (with the original path in the document).
 
+
+### `(( tagdef("tag", value) ))`
+
+The function `tagdef` can be used to define dynamic tags (see [Tags](#tags)).
+In contrast to the tag marker this function aloows to specify the tag name 
+and its intended value by an expression. Therefit can be used in composing
+elements like `map` or `sum` to create dynamic tag with calculated values.
+
+An optional third argument can be used to specify the intended scope
+(`local` or `global`). By default a local tag is created. Local tags are visible
+only at the actual processing level (template or sub), while global tags,
+once defined, can be used in all further processing levels (stub or template).
+
+Alternatively the tag name can be prefixed with a start (`*`) to declare
+a global tag.
+
+The specified tag value will be used as result for the function.
+
+e.g.:
+
+**template.yml**
+```yaml
+value: (( tagdef("tag:alice", 25) ))
+alice: (( tag:alice::. ))
+```
+
+evaluates to
+
+```yaml
+value: 25
+alice: 25
+```
+
 ### `(( eval(foo "." bar ) ))`
 
 Evaluate the evaluation result of a string expression again as dynaml expression. This can, for example, be used to realize indirections.
@@ -2986,7 +3035,7 @@ dynaml expressions will be evaluated in the context of the reading expression.
 This means that the same file included at different places in a yaml document
 may result in different sub trees, depending on the used dynaml expressions.
 
-If is poassible to read a multi-document yaml, also. If the type `multiyaml`
+If is possible to read a multi-document yaml, also. If the type `multiyaml`
 is given, a list node with the yaml document root nodes is returned.
 
 The yaml or json document can also read as _template_ by specifying the type
@@ -3034,7 +3083,7 @@ will not fail, because the `second` section is never evaluated.
 This mode should be taken with caution, because it often leads to unexpected
 results.
 
-The read type `importmulti` can be used to import multi document yaml files as a 
+The read type `importmulti` can be used to import multi-document yaml files as a 
 list of nodes.
 
 ##### text documents
@@ -4700,6 +4749,214 @@ Nodes marked as *template* will not be evaluated at the place of their
 occurrence. Instead, they will result in a template value stored as value for
 the node. They can later be instantiated inside a _dynaml_ expression
 (see [below](#templates)).
+
+### `(( &tag:name ))`
+
+The tag marker can be used to assign a logical name to a node value.
+This name can then be used in tagged reference expressions to refer to this
+node value (see [below](#tags)).
+
+A tagged reference has the form `<tagname>::<path>`. The `<path>` may denote any
+sub node of a tagged node. If the value of a complete node
+(or a simple value node) should be used, the `<path>` must denote the root path
+(`.`).
+
+## Tags
+
+Tags can be used to label node values in multi-document streams
+(used as template). After defined for a document the tag can then be used to
+reference node values from the actual or previous document(s) of a
+document sequence in a multi-document stream. Tags can be added for complex or
+simple value nodes. A tagged reference may be used to refer to the tagged
+value as a whole or sub structure.
+
+### `(( &tag:name(value) ))`
+
+This syntax is used to tag a node whose value is defined by a dynaml expression.
+It can also be used to denote tagged simple value nodes.
+
+e.g.:
+
+**template.yaml**
+```yaml
+data:
+  <<: (( &tag:persons ))
+  alice: (( &tag:alice(25)
+```
+
+If the name is prefixed with a star (`*`), the tag is defined globally.
+Gobal tags surive stub processing and their value is visible in sub sequent
+stub (and template) processings.
+
+A tag name may consist of multiple components separated by a colon (`:`).
+
+### `(( name::path ))`
+
+Reference a sub path of the value of a tagged node.
+
+e.g.:
+
+**template.yaml**
+```yaml
+data:
+  <<: (( &tag:persons ))
+  alice: 25
+
+tagref: (( persons::alice ))
+```
+
+resolves `tagref` to `25`
+
+### `(( name::. ))`
+
+Reference the value of tagged node.
+
+e.g.:
+
+**template.yaml**
+```yaml
+data:
+  alice: (( &tag:alice(25) ))
+
+tagref: (( alice::. ))
+```
+
+resolves `tagref` to `25`
+
+### Path Resolution for Tags
+
+A tag reference always contains a tag name and a path separated by a double 
+colon (`::`).
+The standard usecase is to describe a dedicated sub node for a tagged
+node value.
+
+for example, if the tag `X` describes the value
+
+```yaml
+data:
+  alice: 25
+  bob: 24
+```
+
+the tagged reference `tag::data.alice` describes the value `25`.
+
+For tagged reference with a path other the `.` (the whole tag value),
+structured tags feature a more sophisticated resolution mechanism. A structured
+tag consist of multiple tag components separated by a colon (`:`), for
+example `lib:mylib`.
+Evaluation of a path reference for a tag tries to resolve the path in the
+first unique nested tag, if it cannot be resolved directly by the given tag.
+
+For example:
+
+```yaml
+tags:
+  - <<: (( &tag:lib:alice ))
+    data: alice.alice
+  - <<: (( &tag:lib:alice:v1))
+    data: alice.v1
+  - <<: (( &tag:lib:bob))
+    other: bob
+usage:
+   data: (( lib::data ))
+```
+
+effectively resolves `usage.data` to `lib:alice::data` and therefore to the value
+`alice.alice`.
+
+To achieve this all matching sub tags are orderd by their number of
+tag components. The first sub-level tag containing such a
+given path is selected. For this level, the matching tag must be non-ambigious.
+There must only be one tag with this level containing a matching path.
+If there are multiple ones the evaluation fails. In the above example this would
+be the case if tag `lib:bob` would contain a field `data` instead of or
+additional to `other`.
+
+This feature can be used in library stubs to provide qualified names for their
+elements that can be used with merging the containing document nodes into
+the template.
+
+### Tags in Multi-Document Streams
+
+If the template file is a multi-document stream the tags are preserved during
+the complete processing. This means tags defined in a earlier document can be used 
+in all following documents, also. But the tag names must be unique across all
+documents in a multi-document stream.
+
+e.g.:
+
+**template.yaml**
+```yaml
+<<: (( &temporary ))
+data:
+  <<: (( &tag:persons ))
+  alice: 25
+  bob: 24
+---
+alice: (( persons::alice ))
+---
+bob: (( persons::bob ))
+```
+
+resolves to
+
+```yaml
+---
+alice: 25
+---
+bob: 24
+```
+
+Tags defined by tag markers are available for stubs and templates.
+Global tags are available down the stub processing to the templates.
+Local tags are only avaialble on the processing level they are declared.
+ 
+Additionally to the tags explicitly set by tag markers, there are implicit
+document tags given by the document index during the processing of a 
+(multi-document) template. The implicit document tags are qualified with the
+prefix `doc:`. This prefix should not be used to own tags in the documents
+
+e.g.:
+
+**template.yaml**
+```yaml
+<<: (( &temporary ))
+data:
+  <<: (( &tag:persons ))
+  alice: 25
+  bob: 24
+---
+alice: (( persons::alice ))
+prev: (( doc:1::. ))
+---
+bob: (( persons::bob ))
+prev: (( doc:2::. ))
+```
+
+resolves to
+
+```yaml
+---
+alice: 25
+prev:
+  data:
+    alice: 25
+    bob: 24
+---
+bob: 24
+prev:
+  alice: 25
+  prev:
+    data:
+      alice: 25
+      bob: 24
+```
+
+If the given document index is negative it denotes the document relative to the
+one actually processed (so, the tag `doc:-1` denotes the previous document).
+The index `doc:0` can be used to denote the actual document. Here always a path
+must be specified, it is not possible to refer to the complete document
+(with `.`). 
 
 ## Templates
 

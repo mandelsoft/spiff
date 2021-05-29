@@ -2,8 +2,9 @@ package dynaml
 
 import (
 	"fmt"
-	"github.com/mandelsoft/spiff/yaml"
 	"strings"
+
+	"github.com/mandelsoft/spiff/yaml"
 
 	"github.com/mandelsoft/spiff/debug"
 )
@@ -58,7 +59,7 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	var info EvaluationInfo
 
 	ref, okf := e.Function.(ReferenceExpr)
-	if okf && len(ref.Path) == 1 && ref.Path[0] != "" && ref.Path[0] != "_" {
+	if okf && ref.Tag == "" && len(ref.Path) == 1 && ref.Path[0] != "" && ref.Path[0] != "_" {
 		funcName = ref.Path[0]
 	} else {
 		value, info, okf = ResolveExpressionOrPushEvaluation(&e.Function, &resolved, &info, binding, false)
@@ -139,9 +140,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		for i, v := range values {
 			args[i] = ValueExpr{v}
 		}
-		args[len(values)] = ListExpansionExpr{ReferenceExpr{[]string{"__args"}}}
+		args[len(values)] = ListExpansionExpr{NewReferenceExpr("__args")}
 		expr := CallExpr{
-			Function:  ReferenceExpr{[]string{funcName}},
+			Function:  NewReferenceExpr(funcName),
 			Arguments: args,
 		}
 

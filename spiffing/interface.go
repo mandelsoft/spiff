@@ -55,6 +55,21 @@ type Spiff interface {
 	// elements in the processed documents.
 	WithValues(values map[string]interface{}) (Spiff, error)
 
+	// SetTag sets/resets a tag for subsequent processings.
+	// This can be used to set implicit document tags
+	// when simulating a multi-document processing.
+	// Please note: preconfiguted tags are only used by the
+	// ApplyStubs method.
+	SetTag(tag string, node yaml.Node) Spiff
+
+	// CleanupTags deletes tags of spiff context
+	CleanupTags() Spiff
+	// Reset flushes the binding state
+	Reset() Spiff
+	// ResetStream flushes the document history
+	// and removes all implicit document stream tags.
+	ResetStream() Spiff
+
 	// FileSystem return the virtual filesystem set for the execution context.
 	FileSystem() vfs.FileSystem
 	// FileSource create a new file source based on the configured file system.
@@ -84,13 +99,22 @@ type Spiff interface {
 	Normalize(node Node) (interface{}, error)
 
 	// Cascade processes a template with a list of given subs and state
-	// documents
+	// documents.
+	// The document stream history (implicit tags) is resetted prior
+	// to the execution.
 	Cascade(template Node, stubs []Node, states ...Node) (Node, error)
 	// PrepareStubs processes a list a stubs and returns a prepared
-	// represenation usable to process a template
+	// represenation usable to process a template.
+	// The document stream history (implicit tags) is resetted prior
+	// to the execution.
 	PrepareStubs(stubs ...Node) ([]Node, error)
 	// ApplyStubs uses already prepared subs to process a template.
-	ApplyStubs(template Node, preparedstubs []Node) (Node, error)
+	// The document stream history (implicit tags) is resetted prior
+	// to the execution. If the call is part of the processing
+	// of a document stream, the optional argument must be set to
+	// true. In this case every call add an entry to the document
+	// history.
+	ApplyStubs(template Node, preparedstubs []Node, stream ...bool) (Node, error)
 }
 
 // Source is used to get access to a template or stub source data and name

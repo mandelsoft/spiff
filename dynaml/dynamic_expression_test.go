@@ -10,7 +10,7 @@ import (
 var _ = Describe("dynamic references", func() {
 	Context("when a dynamic string reference is found", func() {
 		It("evaluates to the map entry", func() {
-			ref := ReferenceExpr{[]string{"foo"}}
+			ref := ReferenceExpr{Path: []string{"foo"}}
 			idx := StringExpr{"bar"}
 			expr := DynamicExpr{ref, idx}
 
@@ -28,7 +28,7 @@ var _ = Describe("dynamic references", func() {
 
 	Context("when a dynamic array refernce is found", func() {
 		It("evaluates to the indexed array entry", func() {
-			ref := ReferenceExpr{[]string{"foo"}}
+			ref := ReferenceExpr{Path: []string{"foo"}}
 			idx := IntegerExpr{1}
 			expr := DynamicExpr{ref, idx}
 			binding := FakeBinding{

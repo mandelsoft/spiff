@@ -7,6 +7,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path"
+	"reflect"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/mandelsoft/vfs/pkg/osfs"
@@ -15,6 +18,7 @@ import (
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/dynaml"
 	"github.com/mandelsoft/spiff/features"
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 const MODE_FILE_ACCESS = 1 // support file system access
@@ -28,6 +32,8 @@ type State struct {
 	fileSystem    vfs.VFS // virtual filesystem to use for filesystem based operations
 	functions     dynaml.Registry
 	interpolation bool
+	tags          map[string]*dynaml.TagInfo
+	docno         int // document number
 }
 
 var _ dynaml.State = &State{}
@@ -43,11 +49,13 @@ func NewState(key string, mode int, optfs ...vfs.FileSystem) *State {
 		mode = mode & ^MODE_OS_ACCESS
 	}
 	return &State{
+		tags:       map[string]*dynaml.TagInfo{},
 		files:      map[string]string{},
 		fileCache:  map[string][]byte{},
 		key:        key,
 		mode:       mode,
 		fileSystem: vfs.New(fs),
+		docno:      1,
 	}
 }
 
@@ -57,6 +65,14 @@ func NewDefaultState() *State {
 
 func (s *State) SetFunctions(f dynaml.Registry) *State {
 	s.functions = f
+	return s
+}
+
+func (s *State) SetTags(tags ...*dynaml.Tag) *State {
+	s.tags = map[string]*dynaml.TagInfo{}
+	for _, v := range tags {
+		s.tags[v.Name()] = dynaml.NewTagInfo(v)
+	}
 	return s
 }
 
@@ -110,6 +126,104 @@ func (s *State) GetTempName(data []byte) (string, error) {
 		s.files[hash] = name
 	}
 	return name, nil
+}
+
+func (s *State) SetTag(name string, node yaml.Node, path []string, scope dynaml.TagScope) error {
+	debug.Debug("setting tag: %v\n", path)
+	old := s.tags[name]
+	if old != nil {
+		if !old.IsLocal() {
+			return fmt.Errorf("duplicate tag %q: %s in foreign document", name, strings.Join(path, "."))
+		}
+		if !reflect.DeepEqual(path, old.Path()) {
+			return fmt.Errorf("duplicate tag %q: %s <-> %s", name, strings.Join(path, "."), strings.Join(old.Path(), "."))
+		}
+	}
+	s.tags[name] = dynaml.NewTagInfo(dynaml.NewTag(name, Cleanup(node, discardTags), path, scope))
+	return nil
+}
+
+func (s *State) GetTag(name string) *dynaml.Tag {
+	if strings.HasPrefix(name, "doc:") {
+		i, err := strconv.Atoi(name[4:])
+		if err != nil {
+			return nil
+		}
+		if i <= 0 {
+			i += s.docno
+			if i <= 0 {
+				return nil
+			}
+			name = fmt.Sprintf("doc:%d", i)
+		}
+	}
+	tag := s.tags[name]
+	if tag == nil {
+		return nil
+	}
+	return tag.Tag()
+}
+
+func (s *State) GetTags(name string) []*dynaml.TagInfo {
+	if strings.HasPrefix(name, "doc:") {
+		i, err := strconv.Atoi(name[4:])
+		if err != nil {
+			return nil
+		}
+		if i <= 0 {
+			i += s.docno
+			if i <= 0 {
+				return nil
+			}
+			name = fmt.Sprintf("doc:%d", i)
+		}
+		tag := s.tags[name]
+		if tag == nil {
+			return nil
+		}
+		return []*dynaml.TagInfo{tag}
+	}
+
+	var list []*dynaml.TagInfo
+	prefix := name + ":"
+	for _, t := range s.tags {
+		if t.Name() == name || strings.HasPrefix(t.Name(), prefix) {
+			list = append(list, t)
+		}
+	}
+	sort.Slice(list, func(i, j int) bool {
+		if list[i].Level() != list[j].Level() {
+			return list[i].Level() < list[j].Level()
+		}
+		return strings.Compare(list[i].Name(), list[j].Name()) < 0
+	})
+	return list
+}
+
+func (s *State) ResetTags() {
+	s.tags = map[string]*dynaml.TagInfo{}
+	s.docno = 1
+}
+
+func (s *State) ResetStream() {
+	n := map[string]*dynaml.TagInfo{}
+	for _, v := range s.tags {
+		if !v.IsStream() {
+			n[v.Name()] = v
+		}
+	}
+	s.docno = 1
+	s.tags = n
+}
+
+func (s *State) PushDocument(node yaml.Node) {
+	if node != nil {
+		s.SetTag(fmt.Sprintf("doc:%d", s.docno), node, nil, dynaml.TAG_SCOPE_GLOBAL)
+	}
+	for _, t := range s.tags {
+		t.ResetLocal()
+	}
+	s.docno++
 }
 
 func (s *State) Cleanup() {

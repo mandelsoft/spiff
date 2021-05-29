@@ -65,7 +65,7 @@ func (e DynamicExpr) Evaluate(binding Binding, locally bool) (interface{}, Evalu
 	default:
 		return info.Error("index or field name required for reference qualifier")
 	}
-	return ReferenceExpr{qual}.find(func(end int, path []string) (yaml.Node, bool) {
+	return NewReferenceExpr(qual...).find(func(end int, path []string) (yaml.Node, bool) {
 		return yaml.Find(NewNode(root, nil), path[:end+1]...)
 	}, binding, locally)
 }

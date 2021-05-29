@@ -10,7 +10,7 @@ import (
 var _ = Describe("references", func() {
 	Context("when the reference is found", func() {
 		It("evaluates to the referenced node", func() {
-			expr := ReferenceExpr{[]string{"foo", "bar"}}
+			expr := ReferenceExpr{Path: []string{"foo", "bar"}}
 
 			binding := FakeBinding{
 				FoundReferences: map[string]yaml.Node{
@@ -24,7 +24,7 @@ var _ = Describe("references", func() {
 
 		Context("and it refers to another expression", func() {
 			It("returns itself so the referred node can evaluate first", func() {
-				expr := ReferenceExpr{[]string{"foo", "bar"}}
+				expr := ReferenceExpr{Path: []string{"foo", "bar"}}
 
 				binding := FakeBinding{
 					FoundReferences: map[string]yaml.Node{
@@ -39,7 +39,7 @@ var _ = Describe("references", func() {
 
 	Context("when the reference is NOT found", func() {
 		It("fails", func() {
-			expr := ReferenceExpr{[]string{"foo", "bar", "baz"}}
+			expr := ReferenceExpr{Path: []string{"foo", "bar", "baz"}}
 
 			binding := FakeBinding{}
 

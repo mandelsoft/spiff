@@ -2,6 +2,7 @@ package dynaml
 
 import (
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 )
 
@@ -32,6 +33,35 @@ var _ = Describe("parsing", func() {
 		It("parses true and false", func() {
 			parsesAs(`true`, BooleanExpr{true})
 			parsesAs(`false`, BooleanExpr{false})
+		})
+	})
+
+	Describe("marker", func() {
+		markers := []string{
+			"&template",
+			"&temporary",
+			"&state",
+			"&inject",
+			"&local",
+			"&default",
+			"&tag:test",
+		}
+		var entries []TableEntry
+		for _, m := range markers {
+			entries = append(entries, Entry(m, m))
+		}
+		DescribeTable("simple marker", func(m string) {
+			parsesAs(m, MarkerExpr{[]string{m}, nil})
+		},
+			entries...)
+
+		It("parses multiple markers", func() {
+			parsesAs("&template &temporary", MarkerExpr{[]string{"&template", "&temporary"}, nil})
+		})
+
+		It("parses marked expression", func() {
+			parsesAs("&template &temporary(5)", MarkerExpr{[]string{"&template", "&temporary"},
+				MarkerExpressionExpr{"(5)", GroupedExpr{IntegerExpr{5}}}})
 		})
 	})
 
@@ -73,7 +103,28 @@ var _ = Describe("parsing", func() {
 
 	Describe("references", func() {
 		It("parses as a reference node", func() {
-			parsesAs("foo.bar-baz.fizz_buzz", ReferenceExpr{[]string{"foo", "bar-baz", "fizz_buzz"}})
+			parsesAs("foo.bar-baz.fizz_buzz", ReferenceExpr{Path: []string{"foo", "bar-baz", "fizz_buzz"}})
+		})
+		It("parses dot reference", func() {
+			parsesAs(".foo.bar-baz.fizz_buzz", ReferenceExpr{Path: []string{"", "foo", "bar-baz", "fizz_buzz"}})
+		})
+		It("parses tagged reference", func() {
+			parsesAs("tag::foo.bar-baz.fizz_buzz", ReferenceExpr{Tag: "tag", Path: []string{"foo", "bar-baz", "fizz_buzz"}})
+		})
+		It("parses tagged dot reference", func() {
+			parsesAs("tag::.", ReferenceExpr{Tag: "tag", Path: []string{""}})
+		})
+	})
+
+	Describe("tagged expressions", func() {
+		It("parses tagged function", func() {
+			parsesAs(
+				`lib::func(1)`,
+				CallExpr{
+					Function:  ReferenceExpr{Tag: "lib", Path: []string{"func"}},
+					Arguments: []Expression{IntegerExpr{Value: 1}},
+				},
+			)
 		})
 	})
 
@@ -83,7 +134,7 @@ var _ = Describe("parsing", func() {
 				`"foo" bar`,
 				ConcatenationExpr{
 					StringExpr{"foo"},
-					ReferenceExpr{[]string{"bar"}},
+					ReferenceExpr{Path: []string{"bar"}},
 				},
 			)
 
@@ -92,7 +143,7 @@ var _ = Describe("parsing", func() {
 				ConcatenationExpr{
 					ConcatenationExpr{
 						StringExpr{"foo"},
-						ReferenceExpr{[]string{"bar"}},
+						ReferenceExpr{Path: []string{"bar"}},
 					},
 					MergeExpr{},
 				},
@@ -106,7 +157,7 @@ var _ = Describe("parsing", func() {
 				`"foo" || bar`,
 				OrExpr{
 					StringExpr{"foo"},
-					ReferenceExpr{[]string{"bar"}},
+					ReferenceExpr{Path: []string{"bar"}},
 				},
 			)
 
@@ -115,7 +166,7 @@ var _ = Describe("parsing", func() {
 				OrExpr{
 					OrExpr{
 						StringExpr{"foo"},
-						ReferenceExpr{[]string{"bar"}},
+						ReferenceExpr{Path: []string{"bar"}},
 					},
 					MergeExpr{},
 				},
@@ -129,7 +180,7 @@ var _ = Describe("parsing", func() {
 				`"foo" + bar`,
 				AdditionExpr{
 					StringExpr{"foo"},
-					ReferenceExpr{[]string{"bar"}},
+					ReferenceExpr{Path: []string{"bar"}},
 				},
 			)
 
@@ -138,7 +189,7 @@ var _ = Describe("parsing", func() {
 				AdditionExpr{
 					AdditionExpr{
 						StringExpr{"foo"},
-						ReferenceExpr{[]string{"bar"}},
+						ReferenceExpr{Path: []string{"bar"}},
 					},
 					MergeExpr{},
 				},
@@ -152,7 +203,7 @@ var _ = Describe("parsing", func() {
 				`"foo" - bar`,
 				SubtractionExpr{
 					StringExpr{"foo"},
-					ReferenceExpr{[]string{"bar"}},
+					ReferenceExpr{Path: []string{"bar"}},
 				},
 			)
 
@@ -161,7 +212,7 @@ var _ = Describe("parsing", func() {
 				SubtractionExpr{
 					SubtractionExpr{
 						StringExpr{"foo"},
-						ReferenceExpr{[]string{"bar"}},
+						ReferenceExpr{Path: []string{"bar"}},
 					},
 					MergeExpr{},
 				},
@@ -175,7 +226,7 @@ var _ = Describe("parsing", func() {
 				`"foo" * bar`,
 				MultiplicationExpr{
 					StringExpr{"foo"},
-					ReferenceExpr{[]string{"bar"}},
+					ReferenceExpr{Path: []string{"bar"}},
 				},
 			)
 
@@ -184,7 +235,7 @@ var _ = Describe("parsing", func() {
 				MultiplicationExpr{
 					MultiplicationExpr{
 						StringExpr{"foo"},
-						ReferenceExpr{[]string{"bar"}},
+						ReferenceExpr{Path: []string{"bar"}},
 					},
 					MergeExpr{},
 				},
@@ -198,7 +249,7 @@ var _ = Describe("parsing", func() {
 				`"foo" / bar`,
 				DivisionExpr{
 					StringExpr{"foo"},
-					ReferenceExpr{[]string{"bar"}},
+					ReferenceExpr{Path: []string{"bar"}},
 				},
 			)
 
@@ -207,7 +258,7 @@ var _ = Describe("parsing", func() {
 				DivisionExpr{
 					DivisionExpr{
 						StringExpr{"foo"},
-						ReferenceExpr{[]string{"bar"}},
+						ReferenceExpr{Path: []string{"bar"}},
 					},
 					MergeExpr{},
 				},
@@ -221,7 +272,7 @@ var _ = Describe("parsing", func() {
 				`"foo" % bar`,
 				ModuloExpr{
 					StringExpr{"foo"},
-					ReferenceExpr{[]string{"bar"}},
+					ReferenceExpr{Path: []string{"bar"}},
 				},
 			)
 		})
@@ -239,7 +290,7 @@ var _ = Describe("parsing", func() {
 					[]Expression{
 						IntegerExpr{1},
 						StringExpr{"two"},
-						ReferenceExpr{[]string{"three"}},
+						ReferenceExpr{Path: []string{"three"}},
 					},
 				},
 			)
@@ -251,7 +302,7 @@ var _ = Describe("parsing", func() {
 				ListExpr{
 					[]Expression{
 						IntegerExpr{1},
-						ListExpansionExpr{ReferenceExpr{[]string{"foo"}}},
+						ListExpansionExpr{ReferenceExpr{Path: []string{"foo"}}},
 						IntegerExpr{2},
 					},
 				},
@@ -267,7 +318,7 @@ var _ = Describe("parsing", func() {
 						StringExpr{"two"},
 						ListExpr{
 							[]Expression{
-								ReferenceExpr{[]string{"three"}},
+								ReferenceExpr{Path: []string{"three"}},
 								StringExpr{"four"},
 							},
 						},
@@ -282,7 +333,7 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo()`,
 				CallExpr{
-					ReferenceExpr{[]string{"foo"}},
+					ReferenceExpr{Path: []string{"foo"}},
 					nil,
 					false,
 				},
@@ -293,7 +344,7 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo(1)`,
 				CallExpr{
-					ReferenceExpr{[]string{"foo"}},
+					ReferenceExpr{Path: []string{"foo"}},
 					[]Expression{
 						IntegerExpr{1},
 					},
@@ -306,10 +357,10 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo(1,foo...,2)`,
 				CallExpr{
-					ReferenceExpr{[]string{"foo"}},
+					ReferenceExpr{Path: []string{"foo"}},
 					[]Expression{
 						IntegerExpr{1},
-						ListExpansionExpr{ReferenceExpr{[]string{"foo"}}},
+						ListExpansionExpr{ReferenceExpr{Path: []string{"foo"}}},
 						IntegerExpr{2},
 					},
 					false,
@@ -321,7 +372,7 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo.bar(1)`,
 				CallExpr{
-					ReferenceExpr{[]string{"foo", "bar"}},
+					ReferenceExpr{Path: []string{"foo", "bar"}},
 					[]Expression{
 						IntegerExpr{1},
 					},
@@ -334,7 +385,7 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo.bar(a=1)`,
 				CallExpr{
-					ReferenceExpr{[]string{"foo", "bar"}},
+					ReferenceExpr{Path: []string{"foo", "bar"}},
 					[]Expression{
 						NameArgument{"a", IntegerExpr{1}},
 					},
@@ -347,7 +398,7 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo.bar(a=1, b=2)`,
 				CallExpr{
-					ReferenceExpr{[]string{"foo", "bar"}},
+					ReferenceExpr{Path: []string{"foo", "bar"}},
 					[]Expression{
 						NameArgument{"a", IntegerExpr{1}},
 						NameArgument{"b", IntegerExpr{2}},
@@ -361,7 +412,7 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo.bar(a=1, 2)`,
 				CallExpr{
-					ReferenceExpr{[]string{"foo", "bar"}},
+					ReferenceExpr{Path: []string{"foo", "bar"}},
 					[]Expression{
 						NameArgument{"a", IntegerExpr{1}},
 						IntegerExpr{2},
@@ -375,7 +426,7 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo.bar(a=1, b=2, 3, 4)`,
 				CallExpr{
-					ReferenceExpr{[]string{"foo", "bar"}},
+					ReferenceExpr{Path: []string{"foo", "bar"}},
 					[]Expression{
 						NameArgument{"a", IntegerExpr{1}},
 						NameArgument{"b", IntegerExpr{2}},
@@ -391,7 +442,7 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`(foo)(1)`,
 				CallExpr{
-					GroupedExpr{ReferenceExpr{[]string{"foo"}}},
+					GroupedExpr{ReferenceExpr{Path: []string{"foo"}}},
 					[]Expression{
 						IntegerExpr{1},
 					},
@@ -404,11 +455,11 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo(1, "two", three)`,
 				CallExpr{
-					ReferenceExpr{[]string{"foo"}},
+					ReferenceExpr{Path: []string{"foo"}},
 					[]Expression{
 						IntegerExpr{1},
 						StringExpr{"two"},
-						ReferenceExpr{[]string{"three"}},
+						ReferenceExpr{Path: []string{"three"}},
 					},
 					false,
 				},
@@ -419,13 +470,13 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo(1, [ "two", three ])`,
 				CallExpr{
-					ReferenceExpr{[]string{"foo"}},
+					ReferenceExpr{Path: []string{"foo"}},
 					[]Expression{
 						IntegerExpr{1},
 						ListExpr{
 							[]Expression{
 								StringExpr{"two"},
-								ReferenceExpr{[]string{"three"}},
+								ReferenceExpr{Path: []string{"three"}},
 							},
 						},
 					},
@@ -438,14 +489,14 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo(1, bar( "two", three ))`,
 				CallExpr{
-					ReferenceExpr{[]string{"foo"}},
+					ReferenceExpr{Path: []string{"foo"}},
 					[]Expression{
 						IntegerExpr{1},
 						CallExpr{
-							ReferenceExpr{[]string{"bar"}},
+							ReferenceExpr{Path: []string{"bar"}},
 							[]Expression{
 								StringExpr{"two"},
-								ReferenceExpr{[]string{"three"}},
+								ReferenceExpr{Path: []string{"three"}},
 							},
 							false,
 						},
@@ -461,7 +512,7 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo*()`,
 				CallExpr{
-					ReferenceExpr{[]string{"foo"}},
+					ReferenceExpr{Path: []string{"foo"}},
 					nil,
 					true,
 				},
@@ -471,9 +522,9 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo*(a)`,
 				CallExpr{
-					ReferenceExpr{[]string{"foo"}},
+					ReferenceExpr{Path: []string{"foo"}},
 					[]Expression{
-						ReferenceExpr{[]string{"a"}},
+						ReferenceExpr{Path: []string{"a"}},
 					},
 					true,
 				},
@@ -488,7 +539,7 @@ var _ = Describe("parsing", func() {
 				SubtractionExpr{
 					GroupedExpr{SubtractionExpr{
 						StringExpr{"foo"},
-						ReferenceExpr{[]string{"bar"}},
+						ReferenceExpr{Path: []string{"bar"}},
 					}},
 					MergeExpr{},
 				},
@@ -501,11 +552,11 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`map[list|x|->x]`,
 				MappingExpr{
-					ReferenceExpr{[]string{"list"}},
+					ReferenceExpr{Path: []string{"list"}},
 					LambdaExpr{
 						[]Parameter{Parameter{Name: "x"}},
 						false,
-						ReferenceExpr{[]string{"x"}},
+						ReferenceExpr{Path: []string{"x"}},
 					},
 					MapToListContext,
 				},
@@ -517,11 +568,11 @@ var _ = Describe("parsing", func() {
 				parsesAs(
 					`sync[data|x|->x]`,
 					SyncExpr{
-						A: ReferenceExpr{[]string{"data"}},
+						A: ReferenceExpr{Path: []string{"data"}},
 						Cond: LambdaExpr{
 							[]Parameter{Parameter{Name: "x"}},
 							false,
-							ReferenceExpr{[]string{"x"}},
+							ReferenceExpr{Path: []string{"x"}},
 						},
 						Value:   DefaultExpr{},
 						Timeout: DefaultExpr{},
@@ -532,16 +583,16 @@ var _ = Describe("parsing", func() {
 				parsesAs(
 					`sync[data|x|->x,y]`,
 					SyncExpr{
-						A: ReferenceExpr{[]string{"data"}},
+						A: ReferenceExpr{Path: []string{"data"}},
 						Cond: LambdaExpr{
 							[]Parameter{Parameter{Name: "x"}},
 							false,
-							ReferenceExpr{[]string{"x"}},
+							ReferenceExpr{Path: []string{"x"}},
 						},
 						Value: LambdaExpr{
 							[]Parameter{Parameter{Name: "x"}},
 							false,
-							ReferenceExpr{[]string{"y"}},
+							ReferenceExpr{Path: []string{"y"}},
 						},
 						Timeout: DefaultExpr{},
 					},
@@ -551,16 +602,16 @@ var _ = Describe("parsing", func() {
 				parsesAs(
 					`sync[data|x|->x,y|10]`,
 					SyncExpr{
-						A: ReferenceExpr{[]string{"data"}},
+						A: ReferenceExpr{Path: []string{"data"}},
 						Cond: LambdaExpr{
 							[]Parameter{Parameter{Name: "x"}},
 							false,
-							ReferenceExpr{[]string{"x"}},
+							ReferenceExpr{Path: []string{"x"}},
 						},
 						Value: LambdaExpr{
 							[]Parameter{Parameter{Name: "x"}},
 							false,
-							ReferenceExpr{[]string{"y"}},
+							ReferenceExpr{Path: []string{"y"}},
 						},
 						Timeout: IntegerExpr{10},
 					},
@@ -570,16 +621,16 @@ var _ = Describe("parsing", func() {
 				parsesAs(
 					`sync[data|x|->x|y|->y|10]`,
 					SyncExpr{
-						A: ReferenceExpr{[]string{"data"}},
+						A: ReferenceExpr{Path: []string{"data"}},
 						Cond: LambdaExpr{
 							[]Parameter{Parameter{Name: "x"}},
 							false,
-							ReferenceExpr{[]string{"x"}},
+							ReferenceExpr{Path: []string{"x"}},
 						},
 						Value: LambdaExpr{
 							[]Parameter{Parameter{Name: "y"}},
 							false,
-							ReferenceExpr{[]string{"y"}},
+							ReferenceExpr{Path: []string{"y"}},
 						},
 						Timeout: IntegerExpr{10},
 					},
@@ -590,13 +641,13 @@ var _ = Describe("parsing", func() {
 				parsesAs(
 					`sync[data|x|->x|value]`,
 					SyncExpr{
-						A: ReferenceExpr{[]string{"data"}},
+						A: ReferenceExpr{Path: []string{"data"}},
 						Cond: LambdaExpr{
 							[]Parameter{Parameter{Name: "x"}},
 							false,
-							ReferenceExpr{[]string{"x"}},
+							ReferenceExpr{Path: []string{"x"}},
 						},
-						Value:   ReferenceExpr{[]string{"value"}},
+						Value:   ReferenceExpr{Path: []string{"value"}},
 						Timeout: DefaultExpr{},
 					},
 				)
@@ -606,8 +657,8 @@ var _ = Describe("parsing", func() {
 				parsesAs(
 					`sync[data|cond]`,
 					SyncExpr{
-						A:       ReferenceExpr{[]string{"data"}},
-						Cond:    ReferenceExpr{[]string{"cond"}},
+						A:       ReferenceExpr{Path: []string{"data"}},
+						Cond:    ReferenceExpr{Path: []string{"cond"}},
 						Value:   DefaultExpr{},
 						Timeout: DefaultExpr{},
 					},
@@ -618,9 +669,9 @@ var _ = Describe("parsing", func() {
 				parsesAs(
 					`sync[data|cond|value]`,
 					SyncExpr{
-						A:       ReferenceExpr{[]string{"data"}},
-						Cond:    ReferenceExpr{[]string{"cond"}},
-						Value:   ReferenceExpr{[]string{"value"}},
+						A:       ReferenceExpr{Path: []string{"data"}},
+						Cond:    ReferenceExpr{Path: []string{"cond"}},
+						Value:   ReferenceExpr{Path: []string{"value"}},
 						Timeout: DefaultExpr{},
 					},
 				)
@@ -630,12 +681,12 @@ var _ = Describe("parsing", func() {
 				parsesAs(
 					`sync[data|cond|v|->v]`,
 					SyncExpr{
-						A:    ReferenceExpr{[]string{"data"}},
-						Cond: ReferenceExpr{[]string{"cond"}},
+						A:    ReferenceExpr{Path: []string{"data"}},
+						Cond: ReferenceExpr{Path: []string{"cond"}},
 						Value: LambdaExpr{
 							[]Parameter{Parameter{Name: "v"}},
 							false,
-							ReferenceExpr{[]string{"v"}},
+							ReferenceExpr{Path: []string{"v"}},
 						},
 						Timeout: DefaultExpr{},
 					},
@@ -646,9 +697,9 @@ var _ = Describe("parsing", func() {
 				parsesAs(
 					`sync[data|cond|value|10]`,
 					SyncExpr{
-						A:       ReferenceExpr{[]string{"data"}},
-						Cond:    ReferenceExpr{[]string{"cond"}},
-						Value:   ReferenceExpr{[]string{"value"}},
+						A:       ReferenceExpr{Path: []string{"data"}},
+						Cond:    ReferenceExpr{Path: []string{"cond"}},
+						Value:   ReferenceExpr{Path: []string{"value"}},
 						Timeout: IntegerExpr{10},
 					},
 				)
@@ -658,12 +709,12 @@ var _ = Describe("parsing", func() {
 				parsesAs(
 					`sync[data|cond|v|->v|10]`,
 					SyncExpr{
-						A:    ReferenceExpr{[]string{"data"}},
-						Cond: ReferenceExpr{[]string{"cond"}},
+						A:    ReferenceExpr{Path: []string{"data"}},
+						Cond: ReferenceExpr{Path: []string{"cond"}},
 						Value: LambdaExpr{
 							[]Parameter{Parameter{Name: "v"}},
 							false,
-							ReferenceExpr{[]string{"v"}},
+							ReferenceExpr{Path: []string{"v"}},
 						},
 						Timeout: IntegerExpr{10},
 					},
@@ -676,11 +727,11 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`map[list|x,y|->x]`,
 				MappingExpr{
-					ReferenceExpr{[]string{"list"}},
+					ReferenceExpr{Path: []string{"list"}},
 					LambdaExpr{
 						[]Parameter{Parameter{Name: "x"}, Parameter{Name: "y"}},
 						false,
-						ReferenceExpr{[]string{"x"}},
+						ReferenceExpr{Path: []string{"x"}},
 					},
 					MapToListContext,
 				},
@@ -691,12 +742,12 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`map[list|x|->x ".*"]`,
 				MappingExpr{
-					ReferenceExpr{[]string{"list"}},
+					ReferenceExpr{Path: []string{"list"}},
 					LambdaExpr{
 						[]Parameter{Parameter{Name: "x"}},
 						false,
 						ConcatenationExpr{
-							ReferenceExpr{[]string{"x"}},
+							ReferenceExpr{Path: []string{"x"}},
 							StringExpr{".*"},
 						},
 					},
@@ -709,9 +760,9 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`map[list|mappings.a]`,
 				MappingExpr{
-					ReferenceExpr{[]string{"list"}},
+					ReferenceExpr{Path: []string{"list"}},
 					ReferenceExpr{
-						[]string{"mappings", "a"},
+						Path: []string{"mappings", "a"},
 					},
 					MapToListContext,
 				},
@@ -722,12 +773,12 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`map[list|lambda |x|->x ".*"]`,
 				MappingExpr{
-					ReferenceExpr{[]string{"list"}},
+					ReferenceExpr{Path: []string{"list"}},
 					LambdaExpr{
 						[]Parameter{Parameter{Name: "x"}},
 						false,
 						ConcatenationExpr{
-							ReferenceExpr{[]string{"x"}},
+							ReferenceExpr{Path: []string{"x"}},
 							StringExpr{".*"},
 						},
 					},
@@ -740,11 +791,11 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`map{list|x|->x}`,
 				MappingExpr{
-					ReferenceExpr{[]string{"list"}},
+					ReferenceExpr{Path: []string{"list"}},
 					LambdaExpr{
 						[]Parameter{Parameter{Name: "x"}},
 						false,
-						ReferenceExpr{[]string{"x"}},
+						ReferenceExpr{Path: []string{"x"}},
 					},
 					MapToMapContext,
 				},
@@ -755,11 +806,11 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`select[list|x|->x]`,
 				MappingExpr{
-					ReferenceExpr{[]string{"list"}},
+					ReferenceExpr{Path: []string{"list"}},
 					LambdaExpr{
 						[]Parameter{Parameter{Name: "x"}},
 						false,
-						ReferenceExpr{[]string{"x"}},
+						ReferenceExpr{Path: []string{"x"}},
 					},
 					SelectToListContext,
 				},
@@ -769,11 +820,11 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`select{list|x|->x}`,
 				MappingExpr{
-					ReferenceExpr{[]string{"list"}},
+					ReferenceExpr{Path: []string{"list"}},
 					LambdaExpr{
 						[]Parameter{Parameter{Name: "x"}},
 						false,
-						ReferenceExpr{[]string{"x"}},
+						ReferenceExpr{Path: []string{"x"}},
 					},
 					SelectToMapContext,
 				},
@@ -789,7 +840,7 @@ var _ = Describe("parsing", func() {
 					CreateMapExpr{
 						nil,
 					},
-					ReferenceExpr{[]string{"x"}},
+					ReferenceExpr{Path: []string{"x"}},
 				},
 			)
 		})
@@ -806,7 +857,7 @@ var _ = Describe("parsing", func() {
 							},
 						},
 					},
-					ReferenceExpr{[]string{"x"}},
+					ReferenceExpr{Path: []string{"x"}},
 				},
 			)
 		})
@@ -827,7 +878,7 @@ var _ = Describe("parsing", func() {
 							},
 						},
 					},
-					ReferenceExpr{[]string{"x"}},
+					ReferenceExpr{Path: []string{"x"}},
 				},
 			)
 		})
@@ -840,7 +891,7 @@ var _ = Describe("parsing", func() {
 				LambdaExpr{
 					nil,
 					false,
-					ReferenceExpr{[]string{"x"}},
+					ReferenceExpr{Path: []string{"x"}},
 				},
 			)
 		})
@@ -851,7 +902,7 @@ var _ = Describe("parsing", func() {
 				LambdaExpr{
 					[]Parameter{Parameter{Name: "x"}},
 					false,
-					ReferenceExpr{[]string{"x"}},
+					ReferenceExpr{Path: []string{"x"}},
 				},
 			)
 		})
@@ -863,8 +914,8 @@ var _ = Describe("parsing", func() {
 					[]Parameter{Parameter{Name: "x"}, Parameter{Name: "y"}},
 					false,
 					DivisionExpr{
-						ReferenceExpr{[]string{"x"}},
-						ReferenceExpr{[]string{"y"}},
+						ReferenceExpr{Path: []string{"x"}},
+						ReferenceExpr{Path: []string{"y"}},
 					},
 				},
 			)
@@ -876,7 +927,7 @@ var _ = Describe("parsing", func() {
 				LambdaRefExpr{
 					Source: ConcatenationExpr{
 						StringExpr{"|x|->x+"},
-						ReferenceExpr{[]string{"ref"}},
+						ReferenceExpr{Path: []string{"ref"}},
 					},
 					Path:     []string{"foo", "bar"},
 					StubPath: []string{"foo", "bar"},
@@ -891,7 +942,7 @@ var _ = Describe("parsing", func() {
 				LambdaExpr{
 					[]Parameter{Parameter{Name: "x"}},
 					true,
-					ReferenceExpr{[]string{"x"}},
+					ReferenceExpr{Path: []string{"x"}},
 				},
 			)
 		})
@@ -901,7 +952,7 @@ var _ = Describe("parsing", func() {
 				LambdaExpr{
 					[]Parameter{Parameter{Name: "a"}, Parameter{Name: "x"}},
 					true,
-					ReferenceExpr{[]string{"x"}},
+					ReferenceExpr{Path: []string{"x"}},
 				},
 			)
 		})
@@ -912,7 +963,7 @@ var _ = Describe("parsing", func() {
 				LambdaExpr{
 					[]Parameter{Parameter{Name: "a", Default: IntegerExpr{5}}},
 					false,
-					ReferenceExpr{[]string{"x"}},
+					ReferenceExpr{Path: []string{"x"}},
 				},
 			)
 		})
@@ -926,7 +977,7 @@ var _ = Describe("parsing", func() {
 						Parameter{Name: "x", Default: IntegerExpr{6}},
 					},
 					false,
-					ReferenceExpr{[]string{"x"}},
+					ReferenceExpr{Path: []string{"x"}},
 				},
 			)
 		})
@@ -940,7 +991,7 @@ var _ = Describe("parsing", func() {
 						Parameter{Name: "x", Default: IntegerExpr{6}},
 					},
 					false,
-					ReferenceExpr{[]string{"x"}},
+					ReferenceExpr{Path: []string{"x"}},
 				},
 			)
 		})
@@ -956,7 +1007,7 @@ var _ = Describe("parsing", func() {
 						Parameter{Name: "y", Default: IntegerExpr{7}},
 					},
 					false,
-					ReferenceExpr{[]string{"x"}},
+					ReferenceExpr{Path: []string{"x"}},
 				},
 			)
 		})
@@ -968,10 +1019,10 @@ var _ = Describe("parsing", func() {
 				`foo.[alice].bar`,
 				QualifiedExpr{
 					DynamicExpr{
-						ReferenceExpr{[]string{"foo"}},
-						ReferenceExpr{[]string{"alice"}},
+						ReferenceExpr{Path: []string{"foo"}},
+						ReferenceExpr{Path: []string{"alice"}},
 					},
-					ReferenceExpr{[]string{"bar"}},
+					ReferenceExpr{Path: []string{"bar"}},
 				},
 			)
 		})
@@ -980,7 +1031,7 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo.[ 0 ]`,
 				DynamicExpr{
-					ReferenceExpr{[]string{"foo"}},
+					ReferenceExpr{Path: []string{"foo"}},
 					IntegerExpr{0},
 				},
 			)
@@ -989,7 +1040,7 @@ var _ = Describe("parsing", func() {
 		It("parses regular reference expression", func() {
 			parsesAs(
 				`foo.[0]`,
-				ReferenceExpr{[]string{"foo", "[0]"}},
+				ReferenceExpr{Path: []string{"foo", "[0]"}},
 			)
 		})
 
@@ -998,11 +1049,11 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo.[0].[*].bar`,
 				ProjectionExpr{
-					ReferenceExpr{[]string{"foo", "[0]"}},
+					ReferenceExpr{Path: []string{"foo", "[0]"}},
 					&val,
 					QualifiedExpr{
 						ProjectionValueExpr{&val},
-						ReferenceExpr{[]string{"bar"}},
+						ReferenceExpr{Path: []string{"bar"}},
 					},
 				},
 			)
@@ -1020,7 +1071,7 @@ var _ = Describe("parsing", func() {
 								QualifiedExpr{
 									CallExpr{
 										CallExpr{
-											ReferenceExpr{[]string{"a", "b"}},
+											ReferenceExpr{Path: []string{"a", "b"}},
 											[]Expression{
 												IntegerExpr{1},
 											},
@@ -1031,21 +1082,21 @@ var _ = Describe("parsing", func() {
 										},
 										false,
 									},
-									ReferenceExpr{[]string{"c"}},
+									ReferenceExpr{Path: []string{"c"}},
 								},
 								[]Expression{
 									IntegerExpr{3},
 								},
 								false,
 							},
-							ReferenceExpr{[]string{"e", "f"}},
+							ReferenceExpr{Path: []string{"e", "f"}},
 						},
 						[]Expression{
 							IntegerExpr{4},
 						},
 						false,
 					},
-					ReferenceExpr{[]string{"g"}},
+					ReferenceExpr{Path: []string{"g"}},
 				},
 			)
 		})
@@ -1054,13 +1105,13 @@ var _ = Describe("parsing", func() {
 				`a(1).b`,
 				QualifiedExpr{
 					CallExpr{
-						ReferenceExpr{[]string{"a"}},
+						ReferenceExpr{Path: []string{"a"}},
 						[]Expression{
 							IntegerExpr{1},
 						},
 						false,
 					},
-					ReferenceExpr{[]string{"b"}},
+					ReferenceExpr{Path: []string{"b"}},
 				},
 			)
 		})
@@ -1082,7 +1133,7 @@ var _ = Describe("parsing", func() {
 														IntegerExpr{2},
 													},
 												},
-												ReferenceExpr{[]string{"a"}},
+												ReferenceExpr{Path: []string{"a"}},
 											},
 											[]Expression{
 												IntegerExpr{1},
@@ -1094,21 +1145,21 @@ var _ = Describe("parsing", func() {
 										},
 										false,
 									},
-									ReferenceExpr{[]string{"c"}},
+									ReferenceExpr{Path: []string{"c"}},
 								},
 								[]Expression{
 									IntegerExpr{3},
 								},
 								false,
 							},
-							ReferenceExpr{[]string{"e", "f"}},
+							ReferenceExpr{Path: []string{"e", "f"}},
 						},
 						[]Expression{
 							IntegerExpr{4},
 						},
 						false,
 					},
-					ReferenceExpr{[]string{"g"}},
+					ReferenceExpr{Path: []string{"g"}},
 				},
 			)
 		})
@@ -1120,10 +1171,10 @@ var _ = Describe("parsing", func() {
 				`foo[alice].bar`,
 				QualifiedExpr{
 					DynamicExpr{
-						ReferenceExpr{[]string{"foo"}},
-						ReferenceExpr{[]string{"alice"}},
+						ReferenceExpr{Path: []string{"foo"}},
+						ReferenceExpr{Path: []string{"alice"}},
 					},
-					ReferenceExpr{[]string{"bar"}},
+					ReferenceExpr{Path: []string{"bar"}},
 				},
 			)
 		})
@@ -1132,7 +1183,7 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo[ 0 ]`,
 				DynamicExpr{
-					ReferenceExpr{[]string{"foo"}},
+					ReferenceExpr{Path: []string{"foo"}},
 					IntegerExpr{0},
 				},
 			)
@@ -1141,14 +1192,14 @@ var _ = Describe("parsing", func() {
 		It("parses regular reference expression", func() {
 			parsesAs(
 				`foo[0]`,
-				ReferenceExpr{[]string{"foo", "[0]"}},
+				ReferenceExpr{Path: []string{"foo", "[0]"}},
 			)
 		})
 
 		It("parses multi level index", func() {
 			parsesAs(
 				`foo[0][1]`,
-				ReferenceExpr{[]string{"foo", "[0]", "[1]"}},
+				ReferenceExpr{Path: []string{"foo", "[0]", "[1]"}},
 			)
 		})
 
@@ -1159,7 +1210,7 @@ var _ = Describe("parsing", func() {
 					QualifiedExpr{
 						CallExpr{
 							ReferenceExpr{
-								[]string{"foo"},
+								Path: []string{"foo"},
 							},
 							[]Expression{
 								IntegerExpr{0},
@@ -1167,7 +1218,7 @@ var _ = Describe("parsing", func() {
 							false,
 						},
 						ReferenceExpr{
-							[]string{"[1]"},
+							Path: []string{"[1]"},
 						},
 					},
 					[]Expression{
@@ -1183,11 +1234,11 @@ var _ = Describe("parsing", func() {
 			parsesAs(
 				`foo[0][*].bar`,
 				ProjectionExpr{
-					ReferenceExpr{[]string{"foo", "[0]"}},
+					ReferenceExpr{Path: []string{"foo", "[0]"}},
 					&val,
 					QualifiedExpr{
 						ProjectionValueExpr{&val},
-						ReferenceExpr{[]string{"bar"}},
+						ReferenceExpr{Path: []string{"bar"}},
 					},
 				},
 			)
