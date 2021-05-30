@@ -26,8 +26,20 @@ resource:
   description: (( "This document describes a " name " located at " url ))
 ```
 
-spiff is a command line tool and declarative YAML templating system, specially designed for generating deployment
-manifests (for example BOSH or [kubernetes](https://github.com/kubernetes) manifests).
+Instead of using only external value sources *spiff* provides a merging mechanism
+to merge a template with any number of merging stubs to produce a final document.
+
+It is a command line tool and declarative YAML templating system, specially designed for generating deployment
+manifests (for example BOSH, [Kubernetes](https://github.com/kubernetes) or
+[Landscaper](https://github.com/gardener/landscaper) manifests).
+
+Besides the CLI there is a golang library enabling the usage of the spiff
+template processing in any GO program (for example [Landscaper](https://github.com/gardener/landscaper)).
+
+The templating engine offers enabling access to the filesystem based on a
+configurable [virtual filesystem](https://github.com/mandelsoft/vfs)
+or the process system to execute commands and incorporate the output into the
+template processing. 
 
 Contents:
 - [Installation](#installation)
@@ -38,6 +50,7 @@ Contents:
 	- [(( foo.bar.[1].baz ))](#-foobar1baz-)
 	- [(( foo.[bar].baz ))](#-foobarbaz-)
 	- [(( list.[1..3] ))](#-list13-)
+	- [(( tag::foo ))](#-tagfoo-)
 	- [(( 1.2e4 ))](#-12e4-)
 	- [(( "foo" ))](#-foo-)
 	- [(( [ 1, 2, 3 ] ))](#--1-2-3--)
@@ -172,8 +185,9 @@ Contents:
     	- [(( &tag:name ))](#-tagname-)
     - [Tags](#tags)
         - [(( &tag:name(value) ))](#-tagnamevalue-)
-        - [(( name::path ))](#-namepath-)
-        - [(( name::. ))](#-name-)
+        - [(( tag::foo ))](#-tagfoo-)
+        - [(( tag::. ))](#-tag-)
+        - [(( foo:bar::alice ))](#-foobaralice-)
         - [Path Resolution for Tags](#path-resolution-for-tags)
         - [Tags in Multi-Document Streams](#tags-in-multi-document-streams)
 	- [Templates](#templates)
@@ -4530,7 +4544,7 @@ Please note, that the list expansion might span multiple arguments (including th
 Nodes of the yaml document can be marked to enable dedicated behaviours for this
 node. Such markers are part of the _dynaml_ syntax and may be prepended to
 any dynaml expression. They are denoted by the `&` character directly followed 
-by a marker name. If the expression is combination of markers and regular
+by a marker name. If the expression is a combination of markers and regular
 expressions, the expression follows the marker list enclosed in brackets
 (for example `(( &temporary( a + b ) ))`).
 
@@ -4773,7 +4787,9 @@ value as a whole or sub structure.
 ### `(( &tag:name(value) ))`
 
 This syntax is used to tag a node whose value is defined by a dynaml expression.
-It can also be used to denote tagged simple value nodes.
+It can also be used to denote tagged simple value nodes. (As usual the value
+part is optional for adding markers to structured values
+(see [Markers](#markers)).)
 
 e.g.:
 
@@ -4785,12 +4801,12 @@ data:
 ```
 
 If the name is prefixed with a star (`*`), the tag is defined globally.
-Gobal tags surive stub processing and their value is visible in sub sequent
+Gobal tags surive stub processing and their value is visible in subsequent
 stub (and template) processings.
 
 A tag name may consist of multiple components separated by a colon (`:`).
 
-### `(( name::path ))`
+### `(( tag::foo ))`
 
 Reference a sub path of the value of a tagged node.
 
@@ -4807,9 +4823,9 @@ tagref: (( persons::alice ))
 
 resolves `tagref` to `25`
 
-### `(( name::. ))`
+### `(( tag::. ))`
 
-Reference the value of tagged node.
+Reference the whole (structured) value of tagged node.
 
 e.g.:
 
@@ -4823,11 +4839,18 @@ tagref: (( alice::. ))
 
 resolves `tagref` to `25`
 
+### `(( foo:bar::alice ))`
+
+Tag names may be structured. A tag name consists of a non-empty list of 
+tag components separated by a colon (`:`). A tag component may
+contain ASCII letters or numbers, starting wit a letter.
+Multi-component tags are subject to [Tag Resolution](#path-resolution-for-tags).
+
 ### Path Resolution for Tags
 
 A tag reference always contains a tag name and a path separated by a double 
 colon (`::`).
-The standard usecase is to describe a dedicated sub node for a tagged
+The standard use-case is to describe a dedicated sub node for a tagged
 node value.
 
 for example, if the tag `X` describes the value
@@ -4838,14 +4861,19 @@ data:
   bob: 24
 ```
 
-the tagged reference `tag::data.alice` describes the value `25`.
+the tagged reference `X::data.alice` describes the value `25`.
 
-For tagged reference with a path other the `.` (the whole tag value),
+For tagged references with a path other than `.` (the whole tag value),
 structured tags feature a more sophisticated resolution mechanism. A structured
 tag consist of multiple tag components separated by a colon (`:`), for
-example `lib:mylib`.
+example `lib:mylib`. Therefore tags span a tree of namespaces or scopes
+used to resolve path references. A tag-less reference just uses 
+the actual document or binding to resolve a path extression.
+
 Evaluation of a path reference for a tag tries to resolve the path in the
-first unique nested tag, if it cannot be resolved directly by the given tag.
+first tag tree level where the path is available (breadth-first search).
+If this level contains multiple tags that could resolve the given path, the
+resolution fails because it cannot be unambigiously resolved. 
 
 For example:
 
