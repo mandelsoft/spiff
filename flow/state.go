@@ -129,6 +129,7 @@ func (s *State) GetTempName(data []byte) (string, error) {
 }
 
 func (s *State) SetTag(name string, node yaml.Node, path []string, scope dynaml.TagScope) error {
+	name = strings.Replace(name, ":", ".", -1)
 	debug.Debug("setting tag: %v\n", path)
 	old := s.tags[name]
 	if old != nil {
@@ -144,7 +145,8 @@ func (s *State) SetTag(name string, node yaml.Node, path []string, scope dynaml.
 }
 
 func (s *State) GetTag(name string) *dynaml.Tag {
-	if strings.HasPrefix(name, "doc:") {
+	name = strings.Replace(name, ":", ".", -1)
+	if strings.HasPrefix(name, "doc.") {
 		i, err := strconv.Atoi(name[4:])
 		if err != nil {
 			return nil
@@ -154,7 +156,7 @@ func (s *State) GetTag(name string) *dynaml.Tag {
 			if i <= 0 {
 				return nil
 			}
-			name = fmt.Sprintf("doc:%d", i)
+			name = fmt.Sprintf("doc.%d", i)
 		}
 	}
 	tag := s.tags[name]
@@ -165,7 +167,8 @@ func (s *State) GetTag(name string) *dynaml.Tag {
 }
 
 func (s *State) GetTags(name string) []*dynaml.TagInfo {
-	if strings.HasPrefix(name, "doc:") {
+	name = strings.Replace(name, ":", ".", -1)
+	if strings.HasPrefix(name, "doc.") {
 		i, err := strconv.Atoi(name[4:])
 		if err != nil {
 			return nil
@@ -175,7 +178,7 @@ func (s *State) GetTags(name string) []*dynaml.TagInfo {
 			if i <= 0 {
 				return nil
 			}
-			name = fmt.Sprintf("doc:%d", i)
+			name = fmt.Sprintf("doc.%d", i)
 		}
 		tag := s.tags[name]
 		if tag == nil {
@@ -185,7 +188,7 @@ func (s *State) GetTags(name string) []*dynaml.TagInfo {
 	}
 
 	var list []*dynaml.TagInfo
-	prefix := name + ":"
+	prefix := name + "."
 	for _, t := range s.tags {
 		if t.Name() == name || strings.HasPrefix(t.Name(), prefix) {
 			list = append(list, t)
@@ -218,7 +221,7 @@ func (s *State) ResetStream() {
 
 func (s *State) PushDocument(node yaml.Node) {
 	if node != nil {
-		s.SetTag(fmt.Sprintf("doc:%d", s.docno), node, nil, dynaml.TAG_SCOPE_GLOBAL)
+		s.SetTag(fmt.Sprintf("doc.%d", s.docno), node, nil, dynaml.TAG_SCOPE_GLOBAL)
 	}
 	for _, t := range s.tags {
 		t.ResetLocal()

@@ -514,7 +514,7 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (
 			tokens.Push(expressionListHelper{})
 
 		case ruleKey, ruleIndex:
-		case ruleTag, ruleTagName:
+		case ruleTag, ruleTagComponent, ruleTagPrefix:
 		case ruleLevel0, ruleLevel1, ruleLevel2, ruleLevel3, ruleLevel4, ruleLevel5, ruleLevel6, ruleLevel7:
 		case ruleExpression:
 		case ruleExpressionList:

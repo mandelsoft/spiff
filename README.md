@@ -187,7 +187,7 @@ Contents:
         - [(( &tag:name(value) ))](#-tagnamevalue-)
         - [(( tag::foo ))](#-tagfoo-)
         - [(( tag::. ))](#-tag-)
-        - [(( foo:bar::alice ))](#-foobaralice-)
+        - [(( foo.bar::alice ))](#-foobaralice-)
         - [Path Resolution for Tags](#path-resolution-for-tags)
         - [Tags in Multi-Document Streams](#tags-in-multi-document-streams)
 	- [Templates](#templates)
@@ -4806,6 +4806,9 @@ stub (and template) processings.
 
 A tag name may consist of multiple components separated by a colon (`:`).
 
+Tags can also be defined dynamically by the dynaml
+function [tagdef](#-tagdeftag-valiue-).
+
 ### `(( tag::foo ))`
 
 Reference a sub path of the value of a tagged node.
@@ -4839,10 +4842,10 @@ tagref: (( alice::. ))
 
 resolves `tagref` to `25`
 
-### `(( foo:bar::alice ))`
+### `(( foo.bar::alice ))`
 
 Tag names may be structured. A tag name consists of a non-empty list of 
-tag components separated by a colon (`:`). A tag component may
+tag components separated by a dot or colon (`:`). A tag component may
 contain ASCII letters or numbers, starting wit a letter.
 Multi-component tags are subject to [Tag Resolution](#path-resolution-for-tags).
 
@@ -4942,7 +4945,7 @@ Local tags are only avaialble on the processing level they are declared.
 Additionally to the tags explicitly set by tag markers, there are implicit
 document tags given by the document index during the processing of a 
 (multi-document) template. The implicit document tags are qualified with the
-prefix `doc:`. This prefix should not be used to own tags in the documents
+prefix `doc.`. This prefix should not be used to own tags in the documents
 
 e.g.:
 
@@ -4955,10 +4958,10 @@ data:
   bob: 24
 ---
 alice: (( persons::alice ))
-prev: (( doc:1::. ))
+prev: (( doc.1::. ))
 ---
 bob: (( persons::bob ))
-prev: (( doc:2::. ))
+prev: (( doc.2::. ))
 ```
 
 resolves to
@@ -4981,8 +4984,8 @@ prev:
 ```
 
 If the given document index is negative it denotes the document relative to the
-one actually processed (so, the tag `doc:-1` denotes the previous document).
-The index `doc:0` can be used to denote the actual document. Here always a path
+one actually processed (so, the tag `doc.-1` denotes the previous document).
+The index `doc.0` can be used to denote the actual document. Here always a path
 must be specified, it is not possible to refer to the complete document
 (with `.`). 
 

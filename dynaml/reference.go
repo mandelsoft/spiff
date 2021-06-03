@@ -42,7 +42,7 @@ func (e ReferenceExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 
 	if e.Tag != "" {
 		info := DefaultInfo()
-		if e.Tag != "doc:0" {
+		if e.Tag != "doc:0" && e.Tag != "doc.0" {
 			tags := binding.GetState().GetTags(e.Tag)
 			if len(tags) == 0 {
 				return info.Error("tag '%s' not found", e.Tag)

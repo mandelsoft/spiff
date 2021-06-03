@@ -113,7 +113,7 @@ func NewTagInfo(tag *Tag) *TagInfo {
 	comp := ""
 	comps := []string{}
 	for _, c := range tag.name {
-		if c == ':' {
+		if c == ':' || c == '.' {
 			comps = append(comps, comp)
 			comp = ""
 			l++
@@ -133,7 +133,7 @@ func CheckTagName(name string) error {
 	l := 0
 	for _, c := range name {
 		switch c {
-		case ':':
+		case ':', '.':
 			if l == 0 {
 				return fmt.Errorf("empty tag component not allowed")
 			}
