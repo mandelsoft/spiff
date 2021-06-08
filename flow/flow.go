@@ -108,14 +108,16 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 				debug.Debug("found template declaration\n")
 				tval := m.TemplateExpression(root)
 				if tval == nil {
-					root = yaml.IssueNode(root, true, false, yaml.NewIssue("empty template value"))
+					info.SetError("empty template value")
 					debug.Debug("??? failed ---> KEEP\n")
 					if !shouldOverride {
-						return root
+						return yaml.IssueNode(root, true, false, info.Issue)
 					}
+					ok = false
+				} else {
+					debug.Debug("  value template %s", tval)
+					eval = dynaml.NewTemplateValue(env.Path(), tval, root, env)
 				}
-				debug.Debug("  value template %s", tval)
-				eval = dynaml.NewTemplateValue(env.Path(), tval, root, env)
 				flags |= m.GetFlags()
 			} else {
 				eval, info, ok = val.Evaluate(env, false)
@@ -128,11 +130,21 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 					debug.Debug("eval found redirect %v, %v", info.RedirectPath, ok)
 				}
 			}
-			if flags.Dynamic() && template == nil {
-				eval, template = substituteValue(eval, flags)
+			flags |= info.NodeFlags
+			if flags.Dynamic() {
+				if _, tok := eval.(dynaml.TemplateValue); !tok && template == nil {
+					info.SetError("dynamic marker for non-template value node")
+					debug.Debug("??? invalid dynamic ---> KEEP\n")
+					if !shouldOverride {
+						return yaml.IssueNode(root, true, false, info.Issue)
+					}
+					ok = false
+				}
+				if template == nil {
+					eval, template = substituteValue(eval, flags)
+				}
 			}
 			replace = replace || info.Replace
-			flags |= info.NodeFlags
 			debug.Debug("??? ---> %t %#v\n", ok, eval)
 			if !ok {
 				root = yaml.IssueNode(root, true, false, info.Issue)

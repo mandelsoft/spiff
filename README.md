@@ -4635,6 +4635,9 @@ data: 1
 The original template is kept along the merge chain and is evaluated
 separately in the context of the very stub or template it is used.
 
+Using this marker for nodes not evaluationg to a template value is
+not possible.
+
 ### `(( &inject ))`
 
 This marker requests the marked item to be injected into the next stub level,
