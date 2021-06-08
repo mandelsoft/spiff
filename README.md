@@ -179,6 +179,7 @@ Contents:
 	- [Markers](#markers)
 	    - [(( &temporary ))](#-temporary-)
 	    - [(( &local ))](#-local-)
+    	- [(( &dynamic ))](#-dynamic-)
     	- [(( &inject ))](#-inject-)
     	- [(( &default ))](#-default-)
     	- [(( &state ))](#-state-)
@@ -4602,6 +4603,37 @@ removed from a stub directly after resolving dynaml expressions. Such nodes
 are therefore not available for merging and they are not used for further
 merging of stubs and finally the template.
 
+### `(( &dynamic ))`
+
+This marker can be used to mark a template expression (direct or referenced)
+to enforce the re-evaluation of the template in the usage context whenever the
+node is used to override or inject a node value along the processing chain.
+It can also be used together with
+[`&inject`](#-inject-) or [`&default`](#-default-).
+
+e.g.:
+
+**template.yaml**
+```yaml
+data: 1
+```
+
+merged with
+
+**stub.yaml**
+```yaml
+id: (( &dynamic &inject &template(__ctx.FILE) ))
+```
+
+will resolve to
+
+```yaml
+id: template.yaml
+data: 1
+```
+
+The original template is kept along the merge chain and is evaluated
+separately in the context of the very stub or template it is used.
 
 ### `(( &inject ))`
 

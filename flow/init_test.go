@@ -14,8 +14,11 @@ func Test(t *testing.T) {
 	RunSpecs(t, "Flowing")
 }
 
-func parseYAML(source string) yaml.Node {
-	parsed, err := yaml.Parse("test", []byte(source))
+func parseYAML(source string, file ...string) yaml.Node {
+	if len(file) == 0 {
+		file = []string{"test"}
+	}
+	parsed, err := yaml.Parse(file[0], []byte(source))
 	if err != nil {
 		panic(err)
 	}

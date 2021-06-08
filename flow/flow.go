@@ -69,6 +69,7 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 	merged := root.Merged()
 	keyName := root.KeyName()
 	source := root.SourceName()
+	template := root.Template()
 
 	if redirect != nil {
 		env = env.RedirectOverwrite(redirect)
@@ -95,7 +96,6 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 			if root.SourceName() != env.SourceName() {
 				env = env.WithSource(root.SourceName())
 			}
-			info := dynaml.DefaultInfo()
 			var eval interface{} = nil
 			m, ok := val.(dynaml.MarkerExpr)
 			if ok {
@@ -103,18 +103,20 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 					root = yaml.SetTag(root, tag)
 				}
 			}
+			info := dynaml.DefaultInfo()
 			if ok && m.Has(dynaml.TEMPLATE) {
 				debug.Debug("found template declaration\n")
-				val := m.TemplateExpression(root)
-				if val == nil {
+				tval := m.TemplateExpression(root)
+				if tval == nil {
 					root = yaml.IssueNode(root, true, false, yaml.NewIssue("empty template value"))
 					debug.Debug("??? failed ---> KEEP\n")
 					if !shouldOverride {
 						return root
 					}
 				}
-				debug.Debug("  value template %s", val)
-				eval = dynaml.NewTemplateValue(env.Path(), val, root, env)
+				debug.Debug("  value template %s", tval)
+				eval = dynaml.NewTemplateValue(env.Path(), tval, root, env)
+				flags |= m.GetFlags()
 			} else {
 				eval, info, ok = val.Evaluate(env, false)
 				if err := info.Cleanup(); err != nil {
@@ -125,6 +127,9 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 				if info.RedirectPath != nil {
 					debug.Debug("eval found redirect %v, %v", info.RedirectPath, ok)
 				}
+			}
+			if flags.Dynamic() && template == nil {
+				eval, template = substituteValue(eval, flags)
 			}
 			replace = replace || info.Replace
 			flags |= info.NodeFlags
@@ -140,7 +145,12 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 					source = info.SourceName()
 				}
 				tag := root.GetAnnotation().Tag()
-				result := yaml.NewNode(eval, source)
+				var result yaml.Node
+				if template != nil {
+					result = yaml.NewDynamicNode(eval, template, source)
+				} else {
+					result = yaml.NewNode(eval, source)
+				}
 				_, ok = eval.(string)
 				if ok {
 					// map result to potential expression
@@ -210,8 +220,8 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 	if !merged && root.StandardOverride() && shouldOverride && !env.NoMerge() {
 		debug.Debug("/// lookup stub %v -> %v\n", env.Path(), env.StubPath())
 		overridden, found := env.FindInStubs(env.StubPath())
-		if found && !overridden.Flags().Default() {
-			root = overridden
+		if found && !overridden.Flags().Default() && !root.Flags().Injected() {
+			root, _ = substituteNode(overridden)
 			if keyName != "" {
 				root = yaml.KeyNameNode(root, keyName)
 			}
@@ -385,7 +395,8 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 			if m, ok := stub.Value().(map[string]yaml.Node); ok {
 				for k, v := range m {
 					if v.Flags().Inject() && newMap[k] == nil {
-						newMap[k] = v
+						v, _ = substituteNode(v)
+						newMap[k] = yaml.AddFlags(v, yaml.FLAG_INJECT)
 					}
 				}
 			}
@@ -701,4 +712,24 @@ func updateNode(node yaml.Node, flags yaml.NodeFlags, tag string) yaml.Node {
 		node = yaml.SetTag(node, tag)
 	}
 	return node
+}
+
+func substituteNode(v yaml.Node) (yaml.Node, bool) {
+	t, ok := v.Value().(dynaml.TemplateValue)
+	if !ok {
+		t, ok = v.Template().(dynaml.TemplateValue)
+	}
+	if v.Flags().Dynamic() && ok {
+		return yaml.NewDynamicNode(dynaml.SubstitutionExpr{dynaml.ValueExpr{t}}, t, "<substitute>"), true
+	}
+	return v, false
+}
+
+func substituteValue(v interface{}, flags yaml.NodeFlags) (interface{}, interface{}) {
+	t, ok := v.(dynaml.TemplateValue)
+
+	if flags.Dynamic() && ok {
+		return dynaml.SubstitutionExpr{dynaml.ValueExpr{t}}, t
+	}
+	return v, nil
 }

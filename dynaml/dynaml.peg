@@ -7,7 +7,7 @@ Prefer <- ws 'prefer' req_ws Expression
 
 MarkedExpression <- ws Marker ( req_ws SubsequentMarker )* ws MarkerExpression ? ws
 SubsequentMarker <- Marker
-Marker <- '&' ( 'template' / 'temporary' / 'local' / 'inject' / 'state' / 'default' / TagMarker )
+Marker <- '&' ( 'template' / 'temporary' / 'local' / 'inject' / 'state' / 'default' / 'dynamic' / TagMarker )
 TagMarker <- 'tag:' '*'? Tag
 MarkerExpression <- Grouped
 

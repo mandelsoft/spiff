@@ -21,6 +21,7 @@ type Node interface {
 	candiedyaml.Marshaler
 
 	Value() interface{}
+	Template() interface{}
 	SourceName() string
 	RedirectPath() []string
 	Flags() NodeFlags
@@ -45,6 +46,7 @@ type Node interface {
 
 type AnnotatedNode struct {
 	value      interface{}
+	template   interface{}
 	resolver   RefResolver
 	sourceName string
 	Annotation
@@ -66,6 +68,7 @@ const (
 	FLAG_INJECT    = 0x004
 	FLAG_STATE     = 0x008
 	FLAG_DEFAULT   = 0x010
+	FLAG_DYNAMIC   = 0x020
 
 	FLAG_INJECTED = 0x040
 	FLAG_IMPLIED  = 0x080
@@ -136,8 +139,20 @@ func (f *NodeFlags) SetState() *NodeFlags {
 	return f
 }
 
+func (f NodeFlags) Dynamic() bool {
+	return (f & FLAG_DYNAMIC) != 0
+}
+func (f *NodeFlags) SetDynamic() *NodeFlags {
+	*f |= FLAG_DYNAMIC
+	return f
+}
+
 func (f NodeFlags) Injected() bool {
 	return (f & FLAG_INJECTED) != 0
+}
+func (f *NodeFlags) SetInjected() *NodeFlags {
+	*f |= FLAG_INJECTED
+	return f
 }
 
 type Annotation struct {
@@ -155,14 +170,18 @@ type Annotation struct {
 }
 
 func copyNode(node Node) AnnotatedNode {
-	return AnnotatedNode{node.Value(), node.Resolver(), node.SourceName(), node.GetAnnotation()}
+	return AnnotatedNode{node.Value(), node.Template(), node.Resolver(), node.SourceName(), node.GetAnnotation()}
 }
 func copyNodeAnnotated(node Node, anno Annotation) AnnotatedNode {
-	return AnnotatedNode{node.Value(), node.Resolver(), node.SourceName(), anno}
+	return AnnotatedNode{node.Value(), node.Template(), node.Resolver(), node.SourceName(), anno}
 }
 
 func NewNode(value interface{}, sourcePath string) Node {
-	return AnnotatedNode{MassageType(value), nil, sourcePath, EmptyAnnotation()}
+	return AnnotatedNode{MassageType(value), nil, nil, sourcePath, EmptyAnnotation()}
+}
+
+func NewDynamicNode(value, template interface{}, sourcePath string) Node {
+	return AnnotatedNode{MassageType(value), template, nil, sourcePath, EmptyAnnotation().SetInjected().SetDynamic()}
 }
 
 func ResolverNode(node Node, resolver RefResolver) Node {
@@ -228,6 +247,14 @@ func SetTag(node Node, tag string) Node {
 
 func TemporaryNode(node Node) Node {
 	return copyNodeAnnotated(node, node.GetAnnotation().SetTemporary())
+}
+
+func InjectedNode(node Node) Node {
+	return copyNodeAnnotated(node, node.GetAnnotation().SetInjected())
+}
+
+func DefaultedNode(node Node) Node {
+	return copyNodeAnnotated(node, node.GetAnnotation().SetDefault())
 }
 
 func LocalNode(node Node) Node {
@@ -322,6 +349,26 @@ func (n Annotation) SetState() Annotation {
 	return n
 }
 
+func (n Annotation) SetInject() Annotation {
+	n.NodeFlags.SetInject()
+	return n
+}
+
+func (n Annotation) SetInjected() Annotation {
+	n.NodeFlags.SetInjected()
+	return n
+}
+
+func (n Annotation) SetDefault() Annotation {
+	n.NodeFlags.SetDefault()
+	return n
+}
+
+func (n Annotation) SetDynamic() Annotation {
+	n.NodeFlags.SetDynamic()
+	return n
+}
+
 func (n Annotation) SetRedirectPath(redirect []string) Annotation {
 	n.redirectPath = redirect
 	return n
@@ -374,6 +421,10 @@ func (n AnnotatedNode) Value() interface{} {
 
 func (n AnnotatedNode) SourceName() string {
 	return n.sourceName
+}
+
+func (n AnnotatedNode) Template() interface{} {
+	return n.template
 }
 
 func (n AnnotatedNode) Resolver() RefResolver {
