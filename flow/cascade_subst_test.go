@@ -347,4 +347,41 @@ data: 2
 
 		Expect(source).To(CascadeAs(resolved, secondary, stub))
 	})
+
+	Context("temporary", func() {
+		It("locally substitutes template", func() {
+			source := parseYAML(`
+---
+data: 1
+`, "SOURCE")
+
+			stub := parseYAML(`
+---
+id: (( &temporary &inject &dynamic(template) ))
+template: (( &temporary &template(__ctx.FILE) ))
+`, "STUB")
+
+			resolved := parseYAML(`
+---
+data: 1
+`)
+
+			Expect(source).To(CascadeAs(resolved, stub))
+		})
+	})
+
+	It("local temporary", func() {
+		source := parseYAML(`
+---
+id: (( &temporary &inject &dynamic &template(__ctx.FILE) ))
+data: (( id ))
+`, "SOURCE")
+
+		resolved := parseYAML(`
+---
+data: SOURCE
+`)
+
+		Expect(source).To(CascadeAs(resolved))
+	})
 })

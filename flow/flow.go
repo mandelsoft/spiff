@@ -732,7 +732,7 @@ func substituteNode(v yaml.Node) (yaml.Node, bool) {
 		t, ok = v.Template().(dynaml.TemplateValue)
 	}
 	if v.Flags().Dynamic() && ok {
-		return yaml.NewDynamicNode(dynaml.SubstitutionExpr{dynaml.ValueExpr{t}}, t, "<substitute>"), true
+		return yaml.AddFlags(yaml.NewDynamicNode(dynaml.SubstitutionExpr{dynaml.ValueExpr{t}}, t, "<substitute>"), v.Flags()), true
 	}
 	return v, false
 }
