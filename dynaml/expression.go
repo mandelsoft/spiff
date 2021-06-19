@@ -196,6 +196,10 @@ func (i EvaluationInfo) CleanError() EvaluationInfo {
 	return i
 }
 
+func (i EvaluationInfo) GetError() string {
+	return i.Issue.Issue
+}
+
 func (i EvaluationInfo) Join(o EvaluationInfo) EvaluationInfo {
 	if o.RedirectPath != nil {
 		i.RedirectPath = o.RedirectPath

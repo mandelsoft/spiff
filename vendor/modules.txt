@@ -1,3 +1,6 @@
+# github.com/Masterminds/semver/v3 v3.1.1
+## explicit
+github.com/Masterminds/semver/v3
 # github.com/cloudfoundry-incubator/candiedyaml v0.0.0-20170901234223-a41693b7b7af
 ## explicit
 github.com/cloudfoundry-incubator/candiedyaml

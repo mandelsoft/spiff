@@ -9,6 +9,7 @@ require (
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
 	github.com/onsi/ginkgo v1.14.1
 	github.com/onsi/gomega v1.10.2
+	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/pelletier/go-toml v1.8.1 // indirect
 	github.com/pointlander/compress v1.1.0 // indirect
 	github.com/pointlander/jetset v1.0.0 // indirect

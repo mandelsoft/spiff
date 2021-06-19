@@ -145,6 +145,17 @@ Contents:
 		    - [(( mkdir("dir", 0755) ))](#-mkdirdir-0755-)
 		    - [(( list_files(".") ))](#-list_files-)
 		    - [(( archive(files, "tar") ))](#-archivefiles-tar-)
+		- [Semantic Versioning Functions](#semantic-versioning-functions)
+		    - [(( semver("v1.2-beta.1") ))](#-semverv12-beta1-)
+		    - [(( semverrelease("v1.2.3-beta.1") ))](#-semverreleasev123-beta1-)
+		    - [(( semvermajor("1.2.3-beta.1") ))](#-semvermajor123-beta1-)
+		    - [(( semverminor("1.2.3-beta.1") ))](#-semverminor123-beta1-)
+		    - [(( semverpatch("1.2.3-beta.1") ))](#-semverpatch123-beta1-)
+		    - [(( semverprerelease("1.2.3-beta.1") ))](#-semverprerelease123-beta1-)
+		    - [(( semvermetadata("1.2.3+demo") ))](#-semvermetadata123demo-)
+		    - [(( semvercmp("1.2.3", "1.2.3-beta.1") ))](#-semvercmp123-123-beta1-)
+		    - [(( semvermatch("1.2.3", "~1.2") ))](#-semvermatch123-12-)
+		    - [(( semversort("1.2.3", "1.2.1") ))](#-semversort123-121-)
 		- [X509 Functions](#x509-functions)
 		    - [(( x509genkey(spec) ))](#-x509genkeyspec-)
 		    - [(( x509publickey(key) ))](#-x509publickeykey-)
@@ -2851,6 +2862,7 @@ The following validators are available:
 | `privatekey` | none | private key in pem format |
 | `certificate` | none | certificate in pem format |
 | `ca`|  none | certificate for CA |
+| `semver` | optional list of constraints | validate semver version against constraints |
 | `type`| list of accepted type keys | at least one [type key](#-typefoobar-) must match |
 | `valueset` | list argument with values | possible values |
 | `value` or `=` | value | check dedicated value |
@@ -3297,10 +3309,299 @@ yaml:
   bob: 27
 
 ```
+### Semantic Versioning Functions
+
+*Spiff* supports handling of semantic version names. It supports all functionality
+from the [Masterminds Semver Package](https://github.com/Masterminds/semver/blob/v3.1.1/README.md)
+accepting versions with or without a leading `v`.
+
+#### `(( semver("v1.2-beta.1") ))`
+
+Check whether a given string is a semantic version and return 
+its normalized form (without leading `v` and complete release part with major,
+minor and and patch version number).
+
+e.g.:
+
+```yaml
+normalized: (( semver("v1.2-beta.1") ))
+```
+
+resolves to
+
+```yaml
+normalized: 1.2.0-beta.1
+```
+
+#### `(( semverrelease("v1.2.3-beta.1") ))`
+
+Return the release part of a semantic version omitting metadata and prerelease
+information.
+
+e.g.:
+
+```yaml
+release: (( semverrelease("v1.2.3-beta.1") ))
+```
+
+resolves to
+
+```yaml
+release: v1.2.3
+```
+
+If an additional string argument is given this function replaces
+the release by the release of the given semantic version preserving
+metadata and prerelease information.
+
+e.g.:
+
+```yaml
+new: (( semverrelease("1.2.3-beta.1", "1.2.1) ))
+```
+
+resolves to
+
+```yaml
+new: 1.2.1-beta.1
+```
+
+#### `(( semvermajor("1.2.3-beta.1") ))`
+
+Determine the major version number of the given semantic version.
+The result is an integer.
+
+e.g.:
+
+```yaml
+major: (( semvermajor("1.2.3-beta.1") ))
+```
+
+resolves to
+
+```yaml
+major: 1
+```
+
+The function `semverincmajor` can be used to increment the
+major version number and reset the minor version, patch version 
+and release suffixes.
+
+e.g.:
+
+```yaml
+new: (( semverincmajor("1.2.3-beta.1") ))
+```
+
+resolves to
+
+```yaml
+new: 2.0.0
+```
+
+#### `(( semverminor("1.2.3-beta.1") ))`
+
+Determine the minor version number of the given semantic version.
+The result is an integer.
+
+e.g.:
+
+```yaml
+minor: (( semverminor("1.2.3-beta.1") ))
+```
+
+resolves to
+
+```yaml
+minor: 2
+```
+
+The function `semverincminor` can be used to increment the
+minor version number and reset the patch version 
+and release suffixes.
+
+e.g.:
+
+```yaml
+new: (( semverincmajor("v1.2.3-beta.1") ))
+```
+
+resolves to
+
+```yaml
+new: v1.3.0
+```
+
+#### `(( semverpatch("1.2.3-beta.1") ))`
+
+Determine the patch version number of the given semantic version.
+The result is an integer.
+
+e.g.:
+
+```yaml
+patch: (( semverpatch("1.2.3-beta.1") ))
+```
+
+resolves to
+
+```yaml
+patch: 3
+```
+
+The function `semverincpatch` can be used to increment the
+patch version number or reset the release suffixes.
+If there are rlease suffixes, they are removed and the release
+info is kept unchanged, otherwise the patch version number
+is increased.
+
+e.g.:
+
+```yaml
+final: (( semverincpatch("1.2.3-beta.1") ))
+new: (( semverincpatch(final) ))
+```
+
+resolves to
+
+```yaml
+final: 1.2.3
+new: 1.2.4
+```
+
+#### `(( semverprerelease("1.2.3-beta.1") ))`
+
+Determine the prerelease of the given semantic version.
+The result is a string.
+
+e.g.:
+
+```yaml
+prerelease: (( semverprerelease("1.2.3-beta.1") ))
+```
+
+resolves to
+
+```yaml
+prerelease: beta.1
+```
+
+If an additional string argument is given this function sets, replaces or clears
+(if set to empty string) the prerelease
+
+e.g.:
+
+```yaml
+new: (( semverprerelease("1.2.3-beta.1", "beta.2) ))
+```
+
+resolves to
+
+```yaml
+new: 1.2.3-beta.2
+```
+
+#### `(( semvermetadata("1.2.3+demo") ))`
+
+Determine the metadata of the given semantic version.
+The result is a string.
+
+e.g.:
+
+```yaml
+metadata: (( semvermetadata("1.2.3+demo") ))
+```
+
+resolves to
+
+```yaml
+metadata: demo
+```
+
+If an additional string argument is given this function sets, replaces or clears
+(if set to empty string) the metadata.
+
+e.g.:
+
+```yaml
+new: (( semvermetadata("1.2.3-test", "demo) ))
+```
+
+resolves to
+
+```yaml
+new: 1.2.3+demo
+```
+
+#### `(( semvercmp("1.2.3", 1.2.3-beta.1") ))`
+
+Compare two semantic versions. A prerelease is always *smaller* than 
+the final release. The result is an integer with the following values:
+
+| result | meaning |
+|--------|---------|
+| -1 | first version is before the second version |
+| 0 | both versions are equal |
+| 1 | first versuon is after the second one |
+
+e.g.:
+
+```yaml
+compare: (( semvercmp("1.2.3", "1.2.3-beta.1") ))
+```
+
+resolves to
+
+```yaml
+compare: 1
+```
+
+#### `(( semvermatch("1.2.3", "~1.2") ))`
+
+Match the given semantic version against a list of contraints.
+The result is a boolean. It is possible to specify any number of version
+constraints. If no constraint is given, the function just checks whether 
+the given string is a semantic version.
+
+e.g.:
+
+```yaml
+match: (( semvermatch("1.2.3", "~1.2") ))
+```
+
+resolves to
+
+```yaml
+match: true
+```
+
+The complete list of possible constraints specification can be found
+[here](https://github.com/Masterminds/semver/blob/v3.1.1/README.md#checking-version-constraints).
+
+#### `(( semversort("1.2.3", "1.2.1") ))`
+
+Sort a list of versions in ascending order. A leading `v` is preserved.
+
+e.g.:
+
+```yaml
+sorted: (( semversort("1.2.3", "1.2.1") ))
+```
+
+resolves to
+
+```yaml
+sorted:
+  - 1.2.1
+  - 1.2.3
+```
+
+The list of versions to be sorted may also be specified with a single list
+argument.
 
 ### X509 Functions
 
-spiff supports some useful functions to work with _X509_ certificates and keys.
+*Spiff* supports some useful functions to work with _X509_ certificates and keys.
 Please refer also to the [Useful to Know](#useful-to-know) section to find some
 tips for providing state.
 
