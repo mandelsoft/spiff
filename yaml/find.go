@@ -154,6 +154,11 @@ func UnresolvedListEntryMerge(node Node) (Node, string, bool) {
 }
 
 func IsMapResolved(m map[string]Node) bool {
+	for k := range m {
+		if strings.HasPrefix(k, "<<") {
+			return false
+		}
+	}
 	return m["<<"] == nil && m[MERGEKEY] == nil
 }
 

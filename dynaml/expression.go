@@ -25,11 +25,10 @@ type State interface {
 	FileSystem() vfs.VFS
 	GetFunctions() Registry
 	InterpolationEnabled() bool
+	ControlEnabled() bool
 	SetTag(name string, node yaml.Node, path []string, scope TagScope) error
 	GetTag(name string) *Tag
 	GetTags(name string) []*TagInfo
-
-	EnableInterpolation()
 }
 
 type Binding interface {

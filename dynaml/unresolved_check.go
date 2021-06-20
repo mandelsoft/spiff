@@ -18,6 +18,17 @@ type UnresolvedNode struct {
 	Path    []string
 }
 
+func PrintableNodeValue(node yaml.Node) interface{} {
+	nv := node.Value()
+	switch nv.(type) {
+	case map[string]yaml.Node:
+		nv = "<map>"
+	case []yaml.Node:
+		nv = "<list>"
+	}
+	return nv
+}
+
 func (e UnresolvedNodes) Issue(msgfmt string, args ...interface{}) (result yaml.Issue, localError bool, failed bool) {
 	format := ""
 	result = yaml.NewIssue(msgfmt, args...)
@@ -42,9 +53,10 @@ func (e UnresolvedNodes) Issue(msgfmt string, args ...interface{}) (result yaml.
 		default:
 			format = "%s\tin %s\t%s\t(%s)%s"
 		}
+		nv := PrintableNodeValue(node)
 		message := fmt.Sprintf(
 			format,
-			node.Value(),
+			nv,
 			node.SourceName(),
 			strings.Join(node.Context, "."),
 			strings.Join(node.Path, "."),
@@ -77,18 +89,12 @@ func (e UnresolvedNodes) Error() string {
 		if msg != "" {
 			msg = "\t" + tag(node) + msg
 		}
-		nv := node.Value()
+		nv := PrintableNodeValue(node)
 		switch nv.(type) {
 		case Expression:
 			format = "%s\n\t(( %s ))\tin %s\t%s\t(%s)%s"
 		default:
 			format = "%s\n\t%s\tin %s\t%s\t(%s)%s"
-			switch nv.(type) {
-			case map[string]yaml.Node:
-				nv = "<map>"
-			case []yaml.Node:
-				nv = "<list>"
-			}
 		}
 		val := strings.Replace(fmt.Sprintf("%s", nv), "\n", "\n\t", -1)
 		message = fmt.Sprintf(

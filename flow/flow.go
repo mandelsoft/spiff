@@ -429,12 +429,15 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 	} else {
 		node = yaml.RedirectNode(result, root, redirect)
 	}
-	if err != nil {
-		node = yaml.IssueNode(node, true, true, yaml.NewIssue("%s", err))
-	} else {
-		if failed {
+
+	if err != nil || failed {
+		if err != nil {
+			node = yaml.IssueNode(node, true, true, yaml.NewIssue("%s", err))
+		} else {
 			node = yaml.IssueNode(node, true, true, issue)
 		}
+	} else {
+		node = flowControl(node, env)
 	}
 	return updateNode(node, flags, tag)
 }
