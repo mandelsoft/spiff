@@ -2087,6 +2087,7 @@ template:
   
 types:
   - int: (( type(1) ))
+  - float: (( type(1.0) ))
   - bool: (( type(true) ))
   - string: (( type("foobar") ))
   - list:   (( type([]) ))
@@ -2102,6 +2103,7 @@ evaluates types to
 ```yaml
 types:
 - int: int
+- float: float
 - bool: bool
 - string: string
 - list: list

@@ -1080,6 +1080,7 @@ types:
    lambda: (( type(.lambda) ))
    bool: (( type(true) ))
    int: (( type(1) ))
+   float: (( type(1.0) ))
    string: (( type("s") ))
    map: (( type(.map) ))
    list: (( type(.list) ))
@@ -1091,6 +1092,7 @@ types:
 types:
   bool: bool
   int: int
+  float: float
   lambda: lambda
   list: list
   map: map
