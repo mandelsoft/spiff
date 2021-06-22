@@ -86,7 +86,20 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 		}
 		switch val := root.Value().(type) {
 		case map[string]yaml.Node:
-			return flowMap(root, env)
+			ok, err := IsControl(val, env)
+			if err != nil {
+				return yaml.IssueNode(root, true, true, yaml.NewIssue("%s", err))
+
+			}
+			root = flowMap(root, env, !ok)
+			if !ok {
+				return root
+			} else {
+				if _, ok := root.Value().(map[string]yaml.Node); ok {
+					return root
+				}
+				// handle override
+			}
 
 		case []yaml.Node:
 			return flowList(root, env)
@@ -271,7 +284,7 @@ func simpleMergeCompatibilityCheck(initial bool, node yaml.Node) bool {
 	return false
 }
 
-func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
+func flowMap(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 	var err error
 	flags, stub := get_inherited_flags(env)
 	tag := root.GetAnnotation().Tag()
@@ -288,142 +301,133 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 	replace := root.ReplaceFlag()
 	newMap := make(map[string]yaml.Node)
 
-
 	debug.Debug("HANDLE MAP %v\n", env.Path())
-	mergefound := false
-
 	addEntries := true
 
-	key:= "<<"
-	val, ok:=rootMap[key]
+	mergekey := "<<"
+	mergeval, ok := rootMap[mergekey]
 	if ok {
 		if _, ok := rootMap[yaml.MERGEKEY]; ok {
 			return yaml.IssueNode(root, true, true, yaml.NewIssue("multiple merge keys not allowed"))
 		}
-	}  else {
-		key = yaml.MERGEKEY
-		val, ok=rootMap[yaml.MERGEKEY]
+	} else {
+		mergekey = yaml.MERGEKEY
+		mergeval, ok = rootMap[yaml.MERGEKEY]
 	}
 
 	if ok {
-		_, _ = addEntries, val
-	}
-
-
-	sortedKeys := getSortedKeys(rootMap)
-	// iteration order matters for the "<<" operator, it must be the first key in the map that is handled
-	for i := range sortedKeys {
-		key := sortedKeys[i]
-		val := rootMap[key]
-
-		if key == "<<" || key == yaml.MERGEKEY {
-			if mergefound {
-				return yaml.IssueNode(root, true, true, yaml.NewIssue("multiple merge keys not allowed"))
-			}
-			mergefound = true
-			debug.Debug("handle map merge %#v\n", val)
-			_, initial := val.Value().(string)
-			base := _flow(val, env, false)
-			if base.Undefined() {
-				return yaml.UndefinedNode(root)
-			}
-			debug.Debug("flow to %#v\n", base.Value())
-			_, ok := base.Value().(dynaml.Expression)
+		val := mergeval
+		debug.Debug("handle map merge %#v\n", val)
+		_, initial := val.Value().(string)
+		base := _flow(val, env, false)
+		if base.Undefined() {
+			return yaml.UndefinedNode(root)
+		}
+		debug.Debug("flow to %#v\n", base.Value())
+		_, ok := base.Value().(dynaml.Expression)
+		if ok {
+			m, ok := base.Value().(dynaml.MarkerExpr)
 			if ok {
-				m, ok := base.Value().(dynaml.MarkerExpr)
-				if ok {
-					debug.Debug("found marker\n")
-					if t := m.GetTag(); t != "" {
-						debug.Debug("found tag %q\n", t)
-						tag = t
-					}
-					flags |= m.GetFlags()
-					if flags.Temporary() {
-						debug.Debug("found temporary declaration\n")
-					}
-					if flags.Local() {
-						debug.Debug("found static declaration\n")
-					}
-					if flags.Default() {
-						debug.Debug("found default declaration\n")
-					}
+				debug.Debug("found marker\n")
+				if t := m.GetTag(); t != "" {
+					debug.Debug("found tag %q\n", t)
+					tag = t
 				}
-				if ok && m.Has(dynaml.TEMPLATE) {
-					debug.Debug("found template declaration\n")
-					processed = false
-					template = true
-					val = m.TemplateExpression(root)
-					if val != nil {
-						debug.Debug("  insert expression: %v\n", val)
-					}
-				} else {
-					if simpleMergeCompatibilityCheck(initial, base) {
-						debug.Debug("  skip merge\n")
-						val=nil
-					} else {
-						debug.Debug("  continue merge\n")
-						processed = false
-						val = base
-					}
+				flags |= m.GetFlags()
+				if flags.Temporary() {
+					debug.Debug("found temporary declaration\n")
+				}
+				if flags.Local() {
+					debug.Debug("found static declaration\n")
+				}
+				if flags.Default() {
+					debug.Debug("found default declaration\n")
+				}
+			}
+			if ok && m.Has(dynaml.TEMPLATE) {
+				debug.Debug("found template declaration\n")
+				processed = false
+				template = true
+				val = m.TemplateExpression(root)
+				if val != nil {
+					debug.Debug("  insert expression: %v\n", val)
 				}
 			} else {
-				if base == nil {
-					debug.Debug("base is nil\n")
-				} else {
-					if base.RedirectPath() != nil {
-						debug.Debug("redirected: %v, merged %v", base.RedirectPath(), base.Merged())
-						redirect = base.RedirectPath()
-						env = env.RedirectOverwrite(redirect)
-					}
-				}
-				if base.Merged() {
-					merged = true
-				}
-
-				baseMap, ok := base.Value().(map[string]yaml.Node)
-				if ok {
-					for k, v := range baseMap {
-						newMap[k] = v
-					}
-				}
-				// still ignore non dynaml value (might be strange but compatible)
-				replace = base.ReplaceFlag()
-				parseError := yaml.EmbeddedDynaml(base, env.GetState().InterpolationEnabled()) != nil
-				if !ok && base.Value() != nil && !parseError {
-					err = fmt.Errorf("require map value for '<<' insert, found '%s'", dynaml.ExpressionType(base.Value()))
-				}
-				if ok || base.Value() == nil || !parseError {
+				if simpleMergeCompatibilityCheck(initial, base) {
+					debug.Debug("  skip merge\n")
 					val = nil
-					if replace {
-						addEntries=false
-					}
 				} else {
+					debug.Debug("  continue merge\n")
+					processed = false
 					val = base
 				}
 			}
-
-			// handle value
-			if !addEntries {
-				break
-			}
-			if val==nil {
-				continue
-			}
-
 		} else {
-			if processed {
-				val = flow(val, env.WithPath(key), true)
+			if base == nil {
+				debug.Debug("base is nil\n")
 			} else {
-				debug.Debug("skip %q flow for unprocessed indication\n", key)
+				if base.RedirectPath() != nil {
+					debug.Debug("redirected: %v, merged %v", base.RedirectPath(), base.Merged())
+					redirect = base.RedirectPath()
+					env = env.RedirectOverwrite(redirect)
+				}
+			}
+			if base.Merged() {
+				merged = true
+			}
+
+			baseMap, ok := base.Value().(map[string]yaml.Node)
+			if ok {
+				for k, v := range baseMap {
+					newMap[k] = v
+				}
+			}
+			// still ignore non dynaml value (might be strange but compatible)
+			replace = base.ReplaceFlag()
+			parseError := yaml.EmbeddedDynaml(base, env.GetState().InterpolationEnabled()) != nil
+			if !ok && base.Value() != nil && !parseError {
+				err = fmt.Errorf("require map value for '<<' insert, found '%s'", dynaml.ExpressionType(base.Value()))
+			}
+			if ok || base.Value() == nil || !parseError {
+				val = nil
+				if replace {
+					addEntries = false
+				}
+			} else {
+				val = base
 			}
 		}
 
-		debug.Debug("MAP %v (%s)%s  -> %T\n", env.Path(), val.KeyName(), key, val.Value())
-		if !val.Undefined() {
-			if flags.PropagateImplied() {
-				val = yaml.AddFlags(val, yaml.FLAG_IMPLIED)
+		// handle value
+		mergeval = val
+	}
+
+	if addEntries {
+		sortedKeys := getSortedKeys(rootMap)
+		for i := range sortedKeys {
+			key := sortedKeys[i]
+			val := rootMap[key]
+
+			if key == mergekey {
+				val = mergeval
+				if val == nil {
+					continue
+				}
+			} else {
+				if processed {
+					val = flow(val, env.WithPath(key), shouldOverride)
+				} else {
+					debug.Debug("skip %q flow for unprocessed indication\n", key)
+				}
 			}
-			newMap[key] = val
+
+			debug.Debug("MAP %v (%s)%s  -> %T\n", env.Path(), val.KeyName(), key, val.Value())
+			if !val.Undefined() {
+				if flags.PropagateImplied() {
+					val = yaml.AddFlags(val, yaml.FLAG_IMPLIED)
+				}
+				newMap[key] = val
+			}
 		}
 	}
 
@@ -436,11 +440,11 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 				for k, v := range m {
 					if v.Flags().Inject() && newMap[k] == nil {
 						v, _ = substituteNode(v)
-						newMap[k] = yaml.AddFlags(v, yaml.FLAG_INJECT)
+						newMap[k] = yaml.AddFlags(v, yaml.FLAG_INJECT|yaml.FLAG_INJECTED)
 					}
 				}
 			}
-			flags |= yaml.FLAG_INJECTED
+			//flags |= yaml.FLAG_INJECTED
 		}
 	}
 	var result interface{}
@@ -555,7 +559,7 @@ func stepName(index int, value yaml.Node, keyName string, env dynaml.Binding) (s
 	if keyName == "" {
 		keyName = "name"
 	}
-	name, ok := yaml.FindString(value, env.GetFeatures(),  keyName)
+	name, ok := yaml.FindString(value, env.GetFeatures(), keyName)
 	if ok {
 		return keyName + ":" + name, true
 	}

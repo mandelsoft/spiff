@@ -325,6 +325,9 @@ func isResolvedValue(val interface{}, binding Binding) bool {
 		}
 		return true
 	case map[string]yaml.Node:
+		if !yaml.IsMapResolved(v, binding.GetFeatures()) {
+			return false
+		}
 		for _, n := range v {
 			if !isResolved(n, binding) {
 				return false

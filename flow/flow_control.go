@@ -10,6 +10,7 @@ import (
 
 func init() {
 	RegisterControl("switch", flowSwitch, "default")
+	RegisterControl("type", flowType, "default")
 	RegisterControl("if", flowIf, "then", "else")
 }
 
@@ -62,8 +63,13 @@ func ControlIssue(control string, node yaml.Node, msg string, args ...interface{
 	return yaml.IssueNode(yaml.NewNode(control, node.SourceName()), true, true, issue)
 }
 
-func flowControl(node yaml.Node, env dynaml.Binding) yaml.Node {
-	if m, ok := node.Value().(map[string]yaml.Node); ok && env.GetState().ControlEnabled() {
+func IsControl(root map[string]yaml.Node, env dynaml.Binding) (bool, error) {
+	c, _, _, _, err := getControl(root, env)
+	return c != nil, err
+}
+
+func getControl(m map[string]yaml.Node, env dynaml.Binding) (*Control, yaml.Node, map[string]yaml.Node, map[string]yaml.Node, error) {
+	if env.GetFeatures().ControlEnabled() {
 		var name string
 		var val yaml.Node
 		var control *Control
@@ -75,11 +81,11 @@ func flowControl(node yaml.Node, env dynaml.Binding) yaml.Node {
 				if n != "" && n != "<" && strings.Trim(n, "!") != "" {
 					c, ok := controls[n]
 					if !ok {
-						return ControlIssue("", node, "unknown control or control option %q", k)
+						return nil, nil, nil, nil, fmt.Errorf("unknown control or control option %q", k)
 					}
 					if c != nil {
 						if control != nil {
-							return ControlIssue("", node, "multiple controls %q and %q", name, k)
+							return nil, nil, nil, nil, fmt.Errorf("multiple controls %q and %q", name, k)
 						}
 						name = k
 						control = c
@@ -94,10 +100,23 @@ func flowControl(node yaml.Node, env dynaml.Binding) yaml.Node {
 		}
 
 		if control != nil {
-			if err := control.CheckOpts(opts); err != nil {
+			return control, val, fields, opts, control.CheckOpts(opts)
+		}
+	}
+	return nil, nil, nil, nil, nil
+}
+
+func flowControl(node yaml.Node, env dynaml.Binding) yaml.Node {
+	if m, ok := node.Value().(map[string]yaml.Node); ok {
+		control, val, fields, opts, err := getControl(m, env)
+		if control != nil {
+			if err != nil {
 				return ControlIssue(control.Name, node, err.Error())
 			}
 			return control.Function(val, node, fields, opts, env)
+		}
+		if err != nil {
+			return ControlIssue("", node, err.Error())
 		}
 	}
 	return node
@@ -131,6 +150,32 @@ func flowSwitch(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node
 	default:
 		return ControlIssue("switch", node, "invalid switch value type: %s", dynaml.ExpressionType(v))
 	}
+}
+
+func flowType(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, env dynaml.Binding) yaml.Node {
+	t := "undef"
+	switch v := val.Value().(type) {
+	case dynaml.Expression:
+		_, info, _ := v.Evaluate(env, false)
+		if !info.Undefined {
+			return node
+		}
+	default:
+		sub := yaml.EmbeddedDynaml(val, env.GetState().InterpolationEnabled())
+		if sub != nil {
+			return node
+		}
+
+		t = dynaml.ExpressionType(v)
+	}
+
+	if s, ok := fields[t]; ok {
+		return s
+	}
+	if s, ok := opts["default"]; ok {
+		return s
+	}
+	return ControlIssue("type", node, "invalid type switch type: %q", t)
 }
 
 func flowIf(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, env dynaml.Binding) yaml.Node {

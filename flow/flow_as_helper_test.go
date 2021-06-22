@@ -5,26 +5,50 @@ import (
 	"strings"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
+	"github.com/onsi/gomega"
 
+	"github.com/mandelsoft/spiff/dynaml"
+	"github.com/mandelsoft/spiff/features"
 	"github.com/mandelsoft/spiff/yaml"
 )
 
-func FlowAs(expected yaml.Node, stubs ...yaml.Node) *FlowAsMatcher {
-	return &FlowAsMatcher{Expected: expected, Stubs: stubs}
-}
-
-type FlowAsMatcher struct {
+type MatcherSupport struct {
+	gomega.OmegaMatcher
+	features []string
 	Expected yaml.Node
 	Stubs    []yaml.Node
 	actual   yaml.Node
+}
+
+func (matcher *MatcherSupport) WithFeatures(features ...string) *MatcherSupport {
+	matcher.features = features
+	return matcher
+}
+
+func (s *MatcherSupport) createEnv() dynaml.Binding {
+	features := features.FeatureFlags{}
+	for _, name := range s.features {
+		features.Set(name, true)
+	}
+	return NewEnvironment(nil, "", NewDefaultState().SetFeatures(features))
+}
+
+func FlowAs(expected yaml.Node, stubs ...yaml.Node) *FlowAsMatcher {
+	matcher := &FlowAsMatcher{}
+	support := &MatcherSupport{OmegaMatcher: matcher, Expected: expected, Stubs: stubs}
+	matcher.MatcherSupport = support
+	return matcher
+}
+
+type FlowAsMatcher struct {
+	*MatcherSupport
 }
 
 func (matcher *FlowAsMatcher) Match(source interface{}) (success bool, err error) {
 	if source == nil && matcher.Expected == nil {
 		return false, fmt.Errorf("Refusing to compare <nil> to <nil>.")
 	}
-
-	env := NewEnvironment(nil, "", NewDefaultState().SetInterpolation(true))
+	env := matcher.createEnv()
 	matcher.actual, err = NestedFlow(env, source.(yaml.Node), matcher.Stubs...)
 	if err != nil {
 		return false, err

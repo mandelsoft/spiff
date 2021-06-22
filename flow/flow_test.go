@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/mandelsoft/spiff/dynaml"
+	"github.com/mandelsoft/spiff/features"
 	"github.com/mandelsoft/spiff/yaml"
 )
 
@@ -8476,7 +8477,7 @@ interpolated: this is a (( data ))
 data: "test"
 interpolated: this is a test
 `)
-			Expect(source).To(FlowAs(resolved))
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.INTERPOLATION))
 		})
 
 		It("handles expressions in strings", func() {
@@ -8491,7 +8492,7 @@ interpolated: "this is a (( \"super \" data ))"
 data: "test"
 interpolated: this is a super test
 `)
-			Expect(source).To(FlowAs(resolved))
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.INTERPOLATION))
 		})
 		It("handles bracket expressions in strings", func() {
 			source := parseYAML(`
@@ -8505,7 +8506,7 @@ interpolated: "this is a ((( ( data ( data )) ))) hell"
 data: "interpol"
 interpolated: this is a (interpolinterpol) hell
 `)
-			Expect(source).To(FlowAs(resolved))
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.INTERPOLATION))
 		})
 		It("re-evaluates expressions", func() {
 			source := parseYAML(`
@@ -8519,7 +8520,7 @@ interpolated: "this is a (( \"(( data ))\" data ))"
 data: "test"
 interpolated: this is a testtest
 `)
-			Expect(source).To(FlowAs(resolved))
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.INTERPOLATION))
 		})
 
 		It("does not handle interpolation in interpolation", func() {
@@ -8534,7 +8535,7 @@ interpolated: "this is a (( length(\"(( data ))\") data ))"
 data: "test"
 interpolated: this is a 10test
 `)
-			Expect(source).To(FlowAs(resolved))
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.INTERPOLATION))
 		})
 	})
 	Context("math", func() {

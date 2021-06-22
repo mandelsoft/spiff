@@ -3,6 +3,8 @@ package flow
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/mandelsoft/spiff/features"
 )
 
 var _ = Describe("Cascading YAML templates", func() {
@@ -1352,7 +1354,7 @@ foo: x ((!template_only.foo))
 foo: x ((template_only.foo))
 `)
 
-				Expect(source).To(CascadeAs(resolved))
+				Expect(source).To(CascadeAs(resolved).WithFeatures(features.INTERPOLATION))
 			})
 			It("ignores merge nodes with escaped escape", func() {
 				source := parseYAML(`
