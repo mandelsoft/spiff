@@ -3,6 +3,7 @@ package dynaml
 import (
 	"github.com/mandelsoft/vfs/pkg/vfs"
 
+	"github.com/mandelsoft/spiff/features"
 	"github.com/mandelsoft/spiff/yaml"
 )
 
@@ -24,6 +25,7 @@ type State interface {
 	FileAccessAllowed() bool
 	FileSystem() vfs.VFS
 	GetFunctions() Registry
+	GetFeatures() features.FeatureFlags
 	InterpolationEnabled() bool
 	ControlEnabled() bool
 	SetTag(name string, node yaml.Node, path []string, scope TagScope) error
@@ -53,6 +55,7 @@ type Binding interface {
 	NoMerge() bool
 
 	GetState() State
+	GetFeatures() features.FeatureFlags
 	GetTempName(data []byte) (string, error)
 	GetFileContent(file string, cached bool) ([]byte, error)
 

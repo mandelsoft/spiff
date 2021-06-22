@@ -15,7 +15,7 @@ foo:
   bar: 42
  `)
 
-		environment := DefaultEnvironment{
+		environment := &DefaultEnvironment{
 			scope: newFakeScope(nil, nil, tree.Value().(map[string]yaml.Node)),
 		}
 
@@ -36,7 +36,7 @@ foos:
   baz: 42
 `)
 
-				environment := DefaultEnvironment{
+				environment := &DefaultEnvironment{
 					scope: newFakeScope(nil, nil, tree.Value().(map[string]yaml.Node)),
 				}
 
@@ -65,7 +65,7 @@ foo:
     buzz: 42
 `)
 
-			environment := DefaultEnvironment{
+			environment := &DefaultEnvironment{
 				scope: newFakeScope(newFakeScope(newFakeScope(nil, nil,
 					tree.Value().(map[string]yaml.Node)), nil,
 					tree.Value().(map[string]yaml.Node)["foo"].Value().(map[string]yaml.Node)), nil,
@@ -91,7 +91,7 @@ foo:
     buzz: 42
 `)
 
-			environment := DefaultEnvironment{
+			environment := &DefaultEnvironment{
 				scope: newFakeScope(newFakeScope(newFakeScope(nil, nil,
 					tree.Value().(map[string]yaml.Node)), nil,
 					tree.Value().(map[string]yaml.Node)["foo"].Value().(map[string]yaml.Node)), nil,
@@ -121,7 +121,7 @@ foo:
     baz: found
 `)
 
-		environment := DefaultEnvironment{
+		environment := &DefaultEnvironment{
 			scope: newFakeScope(nil, nil, tree.Value().(map[string]yaml.Node)),
 		}
 
@@ -140,7 +140,7 @@ foo:
     - fizz: right
 `)
 
-			environment := DefaultEnvironment{
+			environment := &DefaultEnvironment{
 				scope: newFakeScope(nil, nil, tree.Value().(map[string]yaml.Node)),
 			}
 
@@ -172,7 +172,7 @@ b: 2
 c: 4
 `)
 
-		environment := DefaultEnvironment{
+		environment := &DefaultEnvironment{
 			stubs: []yaml.Node{stub1, stub2},
 		}
 

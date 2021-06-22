@@ -11,6 +11,9 @@ const CONTROL = "control"
 type FeatureFlags map[string]struct{}
 
 func (this FeatureFlags) Enabled(name string) bool {
+	if this == nil {
+		return false
+	}
 	_, ok := this[name]
 	return ok
 }

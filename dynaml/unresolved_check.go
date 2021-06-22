@@ -274,20 +274,20 @@ func isExpression(val interface{}) bool {
 	return ok
 }
 
-func isLocallyResolved(node yaml.Node) bool {
-	return isLocallyResolvedValue(node.Value())
+func isLocallyResolved(node yaml.Node, binding Binding) bool {
+	return isLocallyResolvedValue(node.Value(), binding)
 }
 
-func isLocallyResolvedValue(value interface{}) bool {
+func isLocallyResolvedValue(value interface{}, binding Binding) bool {
 	switch v := value.(type) {
 	case Expression:
 		return false
 	case map[string]yaml.Node:
-		if !yaml.IsMapResolved(v) {
+		if !yaml.IsMapResolved(v, binding.GetFeatures()) {
 			return false
 		}
 	case []yaml.Node:
-		if !yaml.IsListResolved(v) {
+		if !yaml.IsListResolved(v, binding.GetFeatures()) {
 			return false
 		}
 	default:
@@ -296,21 +296,21 @@ func isLocallyResolvedValue(value interface{}) bool {
 	return true
 }
 
-func IsResolvedNode(node yaml.Node) bool {
+func IsResolvedNode(node yaml.Node, binding Binding) bool {
 	if node == nil {
 		return false
 	}
 	if node.Failed() || node.Undefined() {
 		return false
 	}
-	return isResolvedValue(node.Value())
+	return isResolvedValue(node.Value(), binding)
 }
 
-func isResolved(node yaml.Node) bool {
-	return node == nil || isResolvedValue(node.Value())
+func isResolved(node yaml.Node, binding Binding) bool {
+	return node == nil || isResolvedValue(node.Value(), binding)
 }
 
-func isResolvedValue(val interface{}) bool {
+func isResolvedValue(val interface{}, binding Binding) bool {
 	if val == nil {
 		return true
 	}
@@ -319,14 +319,14 @@ func isResolvedValue(val interface{}) bool {
 		return false
 	case []yaml.Node:
 		for _, n := range v {
-			if !isResolved(n) {
+			if !isResolved(n, binding) {
 				return false
 			}
 		}
 		return true
 	case map[string]yaml.Node:
 		for _, n := range v {
-			if !isResolved(n) {
+			if !isResolved(n, binding) {
 				return false
 			}
 		}

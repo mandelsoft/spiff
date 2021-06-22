@@ -68,7 +68,7 @@ func listToMap(list []yaml.Node) map[string]yaml.Node {
 	toMap := make(map[string]yaml.Node)
 
 	for _, val := range list {
-		name, ok := yaml.FindString(val, "name")
+		name, ok := yaml.FindString(val, nil, "name")
 		if !ok {
 			return nil
 		}
@@ -155,7 +155,7 @@ func jobMap(jobs []yaml.Node) map[string]yaml.Node {
 		attrs, ok := job.Value().(map[string]yaml.Node)
 		attrs["index"] = yaml.NewNode(index, job.SourceName())
 
-		name, ok := yaml.FindString(job, "name")
+		name, ok := yaml.FindString(job, nil, "name")
 		if !ok {
 			panic("job without string name")
 		}
@@ -167,7 +167,7 @@ func jobMap(jobs []yaml.Node) map[string]yaml.Node {
 }
 
 func findByNameOrIndex(node yaml.Node, others []yaml.Node, index int) (string, yaml.Node, bool) {
-	name, ok := yaml.FindString(node, "name")
+	name, ok := yaml.FindString(node, nil, "name")
 	if !ok {
 		return findByIndex(others, index)
 	}
@@ -182,7 +182,7 @@ func findByNameOrIndex(node yaml.Node, others []yaml.Node, index int) (string, y
 
 func findByName(name string, nodes []yaml.Node) (string, yaml.Node, bool) {
 	for _, node := range nodes {
-		otherName, ok := yaml.FindString(node, "name")
+		otherName, ok := yaml.FindString(node, nil, "name")
 		if !ok {
 			continue
 		}

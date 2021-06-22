@@ -231,6 +231,7 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 		" -: depending on a node with an error"
 
 	var binding dynaml.Binding
+	features := features.Features()
 	if bindingYAML != nil || interpolation || len(tags) > 0 || len(templateYAMLs) > 1 {
 		defstate := flow.NewDefaultState().SetInterpolation(interpolation)
 		defstate.SetTags(tags...)
@@ -243,6 +244,7 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 			}
 			binding = binding.WithLocalScope(values)
 		}
+		features = binding.GetFeatures()
 	}
 
 	prepared, err := flow.PrepareStubs(binding, processingOptions.Partial, stubs...)
@@ -272,7 +274,7 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 			}
 			if subpath != "" {
 				comps := dynaml.PathComponents(subpath, false)
-				node, ok := yaml.FindR(true, flowed, comps...)
+				node, ok := yaml.FindR(true, flowed, features, comps...)
 				if !ok {
 					log.Fatalln(fmt.Sprintf("path %q not found%s", subpath, doc))
 				}
@@ -330,7 +332,7 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 				new := map[string]yaml.Node{}
 				for _, p := range selection {
 					comps := dynaml.PathComponents(p, false)
-					node, ok := yaml.FindR(true, flowed, comps...)
+					node, ok := yaml.FindR(true, flowed, features, comps...)
 					if !ok {
 						log.Fatalln(fmt.Sprintf("path %q not found%s", subpath, doc))
 					}

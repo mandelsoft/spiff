@@ -18,7 +18,7 @@ var _ = Describe("finding paths", func() {
 foo: bar
 `)
 
-			_, found := Find(tree, "foo", "bar", "biscuit")
+			_, found := Find(tree, nil, "foo", "bar", "biscuit")
 			Expect(found).To(BeFalse())
 		})
 
@@ -31,7 +31,7 @@ foo:
 `)
 
 			It("accepts string keys to index maps", func() {
-				val, found := Find(tree, "foo", "bar", "baz")
+				val, found := Find(tree, nil, "foo", "bar", "baz")
 				Expect(found).To(BeTrue())
 				Expect(val).To(Equal(node("found")))
 			})
@@ -47,7 +47,7 @@ foo:
 `)
 
 			It("accepts [x] to index lists", func() {
-				val, found := Find(tree, "foo", "bar", "[1]", "fizz")
+				val, found := Find(tree, nil, "foo", "bar", "[1]", "fizz")
 				Expect(found).To(BeTrue())
 				Expect(val).To(Equal(node("right")))
 			})
@@ -64,7 +64,7 @@ bar: 42
 
 		Context("when the found node is a string", func() {
 			It("returns the string and true", func() {
-				found, ok := FindString(tree, "foo")
+				found, ok := FindString(tree, nil, "foo")
 				Expect(ok).To(BeTrue())
 				Expect(found).To(Equal("a string"))
 			})
@@ -72,14 +72,14 @@ bar: 42
 
 		Context("when the found node is NOT a string", func() {
 			It("returns false", func() {
-				_, ok := FindString(tree, "bar")
+				_, ok := FindString(tree, nil, "bar")
 				Expect(ok).To(BeFalse())
 			})
 		})
 
 		Context("when the node is not found", func() {
 			It("returns false", func() {
-				_, ok := FindString(tree, "baz")
+				_, ok := FindString(tree, nil, "baz")
 				Expect(ok).To(BeFalse())
 			})
 		})
@@ -96,7 +96,7 @@ bar: a string
 `, intValue))
 
 			It("returns the value and true", func() {
-				found, ok := FindInt(tree, "foo")
+				found, ok := FindInt(tree, nil, "foo")
 				Expect(ok).To(BeTrue())
 				Expect(found).To(BeNumerically("==", intValue))
 			})
@@ -111,7 +111,7 @@ bar: a string
 `, int64Value))
 
 			It("returns the value and true", func() {
-				found, ok := FindInt(tree, "foo")
+				found, ok := FindInt(tree, nil, "foo")
 				Expect(ok).To(BeTrue())
 				Expect(found).To(BeNumerically("==", int64Value))
 			})
@@ -123,7 +123,7 @@ bar: a string
 foo: bar
 `)
 			It("returns false", func() {
-				_, ok := FindInt(tree, "foo")
+				_, ok := FindInt(tree, nil, "foo")
 				Expect(ok).To(BeFalse())
 			})
 		})
@@ -134,7 +134,7 @@ foo: bar
 foo: bar
 `)
 			It("returns false", func() {
-				_, ok := FindInt(tree, "baz")
+				_, ok := FindInt(tree, nil, "baz")
 				Expect(ok).To(BeFalse())
 			})
 		})

@@ -39,7 +39,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 	if tag != "" {
 		debug.Debug("found tag %q at %v\n", tag, env.Path())
 	}
-	if dynaml.IsResolvedNode(node) && tag != "" {
+	if dynaml.IsResolvedNode(node, env) && tag != "" {
 		scope := dynaml.TAG_LOCAL
 		if strings.HasPrefix(tag, "*") {
 			tag = tag[1:]
@@ -288,11 +288,29 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 	replace := root.ReplaceFlag()
 	newMap := make(map[string]yaml.Node)
 
-	sortedKeys := getSortedKeys(rootMap)
 
 	debug.Debug("HANDLE MAP %v\n", env.Path())
 	mergefound := false
 
+	addEntries := true
+
+	key:= "<<"
+	val, ok:=rootMap[key]
+	if ok {
+		if _, ok := rootMap[yaml.MERGEKEY]; ok {
+			return yaml.IssueNode(root, true, true, yaml.NewIssue("multiple merge keys not allowed"))
+		}
+	}  else {
+		key = yaml.MERGEKEY
+		val, ok=rootMap[yaml.MERGEKEY]
+	}
+
+	if ok {
+		_, _ = addEntries, val
+	}
+
+
+	sortedKeys := getSortedKeys(rootMap)
 	// iteration order matters for the "<<" operator, it must be the first key in the map that is handled
 	for i := range sortedKeys {
 		key := sortedKeys[i]
@@ -335,19 +353,19 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 					processed = false
 					template = true
 					val = m.TemplateExpression(root)
-					if val == nil {
-						continue
+					if val != nil {
+						debug.Debug("  insert expression: %v\n", val)
 					}
-					debug.Debug("  insert expression: %v\n", val)
 				} else {
 					if simpleMergeCompatibilityCheck(initial, base) {
 						debug.Debug("  skip merge\n")
-						continue
+						val=nil
+					} else {
+						debug.Debug("  continue merge\n")
+						processed = false
+						val = base
 					}
-					debug.Debug("  continue merge\n")
-					val = base
 				}
-				processed = false
 			} else {
 				if base == nil {
 					debug.Debug("base is nil\n")
@@ -375,14 +393,23 @@ func flowMap(root yaml.Node, env dynaml.Binding) yaml.Node {
 					err = fmt.Errorf("require map value for '<<' insert, found '%s'", dynaml.ExpressionType(base.Value()))
 				}
 				if ok || base.Value() == nil || !parseError {
+					val = nil
 					if replace {
-						break
+						addEntries=false
 					}
-					continue
 				} else {
 					val = base
 				}
 			}
+
+			// handle value
+			if !addEntries {
+				break
+			}
+			if val==nil {
+				continue
+			}
+
 		} else {
 			if processed {
 				val = flow(val, env.WithPath(key), true)
@@ -528,13 +555,13 @@ func stepName(index int, value yaml.Node, keyName string, env dynaml.Binding) (s
 	if keyName == "" {
 		keyName = "name"
 	}
-	name, ok := yaml.FindString(value, keyName)
+	name, ok := yaml.FindString(value, env.GetFeatures(),  keyName)
 	if ok {
 		return keyName + ":" + name, true
 	}
 
 	step := fmt.Sprintf("[%d]", index)
-	v, ok := yaml.FindR(true, value, keyName)
+	v, ok := yaml.FindR(true, value, env.GetFeatures(), keyName)
 	if ok && v.Value() != nil {
 		debug.Debug("found raw %s", keyName)
 		_, ok := v.Value().(dynaml.Expression)
@@ -695,9 +722,9 @@ func newEntries(a []yaml.Node, b []yaml.Node, keyName string) []yaml.Node {
 	added := []yaml.Node{}
 
 	for _, val := range a {
-		name, ok := yaml.FindStringR(true, val, keyName)
+		name, ok := yaml.FindStringR(true, val, nil, keyName)
 		if ok {
-			_, found := yaml.FindR(true, old, name) // TODO
+			_, found := yaml.FindR(true, old, nil, name) // TODO
 			if found {
 				continue
 			}

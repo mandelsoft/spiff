@@ -112,7 +112,17 @@ func (s *State) FileSystem() vfs.VFS {
 }
 
 func (s *State) GetFunctions() dynaml.Registry {
+	if s == nil {
+		return nil
+	}
 	return s.functions
+}
+
+func (s *State) GetFeatures() features.FeatureFlags {
+	if s == nil {
+		return nil
+	}
+	return s.features
 }
 
 func (s *State) GetEncryptionKey() string {
