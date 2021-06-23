@@ -341,7 +341,7 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	if cleaned {
 		info.Cleanup()
 	}
-	if ok && (!resolved || isExpression(result)) {
+	if ok && (!resolved || IsExpression(result)) {
 		return e, sub.Join(info), true
 	}
 	return result, sub.Join(info), ok

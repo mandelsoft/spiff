@@ -214,6 +214,11 @@ Contents:
 	- [Access to evaluation context](#access-to-evaluation-context)
 	- [Operation Priorities](#operation-priorities)
 	- [String Interpolation](#string-interpolation)
+	- [YAML-based Control Structures](#yaml-based-control-structures)
+	    - [`<<if:`](#if)
+	    - [`<<switch:`](#switch)
+	    - [`<<type:`](#type)
+	    - [`<<for:`](#for)
 - [Structural Auto-Merge](#structural-auto-merge)
 - [Bringing it all together](#bringing-it-all-together)
 - [Useful to Know](#useful-to-know)
@@ -5723,7 +5728,265 @@ will resolve `interpolation` to `this is testtest`.
 
 The embedded dynaml expression must be concatenatable with strings.
 
+## YAML-based Control Structures
 
+In addition to express conditions and loops with *dynaml* expressions
+it is also possible to use elements of the document structure to embed
+control structures.
+
+Such a YAML-based control structure is always described as a map in YAML/JSON.
+The syntactical elements are expressed as map fields starting with `<<`.
+Additionaly, depending on the control structure, regular fields are possible.
+Control structures finally represent a value for the containing node.
+As such a control structure map may contain marker expressions (`<<`), also.
+
+This feature requires enabling the feature flag `control`.
+
+### `<<if:`
+
+The condition structure is defined by the syntax field `<<if`. It additionally
+accepts the field `<<then` and `<<else`.
+
+The condition field must provide a boolean value.
+If it is `true` the optional `<<then` field is used to substitute the control
+structure, otherwise the optional `<<else` field used.
+
+If the appropriate case is not specified, the result is the undefined `(( ~~ ))`
+value. The containing field is therefore completely omitted from the output.
+
+
+.e.g.:
+
+```yaml
+x: test1
+cond:
+  field:
+    <<if: (( x == "test" ))
+    <<then: alice
+    <<else: bob
+```
+
+evaluates `cond.field` to `bob`
+
+If the *else* case is omitted, the `cond` field would be an empty map (`field`
+is omitted, because the contained control structure evaluates to *undefined*)
+
+A comparable way to do this with regular *dynaml* could look like this:
+
+```yaml
+cond: (( x == "test" ? "alice" :"bob" ))
+```
+
+A better way more suitable for complex cases would be:
+
+```yaml
+local:
+  <<: (( &local))
+  then: alice
+  else: bob
+
+cond: (( x == "test" ? local.then :local.else ))
+```
+
+### `<<switch:`
+
+The `switch` control structure evaluates the switch value of the `<<switch`
+field to a string and uses it to select an appropriate regular field
+in the control map.
+
+If it is not found the value of the optional field `<<default` is used. If no default
+is specified, the control structure evaluates to an error, if no appropriate
+regular field is available.
+
+
+e.g.:
+
+```yaml
+x: alice
+
+value:
+  <<switch: (( x ))
+  alice: 25
+  bob: 26 
+  <<default: other
+```
+
+evaluates `value` to `25`.
+
+A comparable way to do this with regular *dynaml* could look like this:
+
+```yaml
+local:
+  <<: (( &local))
+  cases:
+    alice: 25
+    bob: 26
+  default: other
+
+value: (( local.cases[x] || local.default ))
+```
+
+### `<<type:`
+
+The `type` control structure evaluates the type of the value of the `<<type`
+field and uses it to select an appropriate regular field
+in the control map.
+
+If it is not found the value of the optional field `<<default` is used. If no default
+is specified, the control structure evaluates to an error, if no appropriate
+regular field is available.
+
+
+e.g.:
+
+```yaml
+x: alice
+
+value:
+  <<type: (( x ))
+  string: alice
+  <<default: unknown
+```
+
+evaluates `value` to `alice`.
+
+A comparable way to do this with regular *dynaml* could look like this:
+
+```yaml
+local:
+  <<: (( &local))
+  cases:
+    string: alice
+  default: unknown
+
+value: (( local.cases[type(x)] || local.default ))
+```
+
+### `<<for:`
+
+The loop control is able to execute a multi-dimensional loop and 
+to produce a list or map based on the value combinations.
+
+The loop ranges are specified by the value of the `<<for` field.
+It can either be a map or list:
+- *map*: the keys are the names of the control variables and the values
+       must be lists specifying the ranges. If multiple ranges 
+       are specified the variables are alphabetically ordered
+       to determine the traversing order. 
+- *list*: if the control variables are defined by a list, each list element
+       must contain two fields:
+    - `name`: the name of the control variable
+    - `values`: a list to define the value range.
+  
+  Here the order in the list determine the traversal order.
+  
+Traversal is done by iterating follow up ranges for every entry
+in the actual range. This means the last range is completely iterated
+for the first values of the first ranges first.
+
+In any case there is an additional binding for every control variable
+describing the actual index of the processed value for this dimension.
+It is denoted by `index-<control varible>`.
+
+The iteratation value is determined by the value of the `<<do` field.
+It is implicitly handled as template and is evaluated for every
+set of iteration values. The result of the evaluation is a list.
+
+e.g.:
+
+```yaml
+alice:
+ - a
+ - b
+bob:
+ - 1
+ - 2
+ - 3
+list:
+  <<for: 
+     alice: (( .alice ))
+     bob: (( .bob ))
+  <<do:
+    value: (( alice "-" index-alice "-" bob "-" index-bob ))
+```
+
+evaluates `list` to
+
+```yaml
+list:
+- value: a-0-1-0
+- value: a-0-2-1
+- value: a-0-3-2
+- value: b-1-1-0
+- value: b-1-2-1
+- value: b-1-3-2
+```
+
+It first iterates over the values for `alice`. For each such value it then
+iterates over the values of `bob`.
+
+A comparable way to do this with regular *dynaml* could look like this:
+
+```yaml
+list: (( sum[alice|[]|s,index_alice,alice|-> s sum[bob|[]|s,index_bob,bob|->s (alice "-" index_alice "-" bob "-" index_bob)]] ))
+```
+
+If the result should be a map it is required to additionally specify the
+key value for every iteration. This is specified by the optional `<<mapkey`
+field. Like the `<<do` field it is implicitly handled as template and re-evaluated
+for every iteration.
+
+e.g.:
+
+```yaml
+x: suffix
+
+alice:
+  - a
+  - b
+bob:
+  - 1
+  - 2
+  - 3
+
+map: 
+  <<for:
+     - name: alice
+       values: (( .alice ))
+     - name: bob
+       values:  (( .bob ))
+  <<mapkey: (( alice bob ))
+  <<do:
+    value: (( alice bob x )) 
+```
+
+evaluates the field `map` to
+
+```yaml
+map:
+  a1:
+    value: a1suffix
+  a2:
+    value: a2suffix
+  a3:
+    value: a3suffix
+  b1:
+    value: b1suffix
+  b2:
+    value: b2suffix
+  b3:
+    value: b3suffix
+```
+
+Here the traversal order is irrelevant as log as the generated key values
+are unique. If several evaluations of the key expression yield the same 
+value the last one will win.
+
+A comparable way to do this with regular *dynaml* could look like this:
+
+```yaml
+map: (( sum[alice|{}|s,index_alice,alice|-> s sum[bob|{}|s,index_bob,bob|->s {(alice bob)=alice bob x}]] ))
+```
 
 # Structural Auto-Merge
 

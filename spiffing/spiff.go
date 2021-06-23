@@ -61,14 +61,14 @@ func (s *sourceData) Data() ([]byte, error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 type spiff struct {
-	key           string
-	mode          int
-	fs            vfs.FileSystem
-	opts          flow.Options
-	values        map[string]yaml.Node
-	functions     Functions
-	tags          map[string]*dynaml.Tag
-	interpolation bool
+	key       string
+	mode      int
+	fs        vfs.FileSystem
+	opts      flow.Options
+	values    map[string]yaml.Node
+	functions Functions
+	tags      map[string]*dynaml.Tag
+	features  features.FeatureFlags
 
 	binding dynaml.Binding
 }
@@ -78,14 +78,25 @@ func NewFunctions() Functions {
 	return dynaml.NewRegistry()
 }
 
-// New create a new default spiff context.
+// New creates a new default spiff context.
+// It evaluates the environment variable `SPIFF_FEATURES` to setup the
+// initial feature set and `SPIFF_ENCRYPTION_KEY` to determine the
+// encryption key.
 func New() Spiff {
-	set := features.Features()
-	_, interpolation := set[features.INTERPOLATION]
 	return &spiff{
-		key:           features.EncryptionKey(),
-		mode:          MODE_DEFAULT,
-		interpolation: interpolation,
+		key:      features.EncryptionKey(),
+		mode:     MODE_DEFAULT,
+		features: features.Features(),
+	}
+}
+
+// Plain creates a new plain spiff context without
+// any predefined settings.
+func Plain() Spiff {
+	return &spiff{
+		key:      "",
+		mode:     MODE_DEFAULT,
+		features: features.FeatureFlags{},
 	}
 }
 
@@ -103,7 +114,7 @@ func (s *spiff) assureBinding() {
 	if s.binding == nil {
 		state := flow.NewState(s.key, s.mode, s.fs).
 			SetFunctions(s.functions).
-			SetInterpolation(s.interpolation)
+			SetFeatures(s.features)
 		if len(s.tags) > 0 {
 			var tags []*dynaml.Tag
 			for _, t := range s.tags {
@@ -122,7 +133,23 @@ func (s *spiff) assureBinding() {
 // WithInterpolation creates a new context with
 // enabled/disabled string interpolation feature
 func (s spiff) WithInterpolation(b bool) Spiff {
-	s.interpolation = b
+	s.features.Set(features.INTERPOLATION, b)
+	return s.Reset()
+}
+
+// WithControl creates a new context with
+// enabled/disabled yaml based control structure feature
+func (s spiff) WithControl(b bool) Spiff {
+	s.features.Set(features.CONTROL, b)
+	return s.Reset()
+}
+
+// WithFeatures creates a new context with
+// enabled features
+func (s spiff) WithFeatures(features ...string) Spiff {
+	for _, f := range features {
+		s.features.Set(f, true)
+	}
 	return s.Reset()
 }
 

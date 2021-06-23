@@ -30,7 +30,7 @@ type Options = flow.Options
 // the standrd function set
 type Functions = dynaml.Registry
 
-// Spiff is a configuration end execution context for
+// Spiff is a configuration and execution context for
 // executing spiff operations
 type Spiff interface {
 	// WithEncryptionKey creates a new context with
@@ -47,6 +47,15 @@ type Spiff interface {
 	// WithFunctions creates a new context with the given
 	// additional function definitions
 	WithFunctions(functions Functions) Spiff
+	// WithFeatures creates a new context with the given
+	// additional features enabled
+	WithFeatures(features ...string) Spiff
+	// WithInterpolation creates a new context with the interpolation
+	// feature enabled/disabled
+	WithInterpolation(b bool) Spiff
+	// WithControl creates a new context with the yaml based control structure
+	// feature enabled/disabled
+	WithControl(b bool) Spiff
 	// WithValues creates a new context with the given
 	// additional structured values usable by path expressions
 	// during processing.

@@ -2,7 +2,6 @@ package flow
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/mandelsoft/spiff/debug"
@@ -33,8 +32,8 @@ func get_inherited_flags(env dynaml.Binding) (yaml.NodeFlags, yaml.Node) {
 	return 0, overridden
 }
 
-func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
-	node := _flow(root, env, shouldOverride)
+func flow(root yaml.Node, env dynaml.Binding, shouldOverride, enforceTemplate bool) yaml.Node {
+	node := _flow(root, env, shouldOverride, enforceTemplate)
 	tag := node.GetAnnotation().Tag()
 	if tag != "" {
 		debug.Debug("found tag %q at %v\n", tag, env.Path())
@@ -58,7 +57,7 @@ func flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 	return node
 }
 
-func _flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
+func _flow(root yaml.Node, env dynaml.Binding, shouldOverride, enforceTemplate bool) yaml.Node {
 	if root == nil {
 		return root
 	}
@@ -86,12 +85,11 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 		}
 		switch val := root.Value().(type) {
 		case map[string]yaml.Node:
-			ok, err := IsControl(val, env)
+			ok, err := dynaml.IsControl(val, env)
 			if err != nil {
 				return yaml.IssueNode(root, true, true, yaml.NewIssue("%s", err))
-
 			}
-			root = flowMap(root, env, !ok)
+			root = flowMap(root, env, !ok, enforceTemplate)
 			if !ok {
 				return root
 			} else {
@@ -102,7 +100,7 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 			}
 
 		case []yaml.Node:
-			return flowList(root, env)
+			return flowList(root, env, enforceTemplate)
 
 		case dynaml.Expression:
 			debug.Debug("??? eval %T: %+v\n", val, val)
@@ -111,13 +109,14 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
 				env = env.WithSource(root.SourceName())
 			}
 			var eval interface{} = nil
-			m, ok := val.(dynaml.MarkerExpr)
+			info := dynaml.DefaultInfo()
+
+			m, ok := asTemplate(val, enforceTemplate)
 			if ok {
 				if tag := m.GetTag(); tag != "" && root.GetAnnotation().Tag() == "" {
 					root = yaml.SetTag(root, tag)
 				}
 			}
-			info := dynaml.DefaultInfo()
 			if ok && m.Has(dynaml.TEMPLATE) {
 				debug.Debug("found template declaration\n")
 				tval := m.TemplateExpression(root)
@@ -284,12 +283,11 @@ func simpleMergeCompatibilityCheck(initial bool, node yaml.Node) bool {
 	return false
 }
 
-func flowMap(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node {
+func flowMap(root yaml.Node, env dynaml.Binding, shouldOverride, template bool) yaml.Node {
 	var err error
 	flags, stub := get_inherited_flags(env)
 	tag := root.GetAnnotation().Tag()
 	processed := true
-	template := false
 	merged := false
 	issue, failed := root.Issue(), root.Failed()
 	rootMap := root.Value().(map[string]yaml.Node)
@@ -301,9 +299,10 @@ func flowMap(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node 
 	replace := root.ReplaceFlag()
 	newMap := make(map[string]yaml.Node)
 
-	debug.Debug("HANDLE MAP %v\n", env.Path())
+	debug.Debug("HANDLE MAP %v (template=%t)\n", env.Path(), template)
 	addEntries := true
 
+	marker := dynaml.NewTemplateMarker(nil)
 	mergekey := "<<"
 	mergeval, ok := rootMap[mergekey]
 	if ok {
@@ -319,21 +318,21 @@ func flowMap(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node 
 		val := mergeval
 		debug.Debug("handle map merge %#v\n", val)
 		_, initial := val.Value().(string)
-		base := _flow(val, env, false)
+		base := _flow(val, env, false, false)
 		if base.Undefined() {
 			return yaml.UndefinedNode(root)
 		}
 		debug.Debug("flow to %#v\n", base.Value())
-		_, ok := base.Value().(dynaml.Expression)
+		e, ok := base.Value().(dynaml.Expression)
 		if ok {
-			m, ok := base.Value().(dynaml.MarkerExpr)
+			marker, ok = asTemplate(e, template)
 			if ok {
 				debug.Debug("found marker\n")
-				if t := m.GetTag(); t != "" {
+				if t := marker.GetTag(); t != "" {
 					debug.Debug("found tag %q\n", t)
 					tag = t
 				}
-				flags |= m.GetFlags()
+				flags |= marker.GetFlags()
 				if flags.Temporary() {
 					debug.Debug("found temporary declaration\n")
 				}
@@ -344,11 +343,9 @@ func flowMap(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node 
 					debug.Debug("found default declaration\n")
 				}
 			}
-			if ok && m.Has(dynaml.TEMPLATE) {
-				debug.Debug("found template declaration\n")
-				processed = false
+			if ok && marker.Has(dynaml.TEMPLATE) {
 				template = true
-				val = m.TemplateExpression(root)
+				val = marker.TemplateExpression(root)
 				if val != nil {
 					debug.Debug("  insert expression: %v\n", val)
 				}
@@ -402,8 +399,13 @@ func flowMap(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node 
 		mergeval = val
 	}
 
+	if template {
+		debug.Debug("found template declaration\n")
+		processed = false
+	}
+
 	if addEntries {
-		sortedKeys := getSortedKeys(rootMap)
+		sortedKeys := yaml.GetSortedKeys(rootMap)
 		for i := range sortedKeys {
 			key := sortedKeys[i]
 			val := rootMap[key]
@@ -415,7 +417,7 @@ func flowMap(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node 
 				}
 			} else {
 				if processed {
-					val = flow(val, env.WithPath(key), shouldOverride)
+					val = flow(val, env.WithPath(key), shouldOverride, dynaml.RequireTemplate(key))
 				} else {
 					debug.Debug("skip %q flow for unprocessed indication\n", key)
 				}
@@ -468,16 +470,16 @@ func flowMap(root yaml.Node, env dynaml.Binding, shouldOverride bool) yaml.Node 
 			node = yaml.IssueNode(node, true, true, issue)
 		}
 	} else {
-		node = flowControl(node, env)
+		node, _, _ = flowControl(node, env)
 	}
 	return updateNode(node, flags, tag)
 }
 
-func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
+func flowList(root yaml.Node, env dynaml.Binding, template bool) yaml.Node {
 	rootList := root.Value().([]yaml.Node)
 
 	debug.Debug("HANDLE LIST %v\n", env.Path())
-	merged, process, replaced, redirectPath, keyName, ismerged, flags, tag, stub := processMerges(root, rootList, env)
+	merged, process, replaced, redirectPath, keyName, ismerged, flags, tag, stub := processMerges(root, rootList, env, template)
 
 	if process {
 		debug.Debug("process list (key: %s) %v\n", keyName, env.Path())
@@ -489,7 +491,7 @@ func flowList(root yaml.Node, env dynaml.Binding) yaml.Node {
 			step, resolved := stepName(idx, val, keyName, env)
 			debug.Debug("  step %s\n", step)
 			if resolved {
-				val = flow(val, env.WithPath(step), false)
+				val = flow(val, env.WithPath(step), false, false)
 			}
 			if !val.Undefined() {
 				newList = append(newList, val)
@@ -570,7 +572,7 @@ func stepName(index int, value yaml.Node, keyName string, env dynaml.Binding) (s
 		debug.Debug("found raw %s", keyName)
 		_, ok := v.Value().(dynaml.Expression)
 		if ok {
-			v = flow(v, env.WithPath(step), false)
+			v = flow(v, env.WithPath(step), false, false)
 			_, ok := v.Value().(dynaml.Expression)
 			if ok {
 				return step, false
@@ -586,14 +588,13 @@ func stepName(index int, value yaml.Node, keyName string, env dynaml.Binding) (s
 	return step, true
 }
 
-func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interface{}, bool, bool, []string, string, bool, yaml.NodeFlags, string, yaml.Node) {
+func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding, template bool) (interface{}, bool, bool, []string, string, bool, yaml.NodeFlags, string, yaml.Node) {
 	var flags yaml.NodeFlags
 	var stub yaml.Node
 	flags, stub = get_inherited_flags(env)
 	tag := orig.GetAnnotation().Tag()
 	spliced := []yaml.Node{}
 	process := true
-	template := false
 	merged := false
 	keyName := orig.KeyName()
 	replaced := orig.ReplaceFlag()
@@ -608,17 +609,17 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 		if ok {
 			debug.Debug("*** %+v\n", inlineNode.Value())
 			_, initial := inlineNode.Value().(string)
-			result := _flow(inlineNode, env, false)
+			result := _flow(inlineNode, env, false, false)
 			if result.KeyName() != "" {
 				keyName = result.KeyName()
 			}
 			debug.Debug("=== (%s)%+v\n", keyName, result)
-			_, ok := result.Value().(dynaml.Expression)
+			e, ok := result.Value().(dynaml.Expression)
 			if ok {
 				if simpleMergeCompatibilityCheck(initial, inlineNode) {
 					continue
 				}
-				m, ok := result.Value().(dynaml.MarkerExpr)
+				m, ok := asTemplate(e, template)
 				if ok {
 					flags |= m.GetFlags()
 					if t := m.GetTag(); t != "" {
@@ -679,7 +680,23 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding) (interf
 		debug.Debug(" as template\n")
 		result = dynaml.NewTemplateValue(env.Path(), yaml.NewNode(spliced, orig.SourceName()), orig, env)
 	} else {
-		result = spliced
+		processed := []yaml.Node{}
+		for _, val := range spliced {
+			ok, err := dynaml.IsControl(val.Value(), env)
+			if err != nil {
+				val = yaml.IssueNode(val, true, true, yaml.NewIssue("%s", err))
+			} else if ok {
+				val = _flow(val, env, false, false)
+				if a, ok := val.Value().([]yaml.Node); ok {
+					processed = append(processed, a...)
+					continue
+				} else {
+					process = false
+				}
+			}
+			processed = append(processed, val)
+		}
+		result = processed
 	}
 
 	debug.Debug("--> %+v  proc=%v replaced=%v redirect=%v key=%s\n", result, process, replaced, redirectPath, keyName)
@@ -740,17 +757,6 @@ func newEntries(a []yaml.Node, b []yaml.Node, keyName string) []yaml.Node {
 	return added
 }
 
-func getSortedKeys(unsortedMap map[string]yaml.Node) []string {
-	keys := make([]string, len(unsortedMap))
-	i := 0
-	for k, _ := range unsortedMap {
-		keys[i] = k
-		i++
-	}
-	sort.Strings(keys)
-	return keys
-}
-
 func updateNode(node yaml.Node, flags yaml.NodeFlags, tag string) yaml.Node {
 	if (flags | node.Flags()) != node.Flags() {
 		node = yaml.AddFlags(node, flags)
@@ -779,4 +785,19 @@ func substituteValue(v interface{}, flags yaml.NodeFlags) (interface{}, interfac
 		return dynaml.SubstitutionExpr{dynaml.ValueExpr{t}}, t
 	}
 	return v, nil
+}
+
+func asTemplate(val dynaml.Expression, enforceTemplate bool) (dynaml.MarkerExpr, bool) {
+	m, ok := val.(dynaml.MarkerExpr)
+	if ok {
+		if enforceTemplate {
+			m.Add(dynaml.TEMPLATE)
+		}
+	} else {
+		if enforceTemplate {
+			ok = true
+			m = dynaml.NewTemplateMarker(val)
+		}
+	}
+	return m, ok
 }

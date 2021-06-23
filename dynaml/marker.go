@@ -23,6 +23,20 @@ type MarkerExpr struct {
 	expr Expression
 }
 
+func NewTemplateMarker(expr Expression) MarkerExpr {
+	return MarkerExpr{list: []string{TEMPLATE}, expr: expr}
+}
+
+func (e MarkerExpr) Add(marker string) MarkerExpr {
+	for _, v := range e.list {
+		if v == marker {
+			return e
+		}
+	}
+	e.list = append(e.list, marker)
+	return e
+}
+
 func (e MarkerExpr) String() string {
 	if e.expr != nil {
 		return fmt.Sprintf("%s (%s)", strings.Join(e.list, " "), e.expr)

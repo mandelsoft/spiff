@@ -266,7 +266,7 @@ func addContext(context []string, step string) []string {
 	return append(dup, step)
 }
 
-func isExpression(val interface{}) bool {
+func IsExpression(val interface{}) bool {
 	if val == nil {
 		return false
 	}
