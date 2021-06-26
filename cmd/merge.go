@@ -27,6 +27,7 @@ var tagdefs []string
 var expr string
 var split bool
 var interpolation bool
+var featureFlags []string
 var processingOptions flow.Options
 var state string
 var bindings string
@@ -72,6 +73,7 @@ func init() {
 	mergeCmd.Flags().StringArrayVarP(&values, "define", "D", nil, "key/value bindings")
 	mergeCmd.Flags().StringArrayVar(&selection, "select", []string{}, "filter dedicated output fields")
 	mergeCmd.Flags().StringArrayVar(&tagdefs, "tag", []string{}, "tag files (tag:path)")
+	mergeCmd.Flags().StringArrayVar(&featureFlags, "features", []string{}, "set feature flags")
 	mergeCmd.Flags().StringVar(&expr, "evaluate", "", "evaluation expression")
 }
 
@@ -232,6 +234,13 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 
 	var binding dynaml.Binding
 	features := features.Features()
+	for _, list := range featureFlags {
+		for _, f := range strings.Split(list, ",") {
+			if err := features.Set(strings.TrimSpace(f), true); err != nil {
+				log.Fatalln(err.Error())
+			}
+		}
+	}
 	if bindingYAML != nil || interpolation || len(tags) > 0 || len(templateYAMLs) > 1 {
 		defstate := flow.NewDefaultState().SetInterpolation(interpolation)
 		defstate.SetTags(tags...)

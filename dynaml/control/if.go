@@ -11,7 +11,7 @@ func init() {
 
 func flowIf(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, env dynaml.Binding) (yaml.Node, bool) {
 	for range fields {
-		return dynaml.ControlIssue("if", node, "no regular fields allowed in if control")
+		return dynaml.ControlIssue("if", node, "no regular fields %v allowed in if control", yaml.GetSortedKeys(fields))
 	}
 	switch v := val.Value().(type) {
 	case dynaml.Expression:

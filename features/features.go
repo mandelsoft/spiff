@@ -1,6 +1,7 @@
 package features
 
 import (
+	"fmt"
 	"os"
 	"strings"
 )
@@ -17,12 +18,24 @@ func (this FeatureFlags) Enabled(name string) bool {
 	_, ok := this[name]
 	return ok
 }
-func (this FeatureFlags) Set(name string, active bool) {
-	if active {
+
+func (this FeatureFlags) Set(name string, active bool) error {
+	no := strings.HasPrefix(name, "no")
+	if no {
+		name = name[2:]
+	}
+	switch name {
+	case INTERPOLATION:
+	case CONTROL:
+	default:
+		return fmt.Errorf("unknown feature flag %q", name)
+	}
+	if active != no {
 		this[name] = struct{}{}
 	} else {
 		delete(this, name)
 	}
+	return nil
 }
 
 func (this FeatureFlags) InterpolationEnabled() bool {
@@ -42,20 +55,9 @@ func (this FeatureFlags) SetControl(active bool) {
 func Features() FeatureFlags {
 	features := FeatureFlags{}
 	// setup defaults
-	features.Set(INTERPOLATION, true)
 	setting := os.Getenv("SPIFF_FEATURES")
 	for _, f := range strings.Split(setting, ",") {
-		f = strings.ToLower(strings.TrimSpace(f))
-		no := strings.HasPrefix(f, "no")
-		if no {
-			f = f[2:]
-		}
-		switch f {
-		case INTERPOLATION:
-			features.Set(INTERPOLATION, !no)
-		case CONTROL:
-			features.Set(CONTROL, !no)
-		}
+		features.Set(strings.TrimSpace(f), true)
 	}
 	return features
 }

@@ -462,6 +462,7 @@ func createContext(env *DefaultEnvironment) yaml.Node {
 	if err != nil {
 		read = env.CurrentSourceName()
 	}
+	ctx["VERSION"] = node(VERSION)
 	ctx["FILE"] = node(env.CurrentSourceName())
 	ctx["DIR"] = node(filepath.Dir(env.CurrentSourceName()))
 	ctx["RESOLVED_FILE"] = node(read)

@@ -9,6 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/mandelsoft/spiff/flow"
 )
 
 var cfgFile string
@@ -17,7 +19,7 @@ var cfgFile string
 var rootCmd = &cobra.Command{
 	Use:     "spiff",
 	Short:   "YAML in-domain templating processor",
-	Version: "v1.7.0-dev",
+	Version: flow.VERSION,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

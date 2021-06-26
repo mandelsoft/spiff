@@ -44,6 +44,7 @@ template processing.
 Contents:
 - [Installation](#installation)
 - [Usage](#usage)
+- [Feature Flags](#feature-flags)
 - [Libraries](#libraries)
 - [dynaml Templating Language](#dynaml-templating-language)
 	- [(( foo ))](#-foo-)
@@ -215,10 +216,13 @@ Contents:
 	- [Operation Priorities](#operation-priorities)
 	- [String Interpolation](#string-interpolation)
 	- [YAML-based Control Structures](#yaml-based-control-structures)
+	    - [in Maps](#control-structures-in-maps)
+	    - [in Lists](#control-structures-in-lists)
 	    - [`<<if:`](#if)
 	    - [`<<switch:`](#switch)
 	    - [`<<type:`](#type)
 	    - [`<<for:`](#for)
+	    - [`<<join:`](#join)
 - [Structural Auto-Merge](#structural-auto-merge)
 - [Bringing it all together](#bringing-it-all-together)
 - [Useful to Know](#useful-to-know)
@@ -314,6 +318,12 @@ The ` merge` command offers several options:
 - The option `--preserve-temporary` will preserve the fields marked as temporary
   in the final document.
   
+- The option `--features=<featurelist>` will enable this given features. New
+  features that are incompatible with the old behaviour must be explicitly 
+  enabled. Typically those feature do not break the common behavior but introduce
+  a dedicated interpretation for yaml values that were used as regular values
+  before.
+  
 The folder [libraries](libraries/README.md) offers some useful
 utility libraries. They can also be used as an example for the power
 of this templating engine.
@@ -371,6 +381,33 @@ stdin.
 If the option `-d` is given, the data is decrypted, otherwise the data is
 read as yaml document and the encrypted result is printed. 
 
+# Feature Flags
+
+New features that are incompatible with the old behaviour must be explicitly 
+enabled. Typically those features do not break the common behavior but introduce
+a dedicated interpretation for yaml values that were used as regular values
+before and can therefore break existing use cases.
+  
+The following feature flags are currently supported:
+
+| Feature | Since | State | Meaning |
+|---------|-------|-------|---------|
+| `interpolation` | 1.7.0-beta-1 | alpha | [dynaml as part of yaml strings](#string-interpolation) |
+| `control` | 1.7.0-beta-4 | alpha | [yaml based control structures](#yaml-based-control-structures) | 
+
+Active feature flags can be queried using the *dynaml* function
+`features()` as list of strings. If this function is called with a string
+argument, it returns whether the given feature is currenty enabled.
+
+Features can be enabled by command line using the `--features` option,
+by the go library using the `WithFeatures` function or generally
+by setting the environment variable `SPIFF_FEATURES` to a feature list.
+This setting is alwas used as default. By using the `Plain()` spiff
+settings from the go library all environment variables are ignored.
+
+A feature can be specified by name or by name prepended with the prefix `no`
+to disable it.
+ 
 # Libraries
 
 The [libraries](libraries/README.md) folder contains some useful _spiff_ template
@@ -5617,6 +5654,7 @@ The following fields are supported:
 
 | Field Name  | Type | Meaning |
 | ------------| ---- | ------- |
+| `VERSION` | string |current version of *spiff*  |
 | `FILE` | string | name of actually processed template file  |
 | `DIR`  | string | name of directory of actually processed template file  |
 | `RESOLVED_FILE` | string | name of actually processed template file with resolved symbolic links |
@@ -5674,8 +5712,11 @@ The complete grammar can be found in [dynaml.peg](dynaml/dynaml.peg).
 
 ## String Interpolation
 
+Feature state: alpha
+
 **Attention:** This is an alpha feature. It must be enabled on the command
-line with the `--interpolation` option. Also for the spiff library it must
+line with the `--interpolation` or `--features=interpolation` option.
+Also for the spiff library it must
 explicitly be enabled. By adding the key `interpolation` to the feature list
 stored in the environment variable `SPIFF_FEATURES` this feature will be enabled
 by default.
@@ -5730,30 +5771,103 @@ The embedded dynaml expression must be concatenatable with strings.
 
 ## YAML-based Control Structures
 
-In addition to express conditions and loops with *dynaml* expressions
+Feature state: alpha
+
+In addition to describe conditions and loops with *dynaml* expressions
 it is also possible to use elements of the document structure to embed
 control structures.
 
 Such a YAML-based control structure is always described as a map in YAML/JSON.
 The syntactical elements are expressed as map fields starting with `<<`.
-Additionaly, depending on the control structure, regular fields are possible.
+Additionally, depending on the control structure, regular fields are possible.
 Control structures finally represent a value for the containing node.
-As such a control structure map may contain marker expressions (`<<`), also.
+They may contain marker expressions (`<<`), also.
 
-This feature requires enabling the feature flag `control`.
+e.g.:
+
+```yaml
+temp:
+  <<: (( &temporary ))
+  <<if: (( features("control") ))
+  <<then:
+    alice: 25
+    bob: 26
+```
+
+resolves to
+
+```yaml
+final:
+  alice: 25
+  bob: 26
+```
+
+Tu use this alpha feature the feature flag `control` must be enabled.
+
+Please be aware: Control structure maps typically are always completely resolved
+before they are evaluated.
+
+### Control Structures in Maps
+
+A control structure itself is always a dedicated map node in a document.
+It is substituted by a regular value node determined by the execution
+of the control structure.
+
+If used as value for a map field the resulting value is just used as effective
+value for this field.
+
+If a map should be enriched by maps resulting from multiple control structures
+the special control structure [`<<join:`](#join) can be used. It allows to
+specify a list of maps which should be merged with the actual control structure
+map to finally build the result value.
+
+### Control Structures in Lists
+
+A control structure can be used as list value, also.
+In this case there is a dedicated interpretation of the resulting
+value of the control structure. If it is NOT a list value,
+for convenience, the value is directly used as list entry and substitutes the
+control structure map.
+
+If the resulting value is again a list, it is inserted into the containing
+list at the place of occurrence of the control structure.
+So, if a list value should be used as dedicated entry in a list, the 
+result of a control structure must be a list with the intended
+list as entry.
+
+e.g.:
+
+```yaml
+list:
+ - <<if: (( features("control") ))
+   <<then: alice
+ - <<if: (( features("control") ))
+   <<then:
+   - - peter
+ - <<if: (( features("control") ))
+   <<then:
+   - bob
+```
+resolves to
+
+```yaml
+list:
+- alice
+- - peter
+- bob
+```
 
 ### `<<if:`
 
 The condition structure is defined by the syntax field `<<if`. It additionally
-accepts the field `<<then` and `<<else`.
+accepts the fields `<<then` and `<<else`.
 
 The condition field must provide a boolean value.
 If it is `true` the optional `<<then` field is used to substitute the control
-structure, otherwise the optional `<<else` field used.
+structure, otherwise the optional `<<else` field is used.
 
 If the appropriate case is not specified, the result is the undefined `(( ~~ ))`
 value. The containing field is therefore completely omitted from the output.
-
 
 .e.g.:
 
@@ -5986,6 +6100,64 @@ A comparable way to do this with regular *dynaml* could look like this:
 
 ```yaml
 map: (( sum[alice|{}|s,index_alice,alice|-> s sum[bob|{}|s,index_bob,bob|->s {(alice bob)=alice bob x}]] ))
+```
+
+### `<<join:`
+
+With `join` it is possible to join maps given as list value of the
+`<<join` field with regular map fields from the control structure
+to detimine the final map value.
+
+The value for `<<join:` may be a single map or a list of maps to join
+with the directly given fields.
+
+e.g.:
+
+```yaml
+map:
+  <<join: 
+    - bob: 26
+      charlie: 1
+    - charlie: 27
+  alice: 25
+  charlie: 2
+```
+
+resolves to
+
+```yaml
+map:
+  alice: 25
+  bob: 26
+  charlie: 27
+```
+
+This might be combined with other control structures, for example to conditionally
+merge multiple maps:
+
+e.g.:
+
+```yaml
+x: charlie
+map:
+  <<join: 
+    - <<if: (( x == "charlie" ))
+      <<then:
+        charlie: 27
+    - <<if: (( x == "alice" ))
+      <<then:
+        alice: 20
+  alice: 25
+  charlie: 2
+```
+
+resolves to
+
+```yaml
+x: charlie
+map:
+  alice: 25
+  charlie: 27
 ```
 
 # Structural Auto-Merge
@@ -6852,7 +7024,7 @@ networks:
      lb: (( deployment.testservice.status.loadBalancer.ingress ))
   
   ```
-- Crazy Shit: Graph Analysis with _spiff_
+- Crazy Shit: Graph Analaysis with _spiff_
 
   It is easy to describe a simple graph with knots and edges (for example 
   for a set of components and their dependencies) just by using a map of lists.

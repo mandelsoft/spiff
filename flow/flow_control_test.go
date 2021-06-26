@@ -8,6 +8,94 @@ import (
 )
 
 var _ = Describe("yaml control", func() {
+
+	Context("join", func() {
+		It("handles nil", func() {
+			source := parseYAML(`
+---
+map:
+  <<join: (( ~ ))
+  alice: 25
+`)
+			resolved := parseYAML(`
+---
+map:
+  alice: 25
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+		It("handles undef", func() {
+			source := parseYAML(`
+---
+map:
+  <<join: (( ~~ ))
+  alice: 25
+`)
+			resolved := parseYAML(`
+---
+map:
+  alice: 25
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+		It("handles map", func() {
+			source := parseYAML(`
+---
+map:
+  <<join: 
+    bob: 26
+  alice: 25
+`)
+			resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 26
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+		It("handles list", func() {
+			source := parseYAML(`
+---
+map:
+  <<join: 
+    - bob: 26
+    - charlie: 27
+  alice: 25
+`)
+			resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 26
+  charlie: 27
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+		It("handles override", func() {
+			source := parseYAML(`
+---
+map:
+  <<join: 
+    - bob: 26
+      charlie: 1
+    - charlie: 27
+  alice: 25
+  charlie: 2
+`)
+			resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 26
+  charlie: 27
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+	})
+
+	////////////////////////////////////////////////////////////////////////////////
+
 	Context("switch", func() {
 		It("handles key", func() {
 			source := parseYAML(`
@@ -306,8 +394,8 @@ list:
 
 	////////////////////////////////////////////////////////////////////////////
 
-	Context("switch cascade", func() {
-		It("handles key", func() {
+	Context("cascade controls", func() {
+		It("switch handles key", func() {
 			source := parseYAML(`
 ---
 key: (( x ))
@@ -328,6 +416,138 @@ x: test
 selected: peter
 `)
 			Expect(source).To(FlowAs(resolved, stub).WithFeatures(features.CONTROL))
+		})
+
+		It("join handles if", func() {
+			source := parseYAML(`
+---
+x: charlie
+map:
+  <<join: 
+    - <<if: (( x == "charlie" ))
+      <<then:
+        charlie: 27
+    - <<if: (( x == "alice" ))
+      <<then:
+        alice: 20
+  alice: 25
+  charlie: 2
+`)
+			resolved := parseYAML(`
+---
+x: charlie
+map:
+  alice: 25
+  charlie: 27
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+
+		It("propgates flags", func() {
+			source := parseYAML(`
+---
+temp:
+  <<: (( &temporary ))
+  <<if: (( features("control") ))
+  <<then:
+    alice: 25
+    bob: 26
+
+final: (( temp ))
+`)
+			resolved := parseYAML(`
+---
+final:
+  alice: 25
+  bob: 26
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+	})
+
+	Context("controls in lists", func() {
+		It("handles simple values", func() {
+			source := parseYAML(`
+---
+x: test
+list:
+- alice
+- <<if: (( x == "test" ))
+  <<then: peter
+- bob
+`)
+			resolved := parseYAML(`
+---
+x: test
+list:
+- alice
+- peter
+- bob
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+		It("omits undef", func() {
+			source := parseYAML(`
+---
+x: test
+list:
+- alice
+- <<if: (( x != "test" ))
+  <<then: peter
+- bob
+`)
+			resolved := parseYAML(`
+---
+x: test
+list:
+- alice
+- bob
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+		It("inserts lists", func() {
+			source := parseYAML(`
+---
+list:
+- alice
+- <<if: (( features("control") ))
+  <<then:
+  - peter
+  - alex
+- bob
+`)
+			resolved := parseYAML(`
+---
+list:
+- alice
+- peter
+- alex
+- bob
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+
+		It("example", func() {
+			source := parseYAML(`
+---
+list:
+- <<if: (( features("control") ))
+  <<then: alice
+- <<if: (( features("control") ))
+  <<then:
+  - - peter
+- <<if: (( features("control") ))
+  <<then:
+  - bob
+`)
+			resolved := parseYAML(`
+---
+list:
+- alice
+- - peter
+- bob
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
 		})
 	})
 })
