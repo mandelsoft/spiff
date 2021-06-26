@@ -2,6 +2,9 @@ package control
 
 import (
 	"fmt"
+	"regexp"
+	"sort"
+	"strings"
 
 	"github.com/mandelsoft/spiff/dynaml"
 	"github.com/mandelsoft/spiff/yaml"
@@ -11,10 +14,98 @@ func init() {
 	dynaml.RegisterControl("for", flowFor, "*do", "*mapkey")
 }
 
+type iterator interface {
+	Len() int
+	Index(int) interface{}
+	Value(int) yaml.Node
+}
+
 type iteration struct {
 	name    string
-	values  []yaml.Node
+	index   string
 	current int
+	iterator
+}
+
+type iterations []*iteration
+
+func (this iterations) Len() int {
+	return len(this)
+}
+func (this iterations) Less(i, j int) bool {
+	c := strings.Compare(this[i].name, this[j].name)
+	if c != 0 {
+		return c > 0
+	}
+	return strings.Compare(this[i].index, this[j].index) > 0
+}
+
+func (this iterations) Swap(i, j int) {
+	this[i], this[j] = this[j], this[i]
+}
+
+func newIteration(name, index string, it iterator) iteration {
+	if index == "" {
+		index = "index-" + name
+	}
+	return iteration{name, index, 0, it}
+}
+
+func (this *iteration) IndexName() string {
+	return this.index
+}
+
+func (this *iteration) Value() yaml.Node {
+	return this.iterator.Value(this.current)
+}
+
+func (this *iteration) Index() interface{} {
+	return this.iterator.Index(this.current)
+}
+
+///////////////////////////////
+
+type listIterator struct {
+	values []yaml.Node
+}
+
+func newListIterator(values []yaml.Node) iterator {
+	return &listIterator{values}
+}
+
+func (this *listIterator) Len() int {
+	return len(this.values)
+}
+
+func (this *listIterator) Index(i int) interface{} {
+	return int64(i)
+}
+
+func (this *listIterator) Value(i int) yaml.Node {
+	return this.values[i]
+}
+
+///////////////////////////////
+
+type mapIterator struct {
+	values map[string]yaml.Node
+	keys   []string
+}
+
+func newMapIterator(values map[string]yaml.Node) iterator {
+	return &mapIterator{values, yaml.GetSortedKeys(values)}
+}
+
+func (this *mapIterator) Len() int {
+	return len(this.values)
+}
+
+func (this *mapIterator) Index(i int) interface{} {
+	return this.keys[i]
+}
+
+func (this *mapIterator) Value(i int) yaml.Node {
+	return this.values[this.keys[i]]
 }
 
 func flowFor(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, env dynaml.Binding) (yaml.Node, bool) {
@@ -49,48 +140,84 @@ func flowFor(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, e
 	if t, ok := body.Value().(dynaml.TemplateValue); ok {
 		subst = &dynaml.SubstitutionExpr{dynaml.ValueExpr{t}}
 	}
-	iterations := []iteration{}
+	ranges := iterations{}
 	switch def := val.Value().(type) {
 	case map[string]yaml.Node:
-		vars := yaml.GetSortedKeys(def)
-		iterations = make([]iteration, len(vars))
-		for i, v := range vars {
-			values, ok := def[v].Value().([]yaml.Node)
-			if !ok {
-				return dynaml.ControlIssue("for", node, "control variable %q required list value but got %s", v, dynaml.ExpressionType(def[v].Value()))
+		ranges = make(iterations, len(def))
+		i := 0
+		for v, values := range def {
+			i++
+			name := ""
+			index := ""
+			parts := strings.Split(v, ",")
+			switch len(parts) {
+			case 2:
+				index = strings.TrimSpace(parts[0])
+				name = strings.TrimSpace(parts[1])
+			case 1:
+				name = strings.TrimSpace(parts[0])
+			default:
+				return dynaml.ControlIssue("for", node, "invalid control variable spec %q", v)
 			}
-			if len(values) == 0 {
-				return nil, true
+			it, err := controlIterator(name, values)
+			if err != nil {
+				return dynaml.ControlIssue("for", node, err.Error())
 			}
-			iterations[len(iterations)-i-1] = iteration{v, values, 0}
+			ranges[len(ranges)-i], err = controlIteration(name, index, it)
+			if err != nil {
+				return dynaml.ControlIssue("for", node, err.Error())
+			}
 		}
+		sort.Sort(ranges)
 	case []yaml.Node:
-		iterations = make([]iteration, len(def))
+		ranges = make(iterations, len(def))
 		for i, v := range def {
 			spec, ok := v.Value().(map[string]yaml.Node)
 			if !ok {
 				return dynaml.ControlIssue("for", node, "control variable list entry requires may but got %s", dynaml.ExpressionType(v.Value()))
-			}
-			if len(spec) != 2 {
-				return dynaml.ControlIssue("for", node, "control variable list entry requires two fields: name and values")
 			}
 			n := spec["name"]
 			if n == nil {
 				return dynaml.ControlIssue("for", node, "control variable list entry requires name field")
 			}
 			name, ok := n.Value().(string)
-			if !ok {
-				return dynaml.ControlIssue("for", node, "control variable name must be of type string but got %s", dynaml.ExpressionType(n.Value()))
+			index := ""
+			n = spec["index"]
+			if n != nil {
+				index, ok = n.Value().(string)
+				if !ok {
+					return dynaml.ControlIssue("for", node, "control index variable name must be of type string but got %s", dynaml.ExpressionType(n.Value()))
+				}
 			}
 			l := spec["values"]
 			if l == nil {
 				return dynaml.ControlIssue("for", node, "control variable list entry requires values field")
 			}
-			values, ok := l.Value().([]yaml.Node)
-			if !ok {
-				return dynaml.ControlIssue("for", node, "control variable values must be of type list but got %s", dynaml.ExpressionType(l.Value()))
+			it, err := controlIterator(name, l)
+			if err != nil {
+				return dynaml.ControlIssue("for", node, err.Error())
 			}
-			iterations[len(iterations)-i-1] = iteration{name, values, 0}
+
+			if len(spec) < 2 || len(spec) > 3 {
+				return dynaml.ControlIssue("for", node, "control variable list entry requires two or three fields: name, values and optionally index")
+			}
+
+			if len(spec) == 3 && index == "" {
+				for _, k := range yaml.GetSortedKeys(spec) {
+					switch k {
+					case "name":
+					case "values":
+					case "index":
+					default:
+						return dynaml.ControlIssue("for", node, "invalid control variable list entry field %q", k)
+					}
+				}
+			}
+
+			ranges[len(ranges)-i-1], err = controlIteration(name, index, it)
+			if err != nil {
+				return dynaml.ControlIssue("for", node, err.Error())
+			}
 		}
 	default:
 		return dynaml.ControlIssue("for", node, "value field must be map but got %s", dynaml.ExpressionType(def))
@@ -111,9 +238,9 @@ outer:
 	for {
 		// do
 		inp := map[string]yaml.Node{}
-		for i := 0; i < len(iterations); i++ {
-			inp[iterations[i].name] = iterations[i].values[iterations[i].current]
-			inp["index-"+iterations[i].name] = yaml.NewNode(int64(iterations[i].current), "for")
+		for i := 0; i < len(ranges); i++ {
+			inp[ranges[i].name] = ranges[i].Value()
+			inp[ranges[i].IndexName()] = yaml.NewNode(ranges[i].Index(), "for")
 		}
 		scope := env.WithLocalScope(inp)
 		key := ""
@@ -121,18 +248,18 @@ outer:
 			k, info, ok := mapkey.Evaluate(scope, false)
 			if !ok {
 				done = false
-				issue.Nested = append(issue.Nested, controlVariablesIssue(iterations, info.Issue))
+				issue.Nested = append(issue.Nested, controlVariablesIssue(ranges, info.Issue))
 			}
 			if key, ok = k.(string); !ok {
 				done = false
-				issue.Nested = append(issue.Nested, controlVariablesIssue(iterations, yaml.NewIssue("map key must be string, but found %s", dynaml.ExpressionType(k))))
+				issue.Nested = append(issue.Nested, controlVariablesIssue(ranges, yaml.NewIssue("map key must be string, but found %s", dynaml.ExpressionType(k))))
 			}
 		}
 		if subst != nil {
 			v, info, ok := subst.Evaluate(scope, false)
 			if !ok {
 				done = false
-				issue.Nested = append(issue.Nested, controlVariablesIssue(iterations, info.Issue))
+				issue.Nested = append(issue.Nested, controlVariablesIssue(ranges, info.Issue))
 			} else {
 				if dynaml.IsExpression(v) {
 					done = false
@@ -152,15 +279,15 @@ outer:
 			}
 		}
 
-		for i := 0; i <= len(iterations); i++ {
-			if i == len(iterations) {
+		for i := 0; i <= len(ranges); i++ {
+			if i == len(ranges) {
 				break outer
 			}
-			iterations[i].current++
-			if iterations[i].current < len(iterations[i].values) {
+			ranges[i].current++
+			if ranges[i].current < ranges[i].Len() {
 				break
 			}
-			iterations[i].current = 0
+			ranges[i].current = 0
 		}
 	}
 	if !done {
@@ -176,11 +303,53 @@ outer:
 	return yaml.NewNode(resultmap, node.SourceName()), true
 }
 
-func controlVariablesIssue(iterations []iteration, issue yaml.Issue) yaml.Issue {
+var namesyntax = regexp.MustCompile("[a-zA-Z0-9_]+")
+
+func checkName(kind, n string) error {
+	if !namesyntax.Match([]byte(n)) {
+		return fmt.Errorf("invalid %s variable name %q (must be %s)", kind, n, namesyntax.String())
+	}
+	return nil
+}
+
+func controlIteration(name, index string, it iterator) (*iteration, error) {
+	if err := checkName("range", name); err != nil {
+		return nil, err
+	}
+	if index == "" {
+		index = "index-" + name
+	} else {
+		if err := checkName("index", index); err != nil {
+			return nil, err
+		}
+	}
+	return &iteration{name, index, 0, it}, nil
+}
+
+func controlIterator(name string, val yaml.Node) (iterator, error) {
+	var it iterator
+	switch values := val.Value().(type) {
+	case []yaml.Node:
+		if len(values) == 0 {
+			return nil, nil
+		}
+		it = newListIterator(values)
+	case map[string]yaml.Node:
+		if len(values) == 0 {
+			return nil, nil
+		}
+		it = newMapIterator(values)
+	default:
+		return nil, fmt.Errorf("control variable %q requires list or map value, but got %s", name, dynaml.ExpressionType(val.Value()))
+	}
+	return it, nil
+}
+
+func controlVariablesIssue(iterations iterations, issue yaml.Issue) yaml.Issue {
 	desc := fmt.Sprintf("control variables: ")
 	sep := ""
 	for _, i := range iterations {
-		desc = fmt.Sprintf("%s%s %s=%s", desc, sep, i.name, dynaml.Shorten(dynaml.Short(i.values[i.current].Value(), false)))
+		desc = fmt.Sprintf("%s%s %s[%v]=%s", desc, sep, i.name, i.Index(), dynaml.Shorten(dynaml.Short(i.Value().Value(), false)))
 		sep = ";"
 	}
 	issue.Issue = fmt.Sprintf("%s: %s", desc, issue.Issue)

@@ -225,8 +225,9 @@ x: test1
 	})
 
 	Context("for", func() {
-		It("handles map", func() {
-			source := parseYAML(`
+		Context("lists", func() {
+			It("handles map", func() {
+				source := parseYAML(`
 ---
 x: suffix
 alice:
@@ -245,7 +246,7 @@ map:
     value: (( alice bob x ))
 
 `)
-			resolved := parseYAML(`
+				resolved := parseYAML(`
 ---
 alice:
 - a
@@ -269,10 +270,10 @@ map:
     value: b3suffix
 x: suffix
 `)
-			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
-		})
-		It("handles list", func() {
-			source := parseYAML(`
+				Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+			})
+			It("handles list", func() {
+				source := parseYAML(`
 ---
 x: suffix
 alice:
@@ -290,7 +291,7 @@ list:
     value: (( alice bob x ))
 
 `)
-			resolved := parseYAML(`
+				resolved := parseYAML(`
 ---
 alice:
 - a
@@ -308,11 +309,56 @@ list:
 - value: b3suffix
 x: suffix
 `)
-			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
-		})
+				Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+			})
 
-		It("handles control variable list", func() {
-			source := parseYAML(`
+			It("handles control variable map", func() {
+				source := parseYAML(`
+---
+alice:
+       - a
+       - b
+bob:
+       - 1
+       - 2
+       - 3
+map:
+  <<for: 
+     key,alice: (( .alice ))
+     bob: (( .bob ))
+  <<mapkey: (( alice bob ))
+  <<do:
+    value: (( alice bob "/" key "/" index-bob ))
+
+`)
+				resolved := parseYAML(`
+---
+alice:
+- a
+- b
+bob:
+- 1
+- 2
+- 3
+map:
+  a1:
+    value: a1/0/0
+  a2:
+    value: a2/0/1
+  a3:
+    value: a3/0/2
+  b1:
+    value: b1/1/0
+  b2:
+    value: b2/1/1
+  b3:
+    value: b3/1/2
+`)
+				Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+			})
+
+			It("handles control variable list", func() {
+				source := parseYAML(`
 ---
 x: suffix
 alice:
@@ -332,7 +378,7 @@ list:
     value: (( alice bob x ))
 
 `)
-			resolved := parseYAML(`
+				resolved := parseYAML(`
 ---
 alice:
 - a
@@ -350,10 +396,10 @@ list:
 - value: b3suffix
 x: suffix
 `)
-			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
-		})
-		It("handles iteration index", func() {
-			source := parseYAML(`
+				Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+			})
+			It("handles iteration index", func() {
+				source := parseYAML(`
 ---
 alice:
        - a
@@ -370,7 +416,7 @@ list:
     value: (( alice "-" index-alice "-" bob "-" index-bob ))
 
 `)
-			resolved := parseYAML(`
+				resolved := parseYAML(`
 ---
 alice:
 - a
@@ -387,9 +433,137 @@ list:
 - value: b-1-2-1
 - value: b-1-3-2
 `)
-			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+				Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+			})
 		})
 
+		Context("maps", func() {
+			It("handles map", func() {
+				source := parseYAML(`
+---
+x: suffix
+alice:
+  a1: a
+  a2: b
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+map:
+  <<for: 
+     alice: (( .alice ))
+     bob: (( .bob ))
+  <<mapkey: (( index-alice index-bob ))
+  <<do:
+    value: (( alice bob x ))
+
+`)
+				resolved := parseYAML(`
+---
+alice:
+  a1: a
+  a2: b
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+map:
+  a1b1:
+    value: a1suffix
+  a1b2:
+    value: a2suffix
+  a1b3:
+    value: a3suffix
+  a2b1:
+    value: b1suffix
+  a2b2:
+    value: b2suffix
+  a2b3:
+    value: b3suffix
+x: suffix
+`)
+				Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+			})
+			It("handles list", func() {
+				source := parseYAML(`
+---
+x: suffix
+alice:
+  a1: a
+  a2: b
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+list:
+  <<for: 
+     alice: (( .alice ))
+     bob: (( .bob ))
+  <<do:
+    value: (( alice bob x ))
+
+`)
+				resolved := parseYAML(`
+---
+alice:
+  a1: a
+  a2: b
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+list:
+- value: a1suffix
+- value: a2suffix
+- value: a3suffix
+- value: b1suffix
+- value: b2suffix
+- value: b3suffix
+x: suffix
+`)
+				Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+			})
+			It("handles control variable list with index name", func() {
+				source := parseYAML(`
+---
+alice:
+  a1: a
+  a2: b
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+list:
+  <<for: 
+     - name: bob
+       values: (( .bob ))
+       index: key
+     - name: alice
+       values: (( .alice ))
+  <<do:
+    value: (( alice key ":" bob  ))
+
+`)
+				resolved := parseYAML(`
+---
+alice:
+  a1: a
+  a2: b
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+list:
+- value: ab1:1
+- value: bb1:1
+- value: ab2:2
+- value: bb2:2
+- value: ab3:3
+- value: bb3:3
+`)
+				Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+			})
+		})
 	})
 
 	////////////////////////////////////////////////////////////////////////////

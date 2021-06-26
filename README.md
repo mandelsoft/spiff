@@ -5979,30 +5979,44 @@ value: (( local.cases[type(x)] || local.default ))
 ### `<<for:`
 
 The loop control is able to execute a multi-dimensional loop and 
-to produce a list or map based on the value combinations.
+produce a list or map based on the value combinations.
 
 The loop ranges are specified by the value of the `<<for` field.
-It can either be a map or list:
-- *map*: the keys are the names of the control variables and the values
-       must be lists specifying the ranges. If multiple ranges 
-       are specified the variables are alphabetically ordered
-       to determine the traversing order. 
+It is possible ol loop over lists or maps.
+The range specification can be given by either a map or list:
+- *map*: the keys of the map are the names of the control variables and the values
+       must be lists or maps specifying the ranges.
+       
+  The map key might optionally be a comma-separated pair (for example `key,value`) of
+  variable names. In this case the first name is the name for the index
+  variable and the second one for the value variable.
+  
+  If multiple ranges are specified iterations are alphabetically
+  ordered by value variable name (first) and index variable name (second) to
+  determine the traversing order.
+              
 - *list*: if the control variables are defined by a list, each list element
-       must contain two fields:
-    - `name`: the name of the control variable
+   must contain two mandatory and one optional field(s):
+    - `name`: the name of the (list or map entry value) control variable
     - `values`: a list to define the value range.
+    - `index` : (optional) the name of the variable providing the list index
+      or map key of the loop range (defaulted to `index-<name>`)
   
   Here the order in the list determine the traversal order.
   
-Traversal is done by iterating follow up ranges for every entry
+Traversal is done by recursively iterating follow up ranges for every entry
 in the actual range. This means the last range is completely iterated
 for the first values of the first ranges first.
 
-In any case there is an additional binding for every control variable
-describing the actual index of the processed value for this dimension.
-It is denoted by `index-<control varible>`.
+If no index variable is specified for a loop range there is an additional
+implicit binding for every control variable describing the actual list index
+or map key of the processed value for this dimension. It is denoted by
+`index-<control varible>`
 
-The iteratation value is determined by the value of the `<<do` field.
+If multiple loop ranges are specified, the ranges may mix iterations over
+maps and lists.
+
+The iteration result value is determined by the value of the `<<do` field.
 It is implicitly handled as template and is evaluated for every
 set of iteration values. The result of the evaluation is a list.
 
@@ -6018,10 +6032,10 @@ bob:
  - 3
 list:
   <<for: 
-     alice: (( .alice ))
+     key,alice: (( .alice )) # sorted by using alice as primary sort key
      bob: (( .bob ))
   <<do:
-    value: (( alice "-" index-alice "-" bob "-" index-bob ))
+    value: (( alice "-" key "-" bob "-" index-bob ))
 ```
 
 evaluates `list` to
@@ -6042,7 +6056,7 @@ iterates over the values of `bob`.
 A comparable way to do this with regular *dynaml* could look like this:
 
 ```yaml
-list: (( sum[alice|[]|s,index_alice,alice|-> s sum[bob|[]|s,index_bob,bob|->s (alice "-" index_alice "-" bob "-" index_bob)]] ))
+list: (( sum[alice|[]|s,key,alice|-> s sum[bob|[]|s,index_bob,bob|->s (alice "-" key "-" bob "-" index_bob)]] ))
 ```
 
 If the result should be a map it is required to additionally specify the
