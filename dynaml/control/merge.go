@@ -6,10 +6,10 @@ import (
 )
 
 func init() {
-	dynaml.RegisterControl("join", flowJoin)
+	dynaml.RegisterControl("merge", flowMerge)
 }
 
-func flowJoin(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, env dynaml.Binding) (yaml.Node, bool) {
+func flowMerge(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, env dynaml.Binding) (yaml.Node, bool) {
 	switch v := val.Value().(type) {
 	case dynaml.Expression:
 		return node, false
@@ -18,7 +18,7 @@ func flowJoin(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, 
 		if sub != nil {
 			return node, false
 		}
-		return dynaml.ControlIssue("join", node, "invalid value type: %s", dynaml.ExpressionType(v))
+		return dynaml.ControlIssue("merge", node, "invalid value type: %s", dynaml.ExpressionType(v))
 	case map[string]yaml.Node:
 		if !dynaml.IsResolvedNode(val, env) {
 			return node, false
@@ -37,14 +37,14 @@ func flowJoin(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, 
 						fields[k] = e
 					}
 				} else {
-					return dynaml.ControlIssue("join", node, "entry %d: invalid entry type: %s", i, dynaml.ExpressionType(v))
+					return dynaml.ControlIssue("merge", node, "entry %d: invalid entry type: %s", i, dynaml.ExpressionType(v))
 				}
 			}
 		}
 
 	default:
 		if v != nil {
-			return dynaml.ControlIssue("join", node, "invalid value type: %s", dynaml.ExpressionType(v))
+			return dynaml.ControlIssue("merge", node, "invalid value type: %s", dynaml.ExpressionType(v))
 		}
 	}
 	return yaml.NewNode(fields, env.SourceName()), true

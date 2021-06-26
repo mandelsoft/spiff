@@ -9,12 +9,12 @@ import (
 
 var _ = Describe("yaml control", func() {
 
-	Context("join", func() {
+	Context("merge", func() {
 		It("handles nil", func() {
 			source := parseYAML(`
 ---
 map:
-  <<join: (( ~ ))
+  <<merge: (( ~ ))
   alice: 25
 `)
 			resolved := parseYAML(`
@@ -28,7 +28,7 @@ map:
 			source := parseYAML(`
 ---
 map:
-  <<join: (( ~~ ))
+  <<merge: (( ~~ ))
   alice: 25
 `)
 			resolved := parseYAML(`
@@ -42,7 +42,7 @@ map:
 			source := parseYAML(`
 ---
 map:
-  <<join: 
+  <<merge: 
     bob: 26
   alice: 25
 `)
@@ -58,7 +58,7 @@ map:
 			source := parseYAML(`
 ---
 map:
-  <<join: 
+  <<merge: 
     - bob: 26
     - charlie: 27
   alice: 25
@@ -76,7 +76,7 @@ map:
 			source := parseYAML(`
 ---
 map:
-  <<join: 
+  <<merge: 
     - bob: 26
       charlie: 1
     - charlie: 27
@@ -716,12 +716,12 @@ selected: peter
 			Expect(source).To(FlowAs(resolved, stub).WithFeatures(features.CONTROL))
 		})
 
-		It("join handles if", func() {
+		It("merge handles if", func() {
 			source := parseYAML(`
 ---
 x: charlie
 map:
-  <<join: 
+  <<merge: 
     - <<if: (( x == "charlie" ))
       <<then:
         charlie: 27

@@ -224,7 +224,7 @@ Contents:
 	    - [`<<for:`](#for)
 	        - [Lists as Iteration Result](#lists-as-iteration-result)
 	        - [Maps as Iteration Result](#maps-as-iteration-result)
-	    - [`<<join:`](#join)
+	    - [`<<merge:`](#merge)
 - [Structural Auto-Merge](#structural-auto-merge)
 - [Bringing it all together](#bringing-it-all-together)
 - [Useful to Know](#useful-to-know)
@@ -5819,7 +5819,7 @@ If used as value for a map field the resulting value is just used as effective
 value for this field.
 
 If a map should be enriched by maps resulting from multiple control structures
-the special control structure [`<<join:`](#join) can be used. It allows to
+the special control structure [`<<merge:`](#merge) can be used. It allows to
 specify a list of maps which should be merged with the actual control structure
 map to finally build the result value.
 
@@ -6197,20 +6197,20 @@ filtered:
 ```
 
 
-### `<<join:`
+### `<<merge:`
 
-With `join` it is possible to join maps given as list value of the
-`<<join` field with regular map fields from the control structure
-to detimine the final map value.
+With `merge` it is possible to merge maps given as list value of the
+`<<merge` field with regular map fields from the control structure
+to determine the final map value.
 
-The value for `<<join:` may be a single map or a list of maps to join
+The value for `<<merge:` may be a single map or a list of maps to join
 with the directly given fields.
 
 e.g.:
 
 ```yaml
 map:
-  <<join: 
+  <<merge: 
     - bob: 26
       charlie: 1
     - charlie: 27
@@ -6227,6 +6227,9 @@ map:
   charlie: 27
 ```
 
+If multiple maps contain the same key, the last value (in order of list)
+will win.
+
 This might be combined with other control structures, for example to conditionally
 merge multiple maps:
 
@@ -6235,7 +6238,7 @@ e.g.:
 ```yaml
 x: charlie
 map:
-  <<join: 
+  <<merge: 
     - <<if: (( x == "charlie" ))
       <<then:
         charlie: 27
