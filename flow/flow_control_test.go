@@ -272,6 +272,55 @@ x: suffix
 `)
 				Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
 			})
+			It("filters list by undef", func() {
+				source := parseYAML(`
+---
+bob:
+       - 1
+       - 2
+       - 3
+filtered:
+  <<for: 
+     bob: (( .bob ))
+  <<do: (( bob == 2 ? ~~ :bob ))
+`)
+				resolved := parseYAML(`
+---
+bob:
+- 1
+- 2
+- 3
+filtered:
+- 1
+- 3 
+`)
+				Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+			})
+			It("filters list keeping nil value", func() {
+				source := parseYAML(`
+---
+bob:
+       - 1
+       - 2
+       - 3
+filtered:
+  <<for: 
+     bob: (( .bob ))
+  <<do: (( bob == 2 ? ~ :bob ))
+`)
+				resolved := parseYAML(`
+---
+bob:
+- 1
+- 2
+- 3
+filtered:
+- 1
+- ~
+- 3 
+`)
+				Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+			})
 			It("handles list", func() {
 				source := parseYAML(`
 ---
@@ -438,6 +487,81 @@ list:
 		})
 
 		Context("maps", func() {
+			It("filters map by value", func() {
+				source := parseYAML(`
+---
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+filtered:
+  <<for: 
+     key,bob: (( .bob ))
+  <<mapkey: (( key ))
+  <<do: (( bob == 2 ? ~~ :bob ))
+`)
+				resolved := parseYAML(`
+---
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+filtered:
+  b1: 1
+  b3: 3
+`)
+				Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+			})
+			It("filters map by undef key", func() {
+				source := parseYAML(`
+---
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+filtered:
+  <<for: 
+     key,bob: (( .bob ))
+  <<mapkey: (( bob == 2 ? ~~ :key ))
+  <<do: (( bob ))
+`)
+				resolved := parseYAML(`
+---
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+filtered:
+  b1: 1
+  b3: 3
+`)
+				Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+			})
+			It("filters map by nil key", func() {
+				source := parseYAML(`
+---
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+filtered:
+  <<for: 
+     key,bob: (( .bob ))
+  <<mapkey: (( bob == 2 ? ~ :key ))
+  <<do: (( bob ))
+`)
+				resolved := parseYAML(`
+---
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+filtered:
+  b1: 1
+  b3: 3
+`)
+				Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+			})
 			It("handles map", func() {
 				source := parseYAML(`
 ---

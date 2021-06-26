@@ -243,6 +243,7 @@ outer:
 			inp[ranges[i].IndexName()] = yaml.NewNode(ranges[i].Index(), "for")
 		}
 		scope := env.WithLocalScope(inp)
+		skip := false
 		key := ""
 		if mapkey != nil {
 			k, info, ok := mapkey.Evaluate(scope, false)
@@ -250,9 +251,13 @@ outer:
 				done = false
 				issue.Nested = append(issue.Nested, controlVariablesIssue(ranges, info.Issue))
 			}
-			if key, ok = k.(string); !ok {
-				done = false
-				issue.Nested = append(issue.Nested, controlVariablesIssue(ranges, yaml.NewIssue("map key must be string, but found %s", dynaml.ExpressionType(k))))
+			if info.Undefined || k == nil {
+				skip = true
+			} else {
+				if key, ok = k.(string); !ok {
+					done = false
+					issue.Nested = append(issue.Nested, controlVariablesIssue(ranges, yaml.NewIssue("map key must be string, but found %s", dynaml.ExpressionType(k))))
+				}
 			}
 		}
 		if subst != nil {
@@ -264,10 +269,12 @@ outer:
 				if dynaml.IsExpression(v) {
 					done = false
 				} else {
-					if mapkey != nil {
-						resultmap[key] = yaml.NewNode(v, node.SourceName())
-					} else {
-						resultlist = append(resultlist, yaml.NewNode(v, node.SourceName()))
+					if !skip && !info.Undefined {
+						if mapkey != nil {
+							resultmap[key] = yaml.NewNode(v, node.SourceName())
+						} else {
+							resultlist = append(resultlist, yaml.NewNode(v, node.SourceName()))
+						}
 					}
 				}
 			}

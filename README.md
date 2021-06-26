@@ -222,6 +222,8 @@ Contents:
 	    - [`<<switch:`](#switch)
 	    - [`<<type:`](#type)
 	    - [`<<for:`](#for)
+	        - [Lists as Iteration Result](#lists-as-iteration-result)
+	        - [Maps as Iteration Result](#maps-as-iteration-result)
 	    - [`<<join:`](#join)
 - [Structural Auto-Merge](#structural-auto-merge)
 - [Bringing it all together](#bringing-it-all-together)
@@ -6018,7 +6020,11 @@ maps and lists.
 
 The iteration result value is determined by the value of the `<<do` field.
 It is implicitly handled as template and is evaluated for every
-set of iteration values. The result of the evaluation is a list.
+set of iteration values. 
+
+#### Lists as Iteration Result
+
+The result of the evaluation using only the `<<do` value field is a list.
 
 e.g.:
 
@@ -6059,7 +6065,38 @@ A comparable way to do this with regular *dynaml* could look like this:
 list: (( sum[alice|[]|s,key,alice|-> s sum[bob|[]|s,index_bob,bob|->s (alice "-" key "-" bob "-" index_bob)]] ))
 ```
 
-If the result should be a map it is required to additionally specify the
+A result list may omit entries if the value expression evaluates to the undefined
+value (`~~`). The nil value  (`~`) is kept. This way a  `for` control can be used
+to filter lists.
+
+e.g.: 
+
+```yaml
+bob:
+- 1
+- 2
+- 3
+filtered:
+  <<for: 
+     bob: (( .bob ))
+  <<do: (( bob == 2 ? ~~ :bob ))
+```
+
+resolves to
+
+```yaml
+bob:
+- 1
+- 2
+- 3
+filtered:
+- 1
+- 3 
+```
+
+#### Maps as Iteration Result
+
+If the result should be a map it is required to additionally specify a
 key value for every iteration. This is specified by the optional `<<mapkey`
 field. Like the `<<do` field it is implicitly handled as template and re-evaluated
 for every iteration.
@@ -6106,7 +6143,7 @@ map:
     value: b3suffix
 ```
 
-Here the traversal order is irrelevant as log as the generated key values
+Here the traversal order is irrelevant as long as the generated key values
 are unique. If several evaluations of the key expression yield the same 
 value the last one will win.
 
@@ -6115,6 +6152,50 @@ A comparable way to do this with regular *dynaml* could look like this:
 ```yaml
 map: (( sum[alice|{}|s,index_alice,alice|-> s sum[bob|{}|s,index_bob,bob|->s {(alice bob)=alice bob x}]] ))
 ```
+
+An iteration value is ignored if the key or the value evaluate to the undefined
+value `(( ~~ ))`. Additionally the key may evaluate to the nil value `(( ~ ))`, also.
+
+e.g.:
+
+```yaml
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+filtered:
+  <<for: 
+     key,bob: (( .bob ))
+  <<mapkey: (( key ))
+  <<do: (( bob == 2 ? ~~ :bob ))
+```
+
+or
+
+```yaml
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+filtered:
+  <<for: 
+     key,bob: (( .bob ))
+  <<mapkey: (( bob == 2 ? ~~ :key ))
+  <<do: (( bob ))
+```
+
+resolve to
+
+```yaml
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+filtered:
+  b1: 1
+  b3: 3
+```
+
 
 ### `<<join:`
 

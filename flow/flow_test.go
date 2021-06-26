@@ -5533,6 +5533,23 @@ inst:
 		})
 
 		Context("direct usage for map", func() {
+			It("preserves  undef", func() {
+				source := parseYAML(`
+---
+templ: (( &template( __ctx.PATH[0] == "alice" ? ~~ :"alice") ))
+
+alice: (( *templ ))
+bob: (( *templ ))
+`)
+				resolved, _ := Flow(parseYAML(`
+---
+templ: (( &template( __ctx.PATH[0] == "alice" ? ~~ :"alice") ))
+
+bob: alice
+`))
+				Expect(source).To(FlowAs(resolved))
+			})
+
 			It("uses usage context", func() {
 				source := parseYAML(`
 ---

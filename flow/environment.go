@@ -281,7 +281,8 @@ func (e *DefaultEnvironment) Flow(source yaml.Node, shouldOverride bool) (yaml.N
 		debug.Debug("@@{ loop:  %+v\n", result)
 		next := flow(result, e, shouldOverride, false)
 		if next.Undefined() {
-			next = node(nil)
+			result = yaml.UndefinedNode(node(nil))
+			break
 		}
 		debug.Debug("@@} --->   %+v\n", next)
 

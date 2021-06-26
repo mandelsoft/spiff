@@ -30,6 +30,9 @@ func (e SubstitutionExpr) Evaluate(binding Binding, locally bool) (interface{}, 
 	debug.Debug("resolving template '%s' %s\n", strings.Join(template.Path, "."), binding)
 	result, state := binding.WithLocalScope(inp).Flow(prepared, false)
 	info = DefaultInfo()
+	if result != nil && result.Undefined() {
+		info.Undefined = true
+	}
 	if state != nil {
 		if state.HasError() {
 			debug.Debug("resolving template failed: " + state.Error())
