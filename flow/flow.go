@@ -417,7 +417,7 @@ func flowMap(root yaml.Node, env dynaml.Binding, shouldOverride, template bool) 
 				}
 			} else {
 				if processed {
-					val = flow(val, env.WithPath(key), shouldOverride, dynaml.RequireTemplate(key))
+					val = flow(val, env.WithPath(key), shouldOverride, dynaml.RequireTemplate(key, env))
 				} else {
 					debug.Debug("skip %q flow for unprocessed indication\n", key)
 				}

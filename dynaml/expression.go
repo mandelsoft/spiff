@@ -24,7 +24,7 @@ type State interface {
 	OSAccessAllowed() bool
 	FileAccessAllowed() bool
 	FileSystem() vfs.VFS
-	GetFunctions() Registry
+	GetRegistry() Registry
 	GetFeatures() features.FeatureFlags
 	InterpolationEnabled() bool
 	ControlEnabled() bool

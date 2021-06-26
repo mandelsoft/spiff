@@ -30,7 +30,7 @@ type State struct {
 	key        string            // default encryption key
 	mode       int
 	fileSystem vfs.VFS // virtual filesystem to use for filesystem based operations
-	functions  dynaml.Registry
+	registry   dynaml.Registry
 	features   features.FeatureFlags
 	tags       map[string]*dynaml.TagInfo
 	docno      int // document number
@@ -57,6 +57,7 @@ func NewState(key string, mode int, optfs ...vfs.FileSystem) *State {
 		fileSystem: vfs.New(fs),
 		docno:      1,
 		features:   features.Features(),
+		registry:   dynaml.DefaultRegistry(),
 	}
 }
 
@@ -64,8 +65,11 @@ func NewDefaultState() *State {
 	return NewState(features.EncryptionKey(), MODE_OS_ACCESS|MODE_FILE_ACCESS)
 }
 
-func (s *State) SetFunctions(f dynaml.Registry) *State {
-	s.functions = f
+func (s *State) SetRegistry(r dynaml.Registry) *State {
+	if r == nil {
+		r = dynaml.DefaultRegistry()
+	}
+	s.registry = r
 	return s
 }
 func (s *State) SetFeatures(f features.FeatureFlags) *State {
@@ -111,11 +115,11 @@ func (s *State) FileSystem() vfs.VFS {
 	return s.fileSystem
 }
 
-func (s *State) GetFunctions() dynaml.Registry {
+func (s *State) GetRegistry() dynaml.Registry {
 	if s == nil {
-		return nil
+		return dynaml.DefaultRegistry()
 	}
-	return s.functions
+	return s.registry
 }
 
 func (s *State) GetFeatures() features.FeatureFlags {

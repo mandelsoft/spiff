@@ -27,8 +27,12 @@ type Node = yaml.Node
 type Options = flow.Options
 
 // Functions provides access to a set of spiff functions used to extend
-// the standrd function set
-type Functions = dynaml.Registry
+// the standard function set
+type Functions = dynaml.Functions
+
+// Controls provides access to a set of spiff controls used to extend
+// the standard control set
+type Controls = dynaml.Controls
 
 // Spiff is a configuration and execution context for
 // executing spiff operations
@@ -47,6 +51,10 @@ type Spiff interface {
 	// WithFunctions creates a new context with the given
 	// additional function definitions
 	WithFunctions(functions Functions) Spiff
+	// WithFunctions creates a new context with the given
+	// additional function definitions
+	WithControls(controls Controls) Spiff
+
 	// WithFeatures creates a new context with the given
 	// additional features enabled
 	WithFeatures(features ...string) Spiff
@@ -56,6 +64,7 @@ type Spiff interface {
 	// WithControl creates a new context with the yaml based control structure
 	// feature enabled/disabled
 	WithControl(b bool) Spiff
+
 	// WithValues creates a new context with the given
 	// additional structured values usable by path expressions
 	// during processing.

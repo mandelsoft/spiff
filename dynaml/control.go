@@ -10,15 +10,64 @@ import (
 type ControlFunction func(val yaml.Node, node yaml.Node, m, opts map[string]yaml.Node, env Binding) (yaml.Node, bool)
 
 type Control struct {
-	Name     string
-	Options  map[string]bool
-	Function ControlFunction
+	name     string
+	options  map[string]bool
+	function ControlFunction
 }
 
-var controls = map[string]*Control{}
-var templateoptions = map[string]struct{}{}
+func (c *Control) Name() string {
+	return c.name
+}
 
-func RegisterControl(name string, f ControlFunction, opts ...string) {
+func (c *Control) Options() []string {
+	l := []string{}
+	for n := range c.options {
+		l = append(l, n)
+	}
+	return l
+}
+
+func (c *Control) HasOption(name string) bool {
+	_, ok := c.options[name]
+	return ok
+}
+
+func (c *Control) IsTemplateOption(name string) bool {
+	return c.options[name]
+}
+
+func (c *Control) Function(val yaml.Node, node yaml.Node, m, opts map[string]yaml.Node, env Binding) (yaml.Node, bool) {
+	return c.function(val, node, m, opts, env)
+}
+
+type Controls interface {
+	RegisterControl(name string, f ControlFunction, opts ...string) error
+	LookupControl(name string) (*Control, bool)
+	IsTemplateControlOption(name string) bool
+}
+
+type controlRegistry struct {
+	controls        map[string]*Control
+	templateoptions map[string]struct{}
+}
+
+func newControls() *controlRegistry {
+	return &controlRegistry{map[string]*Control{}, map[string]struct{}{}}
+}
+
+func NewControls() Controls {
+	r := newControls()
+
+	for n, c := range control_registry.controls {
+		r.controls[n] = c
+	}
+	for n := range control_registry.templateoptions {
+		r.templateoptions[n] = struct{}{}
+	}
+	return r
+}
+
+func (r *controlRegistry) RegisterControl(name string, f ControlFunction, opts ...string) error {
 	m := map[string]bool{}
 	for _, o := range opts {
 		t := false
@@ -28,32 +77,52 @@ func RegisterControl(name string, f ControlFunction, opts ...string) {
 		}
 		m[o] = t
 
-		if _, ok := templateoptions[o]; ok && !t {
-			panic(fmt.Sprintf("ambigious control option template setting for %q", o))
+		if _, ok := r.templateoptions[o]; ok && !t {
+			return fmt.Errorf("ambigious control option template setting for %q", o)
 		}
 		if t {
-			templateoptions[o] = struct{}{}
+			r.templateoptions[o] = struct{}{}
 		}
 	}
 	c := &Control{
-		Name:     name,
-		Options:  m,
-		Function: f,
+		name:     name,
+		options:  m,
+		function: f,
 	}
-	if _, ok := controls[c.Name]; ok {
-		panic(fmt.Sprintf("control or option %q already defined", c.Name))
+	if _, ok := r.controls[c.name]; ok {
+		return fmt.Errorf("control or option %q already defined", c.name)
 	}
-	controls[c.Name] = c
+	r.controls[c.name] = c
 	for _, o := range opts {
 		if strings.HasPrefix(o, "*") {
 			o = o[1:]
 		}
-		if old, ok := controls[o]; ok {
+		if old, ok := r.controls[o]; ok {
 			if old != nil {
-				panic(fmt.Sprintf("option %q for control %q already defined as control", o, c.Name))
+				return fmt.Errorf("option %q for control %q already defined as control", o, c.name)
 			}
 		}
-		controls[o] = nil
+		r.controls[o] = nil
+	}
+	return nil
+}
+
+func (r *controlRegistry) LookupControl(name string) (*Control, bool) {
+	c, ok := r.controls[name]
+	return c, ok
+}
+
+func (r *controlRegistry) IsTemplateControlOption(name string) bool {
+	_, ok := r.templateoptions[name]
+	return ok
+}
+
+var control_registry = newControls()
+
+func RegisterControl(name string, f ControlFunction, opts ...string) {
+	err := control_registry.RegisterControl(name, f, opts...)
+	if err != nil {
+		panic(err.Error())
 	}
 }
 
@@ -87,16 +156,17 @@ func IsControl(val interface{}, env Binding) (bool, error) {
 	return false, nil
 }
 
-func RequireTemplate(opt string) bool {
+func RequireTemplate(opt string, env Binding) bool {
+	registry := env.GetState().GetRegistry()
 	if strings.HasPrefix(opt, "<<") {
-		_, ok := templateoptions[opt[2:]]
-		return ok
+		return registry.IsTemplateControlOption(opt[2:])
 	}
 	return false
 }
 
 func GetControl(m map[string]yaml.Node, env Binding) (*Control, yaml.Node, map[string]yaml.Node, map[string]yaml.Node, error) {
 	if env.GetFeatures().ControlEnabled() {
+		registry := env.GetState().GetRegistry()
 		var name string
 		var val yaml.Node
 		var control *Control
@@ -106,7 +176,7 @@ func GetControl(m map[string]yaml.Node, env Binding) (*Control, yaml.Node, map[s
 			if strings.HasPrefix(k, "<<") {
 				n := k[2:]
 				if n != "" && n != "<" && n[0] != '!' {
-					c, ok := controls[n]
+					c, ok := registry.LookupControl(n)
 					if !ok {
 						return nil, nil, nil, nil, fmt.Errorf("unknown control or control option %q", k)
 					}
@@ -135,8 +205,8 @@ func GetControl(m map[string]yaml.Node, env Binding) (*Control, yaml.Node, map[s
 
 func (c *Control) CheckOpts(opts map[string]yaml.Node) error {
 	for o := range opts {
-		if _, ok := c.Options[o]; !ok {
-			return fmt.Errorf("invalid option %q for control %q", o, c.Name)
+		if _, ok := c.options[o]; !ok {
+			return fmt.Errorf("invalid option %q for control %q", o, c.name)
 		}
 	}
 	return nil

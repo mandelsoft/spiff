@@ -61,21 +61,26 @@ func (s *sourceData) Data() ([]byte, error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 type spiff struct {
-	key       string
-	mode      int
-	fs        vfs.FileSystem
-	opts      flow.Options
-	values    map[string]yaml.Node
-	functions Functions
-	tags      map[string]*dynaml.Tag
-	features  features.FeatureFlags
+	key      string
+	mode     int
+	fs       vfs.FileSystem
+	opts     flow.Options
+	values   map[string]yaml.Node
+	registry dynaml.Registry
+	tags     map[string]*dynaml.Tag
+	features features.FeatureFlags
 
 	binding dynaml.Binding
 }
 
 // NewFunctions provides a new registry for additional spiff functions
 func NewFunctions() Functions {
-	return dynaml.NewRegistry()
+	return dynaml.NewFunctions()
+}
+
+// NewControls provides a new registry for additional spiff controls
+func NewControls() Controls {
+	return dynaml.NewControls()
 }
 
 // New creates a new default spiff context.
@@ -113,7 +118,7 @@ func (s *spiff) ResetStream() Spiff {
 func (s *spiff) assureBinding() {
 	if s.binding == nil {
 		state := flow.NewState(s.key, s.mode, s.fs).
-			SetFunctions(s.functions).
+			SetRegistry(s.registry).
 			SetFeatures(s.features)
 		if len(s.tags) > 0 {
 			var tags []*dynaml.Tag
@@ -185,7 +190,14 @@ func (s spiff) WithFileSystem(fs vfs.FileSystem) Spiff {
 // WithFunctions creates a new context with the given
 // additional function definitions
 func (s spiff) WithFunctions(functions Functions) Spiff {
-	s.functions = functions
+	s.registry = s.registry.WithFunctions(functions)
+	return s.Reset()
+}
+
+// WithControls creates a new context with the given
+// control definitions
+func (s spiff) WithControls(controls Controls) Spiff {
+	s.registry = s.registry.WithControls(controls)
 	return s.Reset()
 }
 
