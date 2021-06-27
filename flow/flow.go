@@ -298,6 +298,7 @@ func flowMap(root yaml.Node, env dynaml.Binding, shouldOverride, template bool) 
 	redirect := root.RedirectPath()
 	replace := root.ReplaceFlag()
 	newMap := make(map[string]yaml.Node)
+	undefined := make(map[string]yaml.Node)
 
 	debug.Debug("HANDLE MAP %v (template=%t)\n", env.Path(), template)
 	addEntries := true
@@ -429,6 +430,8 @@ func flowMap(root yaml.Node, env dynaml.Binding, shouldOverride, template bool) 
 					val = yaml.AddFlags(val, yaml.FLAG_IMPLIED)
 				}
 				newMap[key] = val
+			} else {
+				undefined[key] = val
 			}
 		}
 	}
@@ -470,7 +473,7 @@ func flowMap(root yaml.Node, env dynaml.Binding, shouldOverride, template bool) 
 			node = yaml.IssueNode(node, true, true, issue)
 		}
 	} else {
-		node, _, _ = flowControl(node, env)
+		node, _, _ = flowControl(node, undefined, env)
 	}
 	return updateNode(node, flags, tag)
 }

@@ -172,7 +172,7 @@ func ControlIssueByIssue(ctx *ControlContext, issue yaml.Issue, final bool) (yam
 
 func IsControl(val interface{}, env Binding) (bool, error) {
 	if n, ok := val.(map[string]yaml.Node); ok {
-		c, _, _, _, err := GetControl(n, env)
+		c, _, _, _, err := GetControl(n, nil, env)
 		return c != nil, err
 	}
 	return false, nil
@@ -186,7 +186,7 @@ func RequireTemplate(opt string, env Binding) bool {
 	return false
 }
 
-func GetControl(m map[string]yaml.Node, env Binding) (*Control, yaml.Node, map[string]yaml.Node, map[string]yaml.Node, error) {
+func GetControl(m, undef map[string]yaml.Node, env Binding) (*Control, yaml.Node, map[string]yaml.Node, map[string]yaml.Node, error) {
 	if env.GetFeatures().ControlEnabled() {
 		registry := env.GetState().GetRegistry()
 		var name string
@@ -218,6 +218,26 @@ func GetControl(m map[string]yaml.Node, env Binding) (*Control, yaml.Node, map[s
 			fields[k] = v
 		}
 
+		if control == nil {
+			// preserve undef control node
+			for k, v := range undef {
+				if strings.HasPrefix(k, "<<") {
+					n := k[2:]
+					if n != "" && n != "<" && n[0] != '!' {
+						c, _ := registry.LookupControl(n)
+						if c != nil {
+							if control != nil {
+								return nil, nil, nil, nil, fmt.Errorf("multiple controls %q and %q", name, k)
+							}
+							name = k
+							control = c
+							val = v
+							m[k] = val
+						}
+					}
+				}
+			}
+		}
 		if control != nil {
 			return control, val, fields, opts, control.CheckOpts(opts)
 		} else {
@@ -249,5 +269,5 @@ func ControlReady(ctx *ControlContext, acceptFields bool) (yaml.Node, bool) {
 	if !acceptFields && ctx.HasFields() {
 		return ControlIssue(ctx, "no regular fields %v allowed", ctx.SortedFields())
 	}
-	return ctx.Node, IsResolvedNode(ctx.Value, ctx) && isResolvedValue(ctx.Options, ctx) && isResolvedValue(ctx.Fields, ctx)
+	return ctx.Node, (ctx.Value.Undefined() || IsResolvedNode(ctx.Value, ctx)) && _isResolvedValue(ctx.Options, true, ctx) && _isResolvedValue(ctx.Fields, true, ctx)
 }

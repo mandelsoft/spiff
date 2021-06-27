@@ -310,7 +310,18 @@ func isResolved(node yaml.Node, binding Binding) bool {
 	return node == nil || isResolvedValue(node.Value(), binding)
 }
 
+func _isResolved(node yaml.Node, acceptFailed bool, binding Binding) bool {
+	if node == nil || (acceptFailed && (node.Failed() || node.HasError())) {
+		return true
+	}
+	return _isResolvedValue(node.Value(), acceptFailed, binding)
+}
+
 func isResolvedValue(val interface{}, binding Binding) bool {
+	return _isResolvedValue(val, false, binding)
+}
+
+func _isResolvedValue(val interface{}, acceptFailed bool, binding Binding) bool {
 	if val == nil {
 		return true
 	}
@@ -319,7 +330,7 @@ func isResolvedValue(val interface{}, binding Binding) bool {
 		return false
 	case []yaml.Node:
 		for _, n := range v {
-			if !isResolved(n, binding) {
+			if !_isResolved(n, acceptFailed, binding) {
 				return false
 			}
 		}
@@ -329,7 +340,7 @@ func isResolvedValue(val interface{}, binding Binding) bool {
 			return false
 		}
 		for _, n := range v {
-			if !isResolved(n, binding) {
+			if !_isResolved(n, acceptFailed, binding) {
 				return false
 			}
 		}

@@ -89,17 +89,21 @@ func (matcher *FlowAsMatcher) NegatedFailureMessage(actual interface{}) (message
 func FlowToErr(expected string, stubs ...yaml.Node) *FlowErrAsMatcher {
 	expected = `unresolved nodes:
 ` + expected
-	return &FlowErrAsMatcher{Expected: expected, Stubs: stubs}
+	matcher := &FlowErrAsMatcher{Expected: expected}
+	support := &MatcherSupport{OmegaMatcher: matcher, Stubs: stubs}
+	matcher.MatcherSupport = support
+	return matcher
 }
 
 type FlowErrAsMatcher struct {
+	*MatcherSupport
 	Expected string
-	Stubs    []yaml.Node
 	actual   string
 }
 
 func (matcher *FlowErrAsMatcher) Match(source interface{}) (success bool, err error) {
-	_, err = Flow(source.(yaml.Node), matcher.Stubs...)
+	env := matcher.createEnv()
+	_, err = NestedFlow(env, source.(yaml.Node), matcher.Stubs...)
 	if err == nil {
 		return false, fmt.Errorf("no error reported")
 	}

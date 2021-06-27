@@ -10,11 +10,8 @@ func init() {
 }
 
 func flowSwitch(ctx *dynaml.ControlContext) (yaml.Node, bool) {
-	if e, ok := ctx.Value.Value().(dynaml.Expression); ok {
-		_, info, _ := e.Evaluate(ctx, false)
-		if info.Undefined {
-			return yaml.UndefinedNode(dynaml.NewNode(nil, ctx)), true
-		}
+	if ctx.Value.Undefined() {
+		return yaml.UndefinedNode(dynaml.NewNode(nil, ctx)), true
 	}
 	if node, ok := dynaml.ControlReady(ctx, true); !ok {
 		return node, false

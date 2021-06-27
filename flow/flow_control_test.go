@@ -928,4 +928,48 @@ selected:
 			Expect(source).To(CascadeAs(resolved, stub).WithFeatures(features.CONTROL))
 		})
 	})
+
+	////////////////////////////////////////////////////////////////////////////////
+
+	Context("error", func() {
+		It("ignores unused error nodes", func() {
+			source := parseYAML(`
+---
+x: test
+cond:
+  <<if: (( x == "test" ))
+  <<then: alice
+  <<else: (( 1 / 0 ))
+`)
+			resolved := parseYAML(`
+---
+x: test
+cond: alice
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+		It("fails for used error nodes", func() {
+			source := parseYAML(`
+---
+x: test1
+cond:
+  <<if: (( x == "test" ))
+  <<then: alice
+  <<else: (( 1 / 0 ))
+`)
+			Expect(source).To(FlowToErr("\t(( 1 / 0 ))\tin test\tcond.<<else\t()\t*division by zero").WithFeatures(features.CONTROL))
+		})
+		It("fails for used seep error nodes", func() {
+			source := parseYAML(`
+---
+x: test1
+cond:
+  <<if: (( x == "test" ))
+  <<then: alice
+  <<else:
+    nested: (( 1 / 0 ))
+`)
+			Expect(source).To(FlowToErr("\t(( 1 / 0 ))\tin test\tcond.<<else.nested\t()\t*division by zero").WithFeatures(features.CONTROL))
+		})
+	})
 })

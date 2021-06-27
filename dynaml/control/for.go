@@ -118,6 +118,9 @@ func flowFor(ctx *dynaml.ControlContext) (yaml.Node, bool) {
 		return dynaml.ControlIssue(ctx, "do field required")
 	}
 
+	if ctx.Value.Undefined() {
+		return yaml.UndefinedNode(dynaml.NewNode(nil, ctx)), true
+	}
 	var mapkey *dynaml.SubstitutionExpr
 	if k := ctx.Option("mapkey"); k != nil {
 		if t, ok := k.Value().(dynaml.TemplateValue); ok {
@@ -165,7 +168,7 @@ func flowFor(ctx *dynaml.ControlContext) (yaml.Node, bool) {
 		for i, v := range def {
 			spec, ok := v.Value().(map[string]yaml.Node)
 			if !ok {
-				return dynaml.ControlIssue(ctx, "control variable list entry requires may but got %s", dynaml.ExpressionType(v.Value()))
+				return dynaml.ControlIssue(ctx, "control variable list entry requires may but got %s", dynaml.ExpressionType(v))
 			}
 			n := spec["name"]
 			if n == nil {
@@ -177,7 +180,7 @@ func flowFor(ctx *dynaml.ControlContext) (yaml.Node, bool) {
 			if n != nil {
 				index, ok = n.Value().(string)
 				if !ok {
-					return dynaml.ControlIssue(ctx, "control index variable name must be of type string but got %s", dynaml.ExpressionType(n.Value()))
+					return dynaml.ControlIssue(ctx, "control index variable name must be of type string but got %s", dynaml.ExpressionType(n))
 				}
 			}
 			l := spec["values"]
@@ -338,7 +341,7 @@ func controlIterator(name string, val yaml.Node) (iterator, error) {
 		}
 		it = newMapIterator(values)
 	default:
-		return nil, fmt.Errorf("control variable %q requires list or map value, but got %s", name, dynaml.ExpressionType(val.Value()))
+		return nil, fmt.Errorf("control variable %q requires list or map value, but got %s", name, dynaml.ExpressionType(val))
 	}
 	return it, nil
 }
