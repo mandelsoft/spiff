@@ -5914,6 +5914,8 @@ If it is not found the value of the optional field `<<default` is used. If no de
 is specified, the control structure evaluates to an error, if no appropriate
 regular field is available.
 
+The *nil* value matches the `default` case. If the switch value is undefined
+the control evaluates to the undefined value `(( ~~ ))`.
 
 e.g.:
 

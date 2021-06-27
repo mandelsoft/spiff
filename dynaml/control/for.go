@@ -108,31 +108,22 @@ func (this *mapIterator) Value(i int) yaml.Node {
 	return this.values[this.keys[i]]
 }
 
-func flowFor(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, env dynaml.Binding) (yaml.Node, bool) {
-	for range fields {
-		return dynaml.ControlIssue("for", node, "no regular fields allowed in for control")
+func flowFor(ctx *dynaml.ControlContext) (yaml.Node, bool) {
+	if node, ok := dynaml.ControlReady(ctx, false); !ok {
+		return node, ok
 	}
-	if !dynaml.IsResolvedNode(val, env) {
-		return node, false
-	}
-	body, ok := opts["do"]
-	if !ok {
-		return dynaml.ControlIssue("for", node, "do fields required in for control")
-	}
-	if !dynaml.IsResolvedNode(body, env) {
-		return node, false
+
+	body := ctx.Option("do")
+	if body == nil {
+		return dynaml.ControlIssue(ctx, "do field required")
 	}
 
 	var mapkey *dynaml.SubstitutionExpr
-	k, ok := opts["mapkey"]
-	if ok {
-		if !dynaml.IsResolvedNode(k, env) {
-			return node, false
-		}
+	if k := ctx.Option("mapkey"); k != nil {
 		if t, ok := k.Value().(dynaml.TemplateValue); ok {
 			mapkey = &dynaml.SubstitutionExpr{dynaml.ValueExpr{t}}
 		} else {
-			return dynaml.ControlIssue("for", node, "mapkey must be an expression")
+			return dynaml.ControlIssue(ctx, "mapkey must be an expression")
 		}
 	}
 
@@ -141,7 +132,7 @@ func flowFor(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, e
 		subst = &dynaml.SubstitutionExpr{dynaml.ValueExpr{t}}
 	}
 	ranges := iterations{}
-	switch def := val.Value().(type) {
+	switch def := ctx.Value.Value().(type) {
 	case map[string]yaml.Node:
 		ranges = make(iterations, len(def))
 		i := 0
@@ -157,15 +148,15 @@ func flowFor(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, e
 			case 1:
 				name = strings.TrimSpace(parts[0])
 			default:
-				return dynaml.ControlIssue("for", node, "invalid control variable spec %q", v)
+				return dynaml.ControlIssue(ctx, "invalid control variable spec %q", v)
 			}
 			it, err := controlIterator(name, values)
 			if err != nil {
-				return dynaml.ControlIssue("for", node, err.Error())
+				return dynaml.ControlIssue(ctx, err.Error())
 			}
 			ranges[len(ranges)-i], err = controlIteration(name, index, it)
 			if err != nil {
-				return dynaml.ControlIssue("for", node, err.Error())
+				return dynaml.ControlIssue(ctx, err.Error())
 			}
 		}
 		sort.Sort(ranges)
@@ -174,11 +165,11 @@ func flowFor(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, e
 		for i, v := range def {
 			spec, ok := v.Value().(map[string]yaml.Node)
 			if !ok {
-				return dynaml.ControlIssue("for", node, "control variable list entry requires may but got %s", dynaml.ExpressionType(v.Value()))
+				return dynaml.ControlIssue(ctx, "control variable list entry requires may but got %s", dynaml.ExpressionType(v.Value()))
 			}
 			n := spec["name"]
 			if n == nil {
-				return dynaml.ControlIssue("for", node, "control variable list entry requires name field")
+				return dynaml.ControlIssue(ctx, "control variable list entry requires name field")
 			}
 			name, ok := n.Value().(string)
 			index := ""
@@ -186,20 +177,20 @@ func flowFor(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, e
 			if n != nil {
 				index, ok = n.Value().(string)
 				if !ok {
-					return dynaml.ControlIssue("for", node, "control index variable name must be of type string but got %s", dynaml.ExpressionType(n.Value()))
+					return dynaml.ControlIssue(ctx, "control index variable name must be of type string but got %s", dynaml.ExpressionType(n.Value()))
 				}
 			}
 			l := spec["values"]
 			if l == nil {
-				return dynaml.ControlIssue("for", node, "control variable list entry requires values field")
+				return dynaml.ControlIssue(ctx, "control variable list entry requires values field")
 			}
 			it, err := controlIterator(name, l)
 			if err != nil {
-				return dynaml.ControlIssue("for", node, err.Error())
+				return dynaml.ControlIssue(ctx, err.Error())
 			}
 
 			if len(spec) < 2 || len(spec) > 3 {
-				return dynaml.ControlIssue("for", node, "control variable list entry requires two or three fields: name, values and optionally index")
+				return dynaml.ControlIssue(ctx, "control variable list entry requires two or three fields: name, values and optionally index")
 			}
 
 			if len(spec) == 3 && index == "" {
@@ -209,18 +200,18 @@ func flowFor(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, e
 					case "values":
 					case "index":
 					default:
-						return dynaml.ControlIssue("for", node, "invalid control variable list entry field %q", k)
+						return dynaml.ControlIssue(ctx, "invalid control variable list entry field %q", k)
 					}
 				}
 			}
 
 			ranges[len(ranges)-i-1], err = controlIteration(name, index, it)
 			if err != nil {
-				return dynaml.ControlIssue("for", node, err.Error())
+				return dynaml.ControlIssue(ctx, err.Error())
 			}
 		}
 	default:
-		return dynaml.ControlIssue("for", node, "value field must be map but got %s", dynaml.ExpressionType(def))
+		return dynaml.ControlIssue(ctx, "value field must be map but got %s", dynaml.ExpressionType(def))
 	}
 
 	var resultlist []yaml.Node
@@ -242,7 +233,7 @@ outer:
 			inp[ranges[i].name] = ranges[i].Value()
 			inp[ranges[i].IndexName()] = yaml.NewNode(ranges[i].Index(), "for")
 		}
-		scope := env.WithLocalScope(inp)
+		scope := ctx.WithLocalScope(inp)
 		skip := false
 		key := ""
 		if mapkey != nil {
@@ -271,18 +262,18 @@ outer:
 				} else {
 					if !skip && !info.Undefined {
 						if mapkey != nil {
-							resultmap[key] = yaml.NewNode(v, node.SourceName())
+							resultmap[key] = dynaml.NewNode(v, ctx)
 						} else {
-							resultlist = append(resultlist, yaml.NewNode(v, node.SourceName()))
+							resultlist = append(resultlist, dynaml.NewNode(v, ctx))
 						}
 					}
 				}
 			}
 		} else {
 			if mapkey != nil {
-				resultmap[key] = opts["do"]
+				resultmap[key] = body
 			} else {
-				resultlist = append(resultlist, opts["do"])
+				resultlist = append(resultlist, body)
 			}
 		}
 
@@ -299,15 +290,15 @@ outer:
 	}
 	if !done {
 		if len(issue.Nested) > 0 {
-			issue.Issue = "error evaluationg for body"
-			return dynaml.ControlIssueByIssue("for", node, issue, false)
+			issue.Issue = "error evaluating body"
+			return dynaml.ControlIssueByIssue(ctx, issue, false)
 		}
-		return node, false
+		return ctx.Node, false
 	}
 	if resultlist != nil {
-		return yaml.NewNode(resultlist, node.SourceName()), true
+		return dynaml.NewNode(resultlist, ctx), true
 	}
-	return yaml.NewNode(resultmap, node.SourceName()), true
+	return dynaml.NewNode(resultmap, ctx), true
 }
 
 var namesyntax = regexp.MustCompile("[a-zA-Z0-9_]+")

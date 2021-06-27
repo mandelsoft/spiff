@@ -7,7 +7,29 @@ import (
 	"github.com/mandelsoft/spiff/yaml"
 )
 
-type ControlFunction func(val yaml.Node, node yaml.Node, m, opts map[string]yaml.Node, env Binding) (yaml.Node, bool)
+type ControlContext struct {
+	Binding
+	*Control
+	Value   yaml.Node
+	Node    yaml.Node
+	Fields  map[string]yaml.Node
+	Options map[string]yaml.Node
+}
+
+func (c *ControlContext) Option(name string) yaml.Node {
+	return c.Options[name]
+}
+func (c *ControlContext) Field(name string) yaml.Node {
+	return c.Fields[name]
+}
+func (c *ControlContext) HasFields() bool {
+	return len(c.Fields) != 0
+}
+func (c *ControlContext) SortedFields() []string {
+	return yaml.GetSortedKeys(c.Fields)
+}
+
+type ControlFunction func(*ControlContext) (yaml.Node, bool)
 
 type Control struct {
 	name     string
@@ -36,8 +58,9 @@ func (c *Control) IsTemplateOption(name string) bool {
 	return c.options[name]
 }
 
-func (c *Control) Function(val yaml.Node, node yaml.Node, m, opts map[string]yaml.Node, env Binding) (yaml.Node, bool) {
-	return c.function(val, node, m, opts, env)
+func (c *Control) Function(env *ControlContext) (yaml.Node, bool) {
+	env.Control = c
+	return c.function(env)
 }
 
 type Controls interface {
@@ -126,26 +149,25 @@ func RegisterControl(name string, f ControlFunction, opts ...string) {
 	}
 }
 
-func ControlIssue(control string, node yaml.Node, msg string, args ...interface{}) (yaml.Node, bool) {
+func ControlIssue(ctx *ControlContext, msg string, args ...interface{}) (yaml.Node, bool) {
 	var issue yaml.Issue
 	if len(args) == 0 {
 		issue = yaml.NewIssue("%s", msg)
 	} else {
 		issue = yaml.NewIssue(msg, args...)
 	}
-	return ControlIssueByIssue(control, node, issue, true)
+	return ControlIssueByIssue(ctx, issue, true)
 }
 
-func ControlIssueByIssue(control string, node yaml.Node, issue yaml.Issue, final bool) (yaml.Node, bool) {
-	if control == "" {
-		control = "<control>"
-	} else {
-		control = fmt.Sprintf("<%s control>", control)
+func ControlIssueByIssue(ctx *ControlContext, issue yaml.Issue, final bool) (yaml.Node, bool) {
+	control := "<control>"
+	if ctx.Control != nil {
+		control = fmt.Sprintf("<%s control>", ctx.name)
 	}
 	if !final {
-		return yaml.IssueNode(node, true, true, issue), false
+		return yaml.IssueNode(ctx.Node, true, true, issue), false
 	}
-	return yaml.IssueNode(yaml.NewNode(control, node.SourceName()), true, true, issue), false
+	return yaml.IssueNode(yaml.NewNode(control, ctx.Node.SourceName()), true, true, issue), false
 }
 
 func IsControl(val interface{}, env Binding) (bool, error) {
@@ -198,6 +220,10 @@ func GetControl(m map[string]yaml.Node, env Binding) (*Control, yaml.Node, map[s
 
 		if control != nil {
 			return control, val, fields, opts, control.CheckOpts(opts)
+		} else {
+			if len(opts) > 0 {
+				return nil, nil, nil, nil, fmt.Errorf("control options %v without control", yaml.GetSortedKeys(opts))
+			}
 		}
 	}
 	return nil, nil, nil, nil, nil
@@ -210,4 +236,18 @@ func (c *Control) CheckOpts(opts map[string]yaml.Node) error {
 		}
 	}
 	return nil
+}
+
+func ControlValue(ctx *ControlContext, val yaml.Node) (yaml.Node, bool) {
+	if val.Undefined() || IsResolvedNode(val, ctx) {
+		return val, true
+	}
+	return ctx.Node, false
+}
+
+func ControlReady(ctx *ControlContext, acceptFields bool) (yaml.Node, bool) {
+	if !acceptFields && ctx.HasFields() {
+		return ControlIssue(ctx, "no regular fields %v allowed", ctx.SortedFields())
+	}
+	return ctx.Node, IsResolvedNode(ctx.Value, ctx) && isResolvedValue(ctx.Options, ctx) && isResolvedValue(ctx.Fields, ctx)
 }

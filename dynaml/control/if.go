@@ -9,30 +9,30 @@ func init() {
 	dynaml.RegisterControl("if", flowIf, "then", "else")
 }
 
-func flowIf(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, env dynaml.Binding) (yaml.Node, bool) {
-	for range fields {
-		return dynaml.ControlIssue("if", node, "no regular fields %v allowed in if control", yaml.GetSortedKeys(fields))
-	}
-	switch v := val.Value().(type) {
-	case dynaml.Expression:
+func flowIf(ctx *dynaml.ControlContext) (yaml.Node, bool) {
+	if node, ok := dynaml.ControlReady(ctx, false); !ok {
 		return node, false
+	}
+	if ctx.Value.Value() == nil {
+		if e := ctx.Option("else"); e != nil {
+			return dynaml.ControlValue(ctx, e)
+		}
+		return yaml.UndefinedNode(dynaml.NewNode(nil, ctx)), true
+	}
+	switch v := ctx.Value.Value().(type) {
 	case bool:
 		if v {
-			if e, ok := opts["then"]; ok {
-				return e, true
+			if e := ctx.Option("then"); e != nil {
+				return dynaml.ControlValue(ctx, e)
 			}
-			return yaml.UndefinedNode(yaml.NewNode(nil, node.SourceName())), true
+			return yaml.UndefinedNode(dynaml.NewNode(nil, ctx)), true
 		} else {
-			if e, ok := opts["else"]; ok {
-				return e, true
+			if e := ctx.Option("else"); e != nil {
+				return dynaml.ControlValue(ctx, e)
 			}
-			return yaml.UndefinedNode(yaml.NewNode(nil, node.SourceName())), true
+			return yaml.UndefinedNode(dynaml.NewNode(nil, ctx)), true
 		}
 	default:
-		sub := yaml.EmbeddedDynaml(val, env.GetState().InterpolationEnabled())
-		if sub != nil || !dynaml.IsResolvedNode(val, env) {
-			return node, false
-		}
-		return dynaml.ControlIssue("if", node, "invalid condition value type: %s", dynaml.ExpressionType(v))
+		return dynaml.ControlIssue(ctx, "invalid condition value type: %s", dynaml.ExpressionType(v))
 	}
 }

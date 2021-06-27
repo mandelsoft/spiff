@@ -9,28 +9,26 @@ func init() {
 	dynaml.RegisterControl("type", flowType, "default")
 }
 
-func flowType(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, env dynaml.Binding) (yaml.Node, bool) {
+func flowType(ctx *dynaml.ControlContext) (yaml.Node, bool) {
 	t := "undef"
-	switch v := val.Value().(type) {
-	case dynaml.Expression:
-		_, info, _ := v.Evaluate(env, false)
-		if !info.Undefined {
-			return node, false
-		}
-	default:
-		sub := yaml.EmbeddedDynaml(val, env.GetState().InterpolationEnabled())
-		if sub != nil || !dynaml.IsResolvedNode(val, env) {
-			return node, false
-		}
+	if ctx.Value.Value() != nil {
+		switch v := ctx.Value.Value().(type) {
+		case dynaml.Expression:
+			_, info, _ := v.Evaluate(ctx, false)
+			if !info.Undefined {
+				return ctx.Node, false
+			}
+		default:
+			sub := yaml.EmbeddedDynaml(ctx.Value, ctx.GetState().InterpolationEnabled())
+			if sub != nil || !dynaml.IsResolvedNode(ctx.Value, ctx) {
+				return ctx.Node, false
+			}
 
-		t = dynaml.ExpressionType(v)
+			t = dynaml.ExpressionType(v)
+		}
+	} else {
+		t = "nil"
 	}
 
-	if s, ok := fields[t]; ok {
-		return s, true
-	}
-	if s, ok := opts["default"]; ok {
-		return s, true
-	}
-	return dynaml.ControlIssue("type", node, "invalid type switch type: %q", t)
+	return selected(ctx, t)
 }

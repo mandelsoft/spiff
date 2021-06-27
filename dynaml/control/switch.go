@@ -9,23 +9,34 @@ func init() {
 	dynaml.RegisterControl("switch", flowSwitch, "default")
 }
 
-func flowSwitch(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, env dynaml.Binding) (yaml.Node, bool) {
-	switch v := val.Value().(type) {
-	case dynaml.Expression:
-		return node, false
-	case string:
-		sub := yaml.EmbeddedDynaml(val, env.GetState().InterpolationEnabled())
-		if sub != nil {
-			return node, false
+func flowSwitch(ctx *dynaml.ControlContext) (yaml.Node, bool) {
+	if e, ok := ctx.Value.Value().(dynaml.Expression); ok {
+		_, info, _ := e.Evaluate(ctx, false)
+		if info.Undefined {
+			return yaml.UndefinedNode(dynaml.NewNode(nil, ctx)), true
 		}
-		if s, ok := fields[v]; ok {
-			return s, true
-		}
-		if s, ok := opts["default"]; ok {
-			return s, true
-		}
-		return dynaml.ControlIssue("switch", node, "invalid switch value: %q", v)
-	default:
-		return dynaml.ControlIssue("switch", node, "invalid switch value type: %s", dynaml.ExpressionType(v))
 	}
+	if node, ok := dynaml.ControlReady(ctx, true); !ok {
+		return node, false
+	}
+	return selected(ctx, ctx.Value.Value())
+}
+
+func selected(ctx *dynaml.ControlContext, key interface{}) (yaml.Node, bool) {
+	var result yaml.Node
+	if key != nil {
+		switch v := key.(type) {
+		case string:
+			result = ctx.Field(v)
+		default:
+			return dynaml.ControlIssue(ctx, "invalid switch value type: %s", dynaml.ExpressionType(v))
+		}
+	}
+	if result == nil {
+		result = ctx.Option("default")
+	}
+	if result != nil {
+		return dynaml.ControlValue(ctx, result)
+	}
+	return dynaml.ControlIssue(ctx, "invalid switch value: %q", key)
 }

@@ -97,6 +97,37 @@ map:
 	////////////////////////////////////////////////////////////////////////////////
 
 	Context("switch", func() {
+		It("handles nil", func() {
+			source := parseYAML(`
+---
+key: ~
+selected:
+  <<switch: (( key ))
+  test: alice
+  <<default: bob
+`)
+			resolved := parseYAML(`
+---
+key: ~
+selected: bob
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+		It("handles undef", func() {
+			source := parseYAML(`
+---
+key: ~
+selected:
+  <<switch: (( ~~ ))
+  test: alice
+  <<default: bob
+`)
+			resolved := parseYAML(`
+---
+key: ~
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
 		It("handles key", func() {
 			source := parseYAML(`
 ---
@@ -208,7 +239,7 @@ cond: bob
 `)
 			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
 		})
-		It("handles only one case", func() {
+		It("handles missing case", func() {
 			source := parseYAML(`
 ---
 x: test1
@@ -219,6 +250,22 @@ cond:
 			resolved := parseYAML(`
 ---
 x: test1
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+		It("handles undef case", func() {
+			source := parseYAML(`
+---
+x: test
+mode: undef
+cond:
+  <<if: (( x == "test" ))
+  <<then: (( mode == "undef" ? ~~ :"yep" ))
+`)
+			resolved := parseYAML(`
+---
+x: test
+mode: undef
 `)
 			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
 		})
@@ -846,6 +893,39 @@ list:
 - bob
 `)
 			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+	})
+
+	////////////////////////////////////////////////////////////////////////////////
+
+	Context("cascading", func() {
+		It("overrides", func() {
+			source := parseYAML(`
+---
+
+selected:
+  <<switch: alice
+  alice: (( bob + 1 ))
+  bob: 25
+`)
+
+			stub := parseYAML(`
+---
+selected:
+   bob: 1
+`)
+
+			resolved := parseYAML(`
+---
+selected: 26
+`)
+			Expect(source).To(CascadeAs(resolved).WithFeatures(features.CONTROL))
+			resolved = parseYAML(`
+---
+selected:
+  bob: 1
+`)
+			Expect(source).To(CascadeAs(resolved, stub).WithFeatures(features.CONTROL))
 		})
 	})
 })

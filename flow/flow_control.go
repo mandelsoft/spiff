@@ -13,14 +13,22 @@ func flowControl(node yaml.Node, env dynaml.Binding) (yaml.Node, bool, bool) {
 	is := false
 	if m, ok := node.Value().(map[string]yaml.Node); ok {
 		control, val, fields, opts, err := dynaml.GetControl(m, env)
+		ctx := &dynaml.ControlContext{
+			Control: control,
+			Value:   val,
+			Node:    node,
+			Fields:  fields,
+			Options: opts,
+			Binding: env,
+		}
 		if control != nil {
 			if err == nil {
 				is = true
-				node, resolved = control.Function(val, node, fields, opts, env)
+				node, resolved = control.Function(ctx)
 			}
 		}
 		if err != nil {
-			node, resolved = dynaml.ControlIssue("", node, err.Error())
+			node, resolved = dynaml.ControlIssue(ctx, err.Error())
 		}
 	}
 	if resolved {

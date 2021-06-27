@@ -9,43 +9,35 @@ func init() {
 	dynaml.RegisterControl("merge", flowMerge)
 }
 
-func flowMerge(val yaml.Node, node yaml.Node, fields, opts map[string]yaml.Node, env dynaml.Binding) (yaml.Node, bool) {
-	switch v := val.Value().(type) {
-	case dynaml.Expression:
+func flowMerge(ctx *dynaml.ControlContext) (yaml.Node, bool) {
+	if node, ok := dynaml.ControlReady(ctx, true); !ok {
 		return node, false
-	case string:
-		sub := yaml.EmbeddedDynaml(val, env.GetState().InterpolationEnabled())
-		if sub != nil {
-			return node, false
-		}
-		return dynaml.ControlIssue("merge", node, "invalid value type: %s", dynaml.ExpressionType(v))
-	case map[string]yaml.Node:
-		if !dynaml.IsResolvedNode(val, env) {
-			return node, false
-		}
-		for k, e := range v {
-			fields[k] = e
-		}
-	case []yaml.Node:
-		if !dynaml.IsResolvedNode(val, env) {
-			return node, false
-		}
-		for i, l := range v {
-			if l.Value() != nil {
-				if m, ok := l.Value().(map[string]yaml.Node); ok {
-					for k, e := range m {
-						fields[k] = e
+	}
+	fields := ctx.Fields
+	if ctx.Value.Value() != nil {
+		switch v := ctx.Value.Value().(type) {
+		case map[string]yaml.Node:
+			for k, e := range v {
+				fields[k] = e
+			}
+		case []yaml.Node:
+			for i, l := range v {
+				if l.Value() != nil {
+					if m, ok := l.Value().(map[string]yaml.Node); ok {
+						for k, e := range m {
+							fields[k] = e
+						}
+					} else {
+						return dynaml.ControlIssue(ctx, "entry %d: invalid entry type: %s", i, dynaml.ExpressionType(v))
 					}
-				} else {
-					return dynaml.ControlIssue("merge", node, "entry %d: invalid entry type: %s", i, dynaml.ExpressionType(v))
 				}
 			}
-		}
 
-	default:
-		if v != nil {
-			return dynaml.ControlIssue("merge", node, "invalid value type: %s", dynaml.ExpressionType(v))
+		default:
+			if v != nil {
+				return dynaml.ControlIssue(ctx, "invalid value type: %s", dynaml.ExpressionType(v))
+			}
 		}
 	}
-	return yaml.NewNode(fields, env.SourceName()), true
+	return dynaml.NewNode(fields, ctx), true
 }
