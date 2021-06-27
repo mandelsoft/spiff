@@ -13,7 +13,7 @@ func flowMerge(ctx *dynaml.ControlContext) (yaml.Node, bool) {
 	if node, ok := dynaml.ControlReady(ctx, true); !ok {
 		return node, false
 	}
-	fields := ctx.Fields
+	fields := ctx.DefinedFields()
 	if ctx.Value.Value() != nil {
 		switch v := ctx.Value.Value().(type) {
 		case map[string]yaml.Node:

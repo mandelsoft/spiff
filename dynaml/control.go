@@ -28,6 +28,18 @@ func (c *ControlContext) HasFields() bool {
 func (c *ControlContext) SortedFields() []string {
 	return yaml.GetSortedKeys(c.Fields)
 }
+func (c *ControlContext) DefinedFields() map[string]yaml.Node {
+	result := map[string]yaml.Node{}
+	for k, v := range c.Fields {
+		if !v.Undefined() {
+			result[k] = v
+		}
+	}
+	return result
+}
+func (c *ControlContext) Function() (yaml.Node, bool) {
+	return c.Control.Function(c)
+}
 
 type ControlFunction func(*ControlContext) (yaml.Node, bool)
 
@@ -170,12 +182,9 @@ func ControlIssueByIssue(ctx *ControlContext, issue yaml.Issue, final bool) (yam
 	return yaml.IssueNode(yaml.NewNode(control, ctx.Node.SourceName()), true, true, issue), false
 }
 
-func IsControl(val interface{}, env Binding) (bool, error) {
-	if n, ok := val.(map[string]yaml.Node); ok {
-		c, _, _, _, err := GetControl(n, nil, env)
-		return c != nil, err
-	}
-	return false, nil
+func IsControl(node yaml.Node, env Binding) (bool, error) {
+	c, err := GetControl(node, nil, env)
+	return c != nil, err
 }
 
 func RequireTemplate(opt string, env Binding) bool {
@@ -186,67 +195,75 @@ func RequireTemplate(opt string, env Binding) bool {
 	return false
 }
 
-func GetControl(m, undef map[string]yaml.Node, env Binding) (*Control, yaml.Node, map[string]yaml.Node, map[string]yaml.Node, error) {
+func GetControl(node yaml.Node, undef map[string]yaml.Node, env Binding) (*ControlContext, error) {
 	if env.GetFeatures().ControlEnabled() {
-		registry := env.GetState().GetRegistry()
-		var name string
-		var val yaml.Node
-		var control *Control
-		opts := map[string]yaml.Node{}
-		fields := map[string]yaml.Node{}
-		for k, v := range m {
-			if strings.HasPrefix(k, "<<") {
-				n := k[2:]
-				if n != "" && n != "<" && n[0] != '!' {
-					c, ok := registry.LookupControl(n)
-					if !ok {
-						return nil, nil, nil, nil, fmt.Errorf("unknown control or control option %q", k)
-					}
-					if c != nil {
-						if control != nil {
-							return nil, nil, nil, nil, fmt.Errorf("multiple controls %q and %q", name, k)
-						}
-						name = k
-						control = c
-						val = v
-					} else {
-						opts[n] = v
-					}
-				}
-				continue
-			}
-			fields[k] = v
-		}
+		if m, ok := node.Value().(map[string]yaml.Node); ok {
+			registry := env.GetState().GetRegistry()
+			var name string
+			var val yaml.Node
+			var control *Control
+			opts := map[string]yaml.Node{}
+			fields := map[string]yaml.Node{}
 
-		if control == nil {
-			// preserve undef control node
-			for k, v := range undef {
+			f := func(k string, v yaml.Node) error {
 				if strings.HasPrefix(k, "<<") {
 					n := k[2:]
 					if n != "" && n != "<" && n[0] != '!' {
-						c, _ := registry.LookupControl(n)
+						c, ok := registry.LookupControl(n)
+						if !ok {
+							return fmt.Errorf("unknown control or control option %q", k)
+						}
 						if c != nil {
 							if control != nil {
-								return nil, nil, nil, nil, fmt.Errorf("multiple controls %q and %q", name, k)
+								return fmt.Errorf("multiple controls %q and %q", name, k)
 							}
 							name = k
 							control = c
 							val = v
-							m[k] = val
+						} else {
+							opts[n] = v
 						}
 					}
+					return nil
+				}
+				fields[k] = v
+				return nil
+			}
+
+			for k, v := range m {
+				if err := f(k, v); err != nil {
+					return nil, err
+				}
+			}
+			for k, v := range undef {
+				if err := f(k, v); err != nil {
+					return nil, err
+				}
+			}
+
+			if control != nil {
+				for k, v := range undef {
+					m[k] = v
+				}
+				if err := control.CheckOpts(opts); err != nil {
+					return nil, err
+				}
+				return &ControlContext{
+					Binding: env,
+					Control: control,
+					Node:    node,
+					Value:   val,
+					Fields:  fields,
+					Options: opts,
+				}, nil
+			} else {
+				if len(opts) > 0 {
+					return nil, fmt.Errorf("control options %v without control", yaml.GetSortedKeys(opts))
 				}
 			}
 		}
-		if control != nil {
-			return control, val, fields, opts, control.CheckOpts(opts)
-		} else {
-			if len(opts) > 0 {
-				return nil, nil, nil, nil, fmt.Errorf("control options %v without control", yaml.GetSortedKeys(opts))
-			}
-		}
 	}
-	return nil, nil, nil, nil, nil
+	return nil, nil
 }
 
 func (c *Control) CheckOpts(opts map[string]yaml.Node) error {

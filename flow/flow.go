@@ -85,7 +85,7 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride, enforceTemplate b
 		}
 		switch val := root.Value().(type) {
 		case map[string]yaml.Node:
-			ok, err := dynaml.IsControl(val, env)
+			ok, err := dynaml.IsControl(root, env)
 			if err != nil {
 				return yaml.IssueNode(root, true, true, yaml.NewIssue("%s", err))
 			}
@@ -685,7 +685,7 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding, templat
 	} else {
 		processed := []yaml.Node{}
 		for _, val := range spliced {
-			ok, err := dynaml.IsControl(val.Value(), env)
+			ok, err := dynaml.IsControl(val, env)
 			if err != nil {
 				val = yaml.IssueNode(val, true, true, yaml.NewIssue("%s", err))
 			} else if ok {

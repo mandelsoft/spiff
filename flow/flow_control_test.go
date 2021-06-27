@@ -164,7 +164,45 @@ selected: bob
 `)
 			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
 		})
+		It("resolve to undef case", func() {
+			source := parseYAML(`
+---
+key: alice
+selected:
+  <<switch: (( key ))
+  alice: (( ~~ ))
+  bob: 26
+  <<default: unknown
+`)
+			resolved := parseYAML(`
+---
+key: alice
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+
+		It("resolve as template", func() {
+			source := parseYAML(`
+---
+selected:
+  <<: (( &template &local ))
+  <<switch: (( __ctx.PATH[0] ))
+  alice: (( ~~ ))
+  bob: 26
+  <<default: unknown
+
+alice: (( *selected ))
+bob: (( *selected ))
+`)
+			resolved := parseYAML(`
+---
+bob: 26
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
 	})
+
+	////////////////////////////////////////////////////////////////////////////////
 
 	Context("type switch", func() {
 		It("handles key", func() {
