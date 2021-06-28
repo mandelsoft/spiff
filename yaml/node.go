@@ -54,12 +54,17 @@ type AnnotatedNode struct {
 
 type Issue struct {
 	Issue    string
+	OrigPath []string
 	Nested   []Issue
 	Sequence bool
 }
 
 func NewIssue(msg string, args ...interface{}) Issue {
-	return Issue{fmt.Sprintf(msg, args...), []Issue{}, false}
+	return Issue{fmt.Sprintf(msg, args...), nil, []Issue{}, false}
+}
+
+func NewPathIssue(path []string, msg string, args ...interface{}) Issue {
+	return Issue{fmt.Sprintf(msg, args...), path, []Issue{}, false}
 }
 
 const (

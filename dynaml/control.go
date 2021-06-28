@@ -279,7 +279,7 @@ func ControlValue(ctx *ControlContext, val yaml.Node) (yaml.Node, bool) {
 	if val.Undefined() || IsResolvedNode(val, ctx) {
 		return val, true
 	}
-	return ctx.Node, false
+	return val, false
 }
 
 func ControlReady(ctx *ControlContext, acceptFields bool) (yaml.Node, bool) {

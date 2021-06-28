@@ -200,6 +200,150 @@ bob: 26
 `)
 			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
 		})
+
+		It("resolve as template", func() {
+			source := parseYAML(`
+---
+temp:
+  <<: (( &temporary ))
+  func: (( |name|->*_.selected ))
+  selected:
+    <<: (( &template ))
+    <<switch: (( name ))
+    alice: (( ~~ ))
+    bob: 26
+    <<default: unknown
+
+list:
+- (( temp.func("alice") ))
+- (( temp.func("bob") ))
+- (( temp.func("charlie") ))
+`)
+			resolved := parseYAML(`
+---
+list:
+  - 26
+  - unknown
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+
+		//////////////////////
+
+		It("handles cases for nil", func() {
+			source := parseYAML(`
+---
+key: ~
+selected:
+  <<switch: (( key ))
+  <<cases:
+  - case: test
+    value: alice
+  <<default: bob
+`)
+			resolved := parseYAML(`
+---
+key: ~
+selected: bob
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+		It("handles cases for undef", func() {
+			source := parseYAML(`
+---
+key: ~
+selected:
+  <<switch: (( ~~ ))
+  <<cases:
+  - case: test
+    value: alice
+  <<default: bob
+`)
+			resolved := parseYAML(`
+---
+key: ~
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+		It("handles cases key", func() {
+			source := parseYAML(`
+---
+key: (( x ))
+x: test
+selected:
+  <<switch: (( key ))
+  <<cases:
+  - case: test
+    value: alice
+  <<default: bob
+`)
+			resolved := parseYAML(`
+---
+key: test
+x: test
+selected: alice
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+		It("handles cases match", func() {
+			source := parseYAML(`
+---
+key: (( x ))
+x: test
+selected:
+  <<switch: (( key ))
+  <<cases:
+  - match: (( |c|-> c == "test" ))"
+    value: alice
+  <<default: bob
+`)
+			resolved := parseYAML(`
+---
+key: test
+x: test
+selected: alice
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+		It("handles cases default", func() {
+			source := parseYAML(`
+---
+key: (( x ))
+x: other
+selected:
+  <<switch: (( key ))
+  <<cases:
+  - case: test
+    value: alice
+  <<default: bob
+`)
+			resolved := parseYAML(`
+---
+key: other
+x: other
+selected: bob
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
+		It("resolve to cases undef case", func() {
+			source := parseYAML(`
+---
+key: alice
+selected:
+  <<switch: (( key ))
+  <<cases:
+  - case: alice
+    value: (( ~~ ))
+  - case: bob
+    value: 26
+  <<default: unknown
+`)
+			resolved := parseYAML(`
+---
+key: alice
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.CONTROL))
+		})
 	})
 
 	////////////////////////////////////////////////////////////////////////////////
@@ -995,9 +1139,9 @@ cond:
   <<then: alice
   <<else: (( 1 / 0 ))
 `)
-			Expect(source).To(FlowToErr("\t(( 1 / 0 ))\tin test\tcond.<<else\t()\t*division by zero").WithFeatures(features.CONTROL))
+			Expect(source).To(FlowToErr("\t(( 1 / 0 ))\tin test\tcond\t(cond.<<else)\t*division by zero").WithFeatures(features.CONTROL))
 		})
-		It("fails for used seep error nodes", func() {
+		It("fails for used nested error nodes", func() {
 			source := parseYAML(`
 ---
 x: test1
@@ -1007,7 +1151,35 @@ cond:
   <<else:
     nested: (( 1 / 0 ))
 `)
-			Expect(source).To(FlowToErr("\t(( 1 / 0 ))\tin test\tcond.<<else.nested\t()\t*division by zero").WithFeatures(features.CONTROL))
+			Expect(source).To(FlowToErr("\t(( 1 / 0 ))\tin test\tcond.nested\t(cond.<<else.nested)\t*division by zero").WithFeatures(features.CONTROL))
 		})
+		It("fails for missing cases case", func() {
+			source := parseYAML(`
+---
+x: test
+selected:
+  <<switch: (( x ))
+  <<cases:
+  - value: alice 
+`)
+			Expect(source).To(FlowToErr("\t<switch control>\tin test\tselected\t()\t*case 0 requires 'case' or `'match' field").WithFeatures(features.CONTROL))
+		})
+		It("fails for used nested cases error nodes", func() {
+			source := parseYAML(`
+---
+x: test
+selected:
+  <<switch: (( x ))
+  <<cases:
+  - case: test
+    value:
+      nested: (( 1 / 0 ))
+  - case: other
+    value:
+      other: (( 1 / 0 ))
+`)
+			Expect(source).To(FlowToErr("\t(( 1 / 0 ))\tin test\tselected.nested\t(selected.<<cases.[0].value.nested)\t*division by zero").WithFeatures(features.CONTROL))
+		})
+
 	})
 })

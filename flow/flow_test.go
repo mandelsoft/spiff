@@ -267,7 +267,7 @@ foo: (( auto ))
 						Node: yaml.IssueNode(yaml.NewNode(
 							dynaml.AutoExpr{Path: []string{"foo"}},
 							"test",
-						), true, false, yaml.NewIssue("auto only allowed for size entry in resource pools")),
+						), true, false, yaml.NewPathIssue([]string{"foo"}, "auto only allowed for size entry in resource pools")),
 						Context: []string{"foo"},
 						Path:    []string{"foo"},
 					},

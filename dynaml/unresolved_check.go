@@ -2,6 +2,7 @@ package dynaml
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/mandelsoft/spiff/yaml"
@@ -172,18 +173,10 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (result []Unresolved
 		}
 
 	case Expression:
-		var path []string
-		switch val := root.Value().(type) {
-		case AutoExpr:
-			path = val.Path
-		case MergeExpr:
-			path = val.Path
-		}
-
 		nodes = append(nodes, UnresolvedNode{
 			Node:    root,
 			Context: context,
-			Path:    path,
+			Path:    effectivePath(root, context),
 		})
 		found = true
 
@@ -214,7 +207,7 @@ func FindUnresolvedNodes(root yaml.Node, context ...string) (result []Unresolved
 			nodes = append(nodes, UnresolvedNode{
 				Node:    root,
 				Context: context,
-				Path:    []string{},
+				Path:    effectivePath(root, context),
 			})
 		}
 	}
@@ -258,6 +251,23 @@ func ResetUnresolvedNodes(root yaml.Node) yaml.Node {
 	}
 
 	return root
+}
+
+func effectivePath(node yaml.Node, context []string) []string {
+	var path []string
+	switch val := node.Value().(type) {
+	case AutoExpr:
+		path = val.Path
+	case MergeExpr:
+		path = val.Path
+	default:
+		if node.Issue().OrigPath != nil {
+			if !reflect.DeepEqual(context, node.Issue().OrigPath) {
+				path = node.Issue().OrigPath
+			}
+		}
+	}
+	return path
 }
 
 func addContext(context []string, step string) []string {

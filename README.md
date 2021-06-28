@@ -5815,6 +5815,9 @@ A control structure itself is always a dedicated map node in a document.
 It is substituted by a regular value node determined by the execution
 of the control structure.
 
+The fields of a control structure map are not subject to overwriting by stubs,
+but the complete structure can be overwritten.
+
 If used as value for a map field the resulting value is just used as effective
 value for this field.
 
@@ -5980,6 +5983,58 @@ local:
 value: (( local.cases[type(x)] || local.default ))
 ```
 
+For more complex scenarios not only switching on strings a second syntax 
+can be used. Instead of using fields in the control map as cases, a dedicated
+field `<<cases` may contain a list of cases, that are checked sequentially
+(In this flavor regular fields are not allowed anymore).
+
+Every case is described again by a map containing the fields:
+
+- `case`: the expected value to match the switch value
+- `match`: a lambda function taking one argument and yielding a boolean value
+used to match the given switch value
+- `value`: (optional) the resulting value in case of a match. If not defined 
+  the result will be the undefined value.
+
+One of `case` or `match` must be present.
+
+e.g.:
+
+```yaml
+x: 5
+selected:
+  <<switch: (( x ))
+  <<cases:
+    - case:
+        alice: 25
+      value: alice
+    - match: (( |v|->v == 5 ))
+      value: bob
+  <<default: unknown
+```
+
+resolves to
+
+```yaml
+x: 5
+selected: bob
+```
+
+If `x` would be set to the complex value
+
+```yaml
+x:
+  alice: 25
+```
+
+it would resolve to
+ 
+```yaml
+x:
+  alice: 25
+selected: alice
+```
+
 ### `<<for:`
 
 The loop control is able to execute a multi-dimensional loop and 
@@ -6015,7 +6070,7 @@ for the first values of the first ranges first.
 If no index variable is specified for a loop range there is an additional
 implicit binding for every control variable describing the actual list index
 or map key of the processed value for this dimension. It is denoted by
-`index-<control varible>`
+`index-<control variable>`
 
 If multiple loop ranges are specified, the ranges may mix iterations over
 maps and lists.

@@ -149,7 +149,7 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride, enforceTemplate b
 					info.SetError("dynamic marker for non-template value node")
 					debug.Debug("??? invalid dynamic ---> KEEP\n")
 					if !shouldOverride {
-						return yaml.IssueNode(root, true, false, info.Issue)
+						return dynaml.IssueNode(env, true, root, true, false, info.Issue)
 					}
 					ok = false
 				}
@@ -160,7 +160,7 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride, enforceTemplate b
 			replace = replace || info.Replace
 			debug.Debug("??? ---> %t %#v\n", ok, eval)
 			if !ok {
-				root = yaml.IssueNode(root, true, false, info.Issue)
+				root = dynaml.IssueNode(env, true, root, true, false, info.Issue)
 				debug.Debug("??? failed ---> KEEP\n")
 				if !shouldOverride {
 					return root
