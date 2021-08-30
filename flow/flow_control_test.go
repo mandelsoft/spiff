@@ -1139,7 +1139,7 @@ cond:
   <<then: alice
   <<else: (( 1 / 0 ))
 `)
-			Expect(source).To(FlowToErr("\t(( 1 / 0 ))\tin test\tcond\t(cond.<<else)\t*division by zero").WithFeatures(features.CONTROL))
+			Expect(source).To(FlowToErr("\t(( 1 / 0 ))\tin test\tcond\t(...<<else)\t*division by zero").WithFeatures(features.CONTROL))
 		})
 		It("fails for used nested error nodes", func() {
 			source := parseYAML(`

@@ -87,7 +87,7 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride, enforceTemplate b
 		case map[string]yaml.Node:
 			ok, err := dynaml.IsControl(root, env)
 			if err != nil {
-				return yaml.IssueNode(root, true, true, yaml.NewIssue("%s", err))
+				return dynaml.IssueNode(env, true, root, true, true, yaml.NewIssue("%s", err))
 			}
 			root = flowMap(root, env, !ok, enforceTemplate)
 			if !ok {
@@ -124,7 +124,7 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride, enforceTemplate b
 					info.SetError("empty template value")
 					debug.Debug("??? failed ---> KEEP\n")
 					if !shouldOverride {
-						return yaml.IssueNode(root, true, false, info.Issue)
+						return dynaml.IssueNode(env, true, root, true, false, info.Issue)
 					}
 					ok = false
 				} else {
@@ -184,7 +184,7 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride, enforceTemplate b
 				_, expr := result.Value().(dynaml.Expression)
 
 				if len(info.Issue.Issue) != 0 {
-					result = yaml.IssueNode(result, false, info.Failed, info.Issue)
+					result = dynaml.IssueNode(env, true, result, false, info.Failed, info.Issue)
 				}
 				if info.Undefined {
 					debug.Debug("   UNDEFINED")

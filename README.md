@@ -1296,7 +1296,7 @@ The result is the string `3 times 2 yields 6`.
 
 ## `(( "10.10.10.10" - 11 ))`
 
-Besides arithmetic on integers it is also possible to use addition and subtraction on ip addresses.
+Besides arithmetic on integers it is also possible to use addition and subtraction on ip addresses and cidrs.
 
 e.g.:
 
@@ -1312,7 +1312,7 @@ ip: 10.10.10.10
 range: 10.10.10.10-10.11.11.1
 ```
 
-Subtraction also works on two IP addresses to calculate the number of
+Subtraction also works on two IP addresses or cidrs to calculate the number of
 IP addresses between two IP addresses.
 
 e.g.:

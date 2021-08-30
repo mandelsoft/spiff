@@ -261,9 +261,14 @@ func effectivePath(node yaml.Node, context []string) []string {
 	case MergeExpr:
 		path = val.Path
 	default:
-		if node.Issue().OrigPath != nil {
-			if !reflect.DeepEqual(context, node.Issue().OrigPath) {
-				path = node.Issue().OrigPath
+		orig := node.Issue().OrigPath
+		if orig != nil {
+			if !reflect.DeepEqual(context, orig) {
+				if len(orig) > len(context) && reflect.DeepEqual(context, orig[:len(context)]) {
+					path = append(append(orig[0:0:0], ".."), orig[len(context):]...)
+				} else {
+					path = orig
+				}
 			}
 		}
 	}
