@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/mandelsoft/spiff/legacy/candiedyaml"
 
@@ -122,6 +123,7 @@ func getArg(key interface{}, value interface{}, wopt WriteOpts, allowyaml bool) 
 }
 
 var cache = make(map[string][]byte)
+var lock sync.Mutex
 
 type Bytes interface {
 	Bytes() []byte
@@ -137,6 +139,8 @@ func cachedExecute(cached bool, content *string, args []string) ([]byte, error) 
 	}
 	hash := fmt.Sprintf("%x", h.Sum(nil))
 	if cached {
+		lock.Lock()
+		defer lock.Unlock()
 		result := cache[hash]
 		if result != nil {
 			debug.Debug("exec: reusing cache %s for %v\n", hash, args)
@@ -154,7 +158,9 @@ func cachedExecute(cached bool, content *string, args []string) ([]byte, error) 
 		fmt.Fprintf(os.Stderr, "exec: calling %v\n", args)
 		fmt.Fprintf(os.Stderr, "  error: %v\n", stderr)
 	}
-	cache[hash] = result
+	if cached {
+		cache[hash] = result
+	}
 	return result, err
 }
 
