@@ -5,7 +5,7 @@ all: vendor grammar test release
 grammar:
 	go generate ./...
 
-release: spiff_linux_amd64.zip spiff_darwin_amd64.zip spiff_linux_ppc64le.zip
+release: spiff_linux_amd64.zip spiff_darwin_amd64.zip spiff_linux_ppc64le.zip spiff_linux_arm64.zip
 
 linux:
 	GOOS=linux GOARCH=amd64 go build -o spiff++/spiff++ .
@@ -17,6 +17,12 @@ spiff_linux_amd64.zip:
 	GOOS=linux GOARCH=amd64 go build -o spiff++/spiff++ .
 	rm -f spiff++/spiff_linux_amd64.zip
 	(cd spiff++; zip spiff_linux_amd64.zip spiff++)
+	rm spiff++/spiff++
+
+spiff_linux_arm64.zip:
+	GOOS=linux GOARCH=arm64 go build -o spiff++/spiff++ .
+	rm -f spiff++/spiff_linux_arm64.zip
+	(cd spiff++; zip spiff_linux_arm64.zip spiff++)
 	rm spiff++/spiff++
 
 spiff_darwin_amd64.zip:
