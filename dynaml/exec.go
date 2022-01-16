@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/mandelsoft/spiff/legacy/candiedyaml"
 
@@ -17,6 +16,8 @@ import (
 )
 
 func func_exec(cached bool, arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
+	var cache ExecCache
+
 	info := DefaultInfo()
 
 	if len(arguments) < 1 {
@@ -24,6 +25,9 @@ func func_exec(cached bool, arguments []interface{}, binding Binding) (interface
 	}
 	if !binding.GetState().OSAccessAllowed() {
 		return info.DenyOSOperation("exec")
+	}
+	if cached {
+		cache = binding.GetState().GetExecCache()
 	}
 	args := []string{}
 	wopt := WriteOpts{}
@@ -52,7 +56,7 @@ func func_exec(cached bool, arguments []interface{}, binding Binding) (interface
 			args = append(args, v)
 		}
 	}
-	result, err := cachedExecute(cached, nil, args)
+	result, err := cachedExecute(cache, nil, args)
 	if err != nil {
 		return info.Error("execution '%s' failed", args[0])
 	}
@@ -122,14 +126,11 @@ func getArg(key interface{}, value interface{}, wopt WriteOpts, allowyaml bool) 
 	}
 }
 
-var cache = make(map[string][]byte)
-var lock sync.Mutex
-
 type Bytes interface {
 	Bytes() []byte
 }
 
-func cachedExecute(cached bool, content *string, args []string) ([]byte, error) {
+func cachedExecute(cache ExecCache, content *string, args []string) ([]byte, error) {
 	h := md5.New()
 	if content != nil {
 		h.Write([]byte(*content))
@@ -138,10 +139,10 @@ func cachedExecute(cached bool, content *string, args []string) ([]byte, error) 
 		h.Write([]byte(arg))
 	}
 	hash := fmt.Sprintf("%x", h.Sum(nil))
-	if cached {
-		lock.Lock()
-		defer lock.Unlock()
-		result := cache[hash]
+	if cache != nil {
+		cache.Lock()
+		defer cache.Unlock()
+		result := cache.Get(hash)
 		if result != nil {
 			debug.Debug("exec: reusing cache %s for %v\n", hash, args)
 			return result, nil
@@ -158,8 +159,8 @@ func cachedExecute(cached bool, content *string, args []string) ([]byte, error) 
 		fmt.Fprintf(os.Stderr, "exec: calling %v\n", args)
 		fmt.Fprintf(os.Stderr, "  error: %v\n", stderr)
 	}
-	if cached {
-		cache[hash] = result
+	if cache != nil {
+		cache.Set(hash, result)
 	}
 	return result, err
 }

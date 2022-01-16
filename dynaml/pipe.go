@@ -6,6 +6,7 @@ import (
 )
 
 func func_pipe(cached bool, arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
+	var cache ExecCache
 	info := DefaultInfo()
 
 	if len(arguments) <= 2 {
@@ -13,6 +14,9 @@ func func_pipe(cached bool, arguments []interface{}, binding Binding) (interface
 	}
 	if !binding.GetState().OSAccessAllowed() {
 		return info.DenyOSOperation("pipe")
+	}
+	if cached {
+		cache = binding.GetState().GetExecCache()
 	}
 	args := []string{}
 	wopt := WriteOpts{}
@@ -49,7 +53,7 @@ func func_pipe(cached bool, arguments []interface{}, binding Binding) (interface
 			args = append(args, v)
 		}
 	}
-	result, err := cachedExecute(cached, &args[0], args[1:])
+	result, err := cachedExecute(cache, &args[0], args[1:])
 	if err != nil {
 		return info.Error("execution '%s' failed", args[1])
 	}

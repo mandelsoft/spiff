@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/mandelsoft/vfs/pkg/osfs"
 	"github.com/mandelsoft/vfs/pkg/vfs"
@@ -24,12 +25,40 @@ import (
 const MODE_FILE_ACCESS = 1 // support file system access
 const MODE_OS_ACCESS = 2   // support os commands like pipe and exec
 
+type execCache struct {
+	cache map[string][]byte
+	lock  sync.Mutex
+}
+
+func (c *execCache) Lock() {
+	c.lock.Lock()
+}
+
+func (c *execCache) Unlock() {
+	c.lock.Unlock()
+}
+
+func (c *execCache) Clear() {
+	c.cache = make(map[string][]byte)
+}
+
+func (c *execCache) Get(key string) []byte {
+	return c.cache[key]
+}
+
+func (c *execCache) Set(key string, content []byte) {
+	c.cache[key] = content
+}
+
+var _ dynaml.ExecCache = &execCache{}
+
 type State struct {
 	files      map[string]string // content hash to temp file name
 	fileCache  map[string][]byte // file content cache
 	key        string            // default encryption key
 	mode       int
-	fileSystem vfs.VFS // virtual filesystem to use for filesystem based operations
+	exec_cache dynaml.ExecCache // execution cache
+	fileSystem vfs.VFS          // virtual filesystem to use for filesystem based operations
 	registry   dynaml.Registry
 	features   features.FeatureFlags
 	tags       map[string]*dynaml.TagInfo
@@ -54,6 +83,7 @@ func NewState(key string, mode int, optfs ...vfs.FileSystem) *State {
 		fileCache:  map[string][]byte{},
 		key:        key,
 		mode:       mode,
+		exec_cache: &execCache{cache: make(map[string][]byte)},
 		fileSystem: vfs.New(fs),
 		docno:      1,
 		features:   features.Features(),
@@ -131,6 +161,10 @@ func (s *State) GetFeatures() features.FeatureFlags {
 
 func (s *State) GetEncryptionKey() string {
 	return s.key
+}
+
+func (s *State) GetExecCache() dynaml.ExecCache {
+	return s.exec_cache
 }
 
 func (s *State) GetTempName(data []byte) (string, error) {

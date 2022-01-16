@@ -17,6 +17,14 @@ type SourceProvider interface {
 	SourceName() string
 }
 
+type ExecCache interface {
+	Lock()
+	Unlock()
+	Get(key string) []byte
+	Set(key string, content []byte)
+	Clear()
+}
+
 type State interface {
 	GetTempName(data []byte) (string, error)
 	GetFileContent(file string, cached bool) ([]byte, error)
@@ -26,6 +34,7 @@ type State interface {
 	FileSystem() vfs.VFS
 	GetRegistry() Registry
 	GetFeatures() features.FeatureFlags
+	GetExecCache() ExecCache
 	InterpolationEnabled() bool
 	ControlEnabled() bool
 	SetTag(name string, node yaml.Node, path []string, scope TagScope) error
