@@ -7,20 +7,26 @@ import (
 )
 
 func CascadeAs(expected yaml.Node, stubs ...yaml.Node) *CascadeAsMatcher {
-	return &CascadeAsMatcher{Expected: expected, Stubs: stubs}
+	matcher := &CascadeAsMatcher{}
+	support := &MatcherSupport{OmegaMatcher: matcher, Expected: expected, Stubs: stubs}
+	matcher.MatcherSupport = support
+	return matcher
 }
 
 type CascadeAsMatcher struct {
-	Expected yaml.Node
-	Stubs    []yaml.Node
-	actual   yaml.Node
+	*MatcherSupport
+}
+
+func (matcher *CascadeAsMatcher) WithFeatures(features ...string) *CascadeAsMatcher {
+	matcher.features = features
+	return matcher
 }
 
 func (matcher *CascadeAsMatcher) Match(source interface{}) (success bool, err error) {
 	if source == nil && matcher.Expected == nil {
 		return false, fmt.Errorf("Refusing to compare <nil> to <nil>.")
 	}
-	env := NewEnvironment(nil, "", NewDefaultState().SetInterpolation(true))
+	env := matcher.createEnv()
 	matcher.actual, err = Cascade(env, source.(yaml.Node), Options{}, matcher.Stubs...)
 	if err != nil {
 		return false, err

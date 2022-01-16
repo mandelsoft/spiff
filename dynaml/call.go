@@ -11,31 +11,36 @@ import (
 
 type Function func(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool)
 
-type Registry interface {
+type Functions interface {
 	RegisterFunction(name string, f Function)
 	LookupFunction(name string) Function
 }
-type registry struct {
+
+type functionRegistry struct {
 	functions map[string]Function
 }
 
-func NewRegistry() Registry {
-	return &registry{map[string]Function{}}
+func NewFunctions() Functions {
+	return &functionRegistry{map[string]Function{}}
 }
 
-func (r *registry) RegisterFunction(name string, f Function) {
+func (r *functionRegistry) RegisterFunction(name string, f Function) {
 	r.functions[name] = f
 }
 
-func (r *registry) LookupFunction(name string) Function {
-	return r.functions[name]
+func (r *functionRegistry) LookupFunction(name string) Function {
+	f := r.functions[name]
+	if f != nil || r == function_registry {
+		return f
+	}
+	return function_registry.(*functionRegistry).functions[name]
 }
-
-var functions = NewRegistry()
 
 func RegisterFunction(name string, f Function) {
-	functions.RegisterFunction(name, f)
+	function_registry.RegisterFunction(name, f)
 }
+
+var function_registry = NewFunctions()
 
 type NameArgument struct {
 	Name string
@@ -324,14 +329,7 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 		}
 
 	default:
-		var f Function
-		ext := binding.GetState().GetFunctions()
-		if ext != nil {
-			f = ext.LookupFunction(funcName)
-		}
-		if f == nil {
-			f = functions.LookupFunction(funcName)
-		}
+		f := binding.GetState().GetRegistry().LookupFunction(funcName)
 		if f == nil {
 			return info.Error("unknown function '%s'", funcName)
 		}
@@ -341,7 +339,7 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	if cleaned {
 		info.Cleanup()
 	}
-	if ok && (!resolved || isExpression(result)) {
+	if ok && (!resolved || IsExpression(result)) {
 		return e, sub.Join(info), true
 	}
 	return result, sub.Join(info), ok

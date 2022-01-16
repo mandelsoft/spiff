@@ -100,7 +100,7 @@ func generateStaticIPs(binding Binding, indices []int) (interface{}, EvaluationI
 
 func findInstanceCount(binding Binding) (*int64, EvaluationInfo, bool) {
 	nearestInstances, info, found := refInstances.Evaluate(binding, false)
-	if !found || isExpression(nearestInstances) {
+	if !found || IsExpression(nearestInstances) {
 		return nil, info, false
 	}
 
@@ -110,7 +110,7 @@ func findInstanceCount(binding Binding) (*int64, EvaluationInfo, bool) {
 
 func findStaticIPRanges(binding Binding) ([]string, EvaluationInfo, bool) {
 	nearestNetworkName, info, found := refName.Evaluate(binding, false)
-	if !found || isExpression(nearestNetworkName) {
+	if !found || IsExpression(nearestNetworkName) {
 		return nil, info, found
 	}
 
@@ -126,7 +126,7 @@ func findStaticIPRanges(binding Binding) ([]string, EvaluationInfo, bool) {
 	if !found {
 		return nil, info, false
 	}
-	if isExpression(subnets) {
+	if IsExpression(subnets) {
 		return nil, info, true
 	}
 

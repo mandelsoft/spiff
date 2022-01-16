@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/mandelsoft/vfs/pkg/osfs"
 	"github.com/mandelsoft/vfs/pkg/vfs"
@@ -24,16 +25,44 @@ import (
 const MODE_FILE_ACCESS = 1 // support file system access
 const MODE_OS_ACCESS = 2   // support os commands like pipe and exec
 
+type execCache struct {
+	cache map[string][]byte
+	lock  sync.Mutex
+}
+
+func (c *execCache) Lock() {
+	c.lock.Lock()
+}
+
+func (c *execCache) Unlock() {
+	c.lock.Unlock()
+}
+
+func (c *execCache) Clear() {
+	c.cache = make(map[string][]byte)
+}
+
+func (c *execCache) Get(key string) []byte {
+	return c.cache[key]
+}
+
+func (c *execCache) Set(key string, content []byte) {
+	c.cache[key] = content
+}
+
+var _ dynaml.ExecCache = &execCache{}
+
 type State struct {
-	files         map[string]string // content hash to temp file name
-	fileCache     map[string][]byte // file content cache
-	key           string            // default encryption key
-	mode          int
-	fileSystem    vfs.VFS // virtual filesystem to use for filesystem based operations
-	functions     dynaml.Registry
-	interpolation bool
-	tags          map[string]*dynaml.TagInfo
-	docno         int // document number
+	files      map[string]string // content hash to temp file name
+	fileCache  map[string][]byte // file content cache
+	key        string            // default encryption key
+	mode       int
+	exec_cache dynaml.ExecCache // execution cache
+	fileSystem vfs.VFS          // virtual filesystem to use for filesystem based operations
+	registry   dynaml.Registry
+	features   features.FeatureFlags
+	tags       map[string]*dynaml.TagInfo
+	docno      int // document number
 }
 
 var _ dynaml.State = &State{}
@@ -54,8 +83,11 @@ func NewState(key string, mode int, optfs ...vfs.FileSystem) *State {
 		fileCache:  map[string][]byte{},
 		key:        key,
 		mode:       mode,
+		exec_cache: &execCache{cache: make(map[string][]byte)},
 		fileSystem: vfs.New(fs),
 		docno:      1,
+		features:   features.Features(),
+		registry:   dynaml.DefaultRegistry(),
 	}
 }
 
@@ -63,8 +95,15 @@ func NewDefaultState() *State {
 	return NewState(features.EncryptionKey(), MODE_OS_ACCESS|MODE_FILE_ACCESS)
 }
 
-func (s *State) SetFunctions(f dynaml.Registry) *State {
-	s.functions = f
+func (s *State) SetRegistry(r dynaml.Registry) *State {
+	if r == nil {
+		r = dynaml.DefaultRegistry()
+	}
+	s.registry = r
+	return s
+}
+func (s *State) SetFeatures(f features.FeatureFlags) *State {
+	s.features = f
 	return s
 }
 
@@ -76,17 +115,22 @@ func (s *State) SetTags(tags ...*dynaml.Tag) *State {
 	return s
 }
 
-func (s *State) EnableInterpolation() {
-	s.interpolation = true
-}
-
 func (s *State) SetInterpolation(b bool) *State {
-	s.interpolation = b
+	s.features.SetInterpolation(b)
 	return s
 }
 
 func (s *State) InterpolationEnabled() bool {
-	return s.interpolation
+	return s.features.InterpolationEnabled()
+}
+
+func (s *State) SetControl(b bool) *State {
+	s.features.SetControl(b)
+	return s
+}
+
+func (s *State) ControlEnabled() bool {
+	return s.features.ControlEnabled()
 }
 
 func (s *State) OSAccessAllowed() bool {
@@ -101,12 +145,26 @@ func (s *State) FileSystem() vfs.VFS {
 	return s.fileSystem
 }
 
-func (s *State) GetFunctions() dynaml.Registry {
-	return s.functions
+func (s *State) GetRegistry() dynaml.Registry {
+	if s == nil {
+		return dynaml.DefaultRegistry()
+	}
+	return s.registry
+}
+
+func (s *State) GetFeatures() features.FeatureFlags {
+	if s == nil {
+		return nil
+	}
+	return s.features
 }
 
 func (s *State) GetEncryptionKey() string {
 	return s.key
+}
+
+func (s *State) GetExecCache() dynaml.ExecCache {
+	return s.exec_cache
 }
 
 func (s *State) GetTempName(data []byte) (string, error) {
@@ -129,6 +187,7 @@ func (s *State) GetTempName(data []byte) (string, error) {
 }
 
 func (s *State) SetTag(name string, node yaml.Node, path []string, scope dynaml.TagScope) error {
+	name = strings.Replace(name, ":", ".", -1)
 	debug.Debug("setting tag: %v\n", path)
 	old := s.tags[name]
 	if old != nil {
@@ -144,7 +203,8 @@ func (s *State) SetTag(name string, node yaml.Node, path []string, scope dynaml.
 }
 
 func (s *State) GetTag(name string) *dynaml.Tag {
-	if strings.HasPrefix(name, "doc:") {
+	name = strings.Replace(name, ":", ".", -1)
+	if strings.HasPrefix(name, "doc.") {
 		i, err := strconv.Atoi(name[4:])
 		if err != nil {
 			return nil
@@ -154,7 +214,7 @@ func (s *State) GetTag(name string) *dynaml.Tag {
 			if i <= 0 {
 				return nil
 			}
-			name = fmt.Sprintf("doc:%d", i)
+			name = fmt.Sprintf("doc.%d", i)
 		}
 	}
 	tag := s.tags[name]
@@ -165,7 +225,8 @@ func (s *State) GetTag(name string) *dynaml.Tag {
 }
 
 func (s *State) GetTags(name string) []*dynaml.TagInfo {
-	if strings.HasPrefix(name, "doc:") {
+	name = strings.Replace(name, ":", ".", -1)
+	if strings.HasPrefix(name, "doc.") {
 		i, err := strconv.Atoi(name[4:])
 		if err != nil {
 			return nil
@@ -175,7 +236,7 @@ func (s *State) GetTags(name string) []*dynaml.TagInfo {
 			if i <= 0 {
 				return nil
 			}
-			name = fmt.Sprintf("doc:%d", i)
+			name = fmt.Sprintf("doc.%d", i)
 		}
 		tag := s.tags[name]
 		if tag == nil {
@@ -185,7 +246,7 @@ func (s *State) GetTags(name string) []*dynaml.TagInfo {
 	}
 
 	var list []*dynaml.TagInfo
-	prefix := name + ":"
+	prefix := name + "."
 	for _, t := range s.tags {
 		if t.Name() == name || strings.HasPrefix(t.Name(), prefix) {
 			list = append(list, t)
@@ -218,7 +279,7 @@ func (s *State) ResetStream() {
 
 func (s *State) PushDocument(node yaml.Node) {
 	if node != nil {
-		s.SetTag(fmt.Sprintf("doc:%d", s.docno), node, nil, dynaml.TAG_SCOPE_GLOBAL)
+		s.SetTag(fmt.Sprintf("doc.%d", s.docno), node, nil, dynaml.TAG_SCOPE_GLOBAL)
 	}
 	for _, t := range s.tags {
 		t.ResetLocal()

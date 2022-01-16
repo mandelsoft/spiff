@@ -83,4 +83,55 @@ var _ = Describe("subtraction", func() {
 			Expect(expr).To(EvaluateAs(1.25, FakeBinding{}))
 		})
 	})
+	Context("IPs", func() {
+		It("subtracts ips and ips", func() {
+			expr := SubtractionExpr{
+				StringExpr{"10.0.0.10"},
+				StringExpr{"10.0.0.1"},
+			}
+
+			Expect(expr).To(EvaluateAs(9, FakeBinding{}))
+		})
+		It("subtracts cidr and ips", func() {
+			expr := SubtractionExpr{
+				StringExpr{"10.0.0.10/24"},
+				StringExpr{"10.0.0.1"},
+			}
+
+			Expect(expr).To(EvaluateAs(9, FakeBinding{}))
+		})
+		It("subtracts cidr and cidrs", func() {
+			expr := SubtractionExpr{
+				StringExpr{"10.0.0.10/24"},
+				StringExpr{"10.0.0.1/30"},
+			}
+
+			Expect(expr).To(EvaluateAs(9, FakeBinding{}))
+		})
+		It("subtracts cidr and int", func() {
+			expr := SubtractionExpr{
+				StringExpr{"10.0.0.10/24"},
+				IntegerExpr{9},
+			}
+
+			Expect(expr).To(EvaluateAs("10.0.0.1/24", FakeBinding{}))
+		})
+
+		It("adds ip and int", func() {
+			expr := AdditionExpr{
+				StringExpr{"10.0.0.10"},
+				IntegerExpr{2},
+			}
+
+			Expect(expr).To(EvaluateAs("10.0.0.12", FakeBinding{}))
+		})
+		It("adds cidr and int", func() {
+			expr := AdditionExpr{
+				StringExpr{"10.0.0.10/24"},
+				IntegerExpr{2},
+			}
+
+			Expect(expr).To(EvaluateAs("10.0.0.12/24", FakeBinding{}))
+		})
+	})
 })

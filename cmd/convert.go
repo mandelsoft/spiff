@@ -74,7 +74,7 @@ func convert(stdin bool, templateFilePath string, json, split bool, subpath stri
 			flowed := templateYAML
 			if subpath != "" {
 				comps := dynaml.PathComponents(subpath, false)
-				node, ok := yaml.FindR(true, flowed, comps...)
+				node, ok := yaml.FindR(true, flowed, nil, comps...)
 				if !ok {
 					log.Fatalln(fmt.Sprintf("path %q not found%s", subpath, doc))
 				}
@@ -85,7 +85,7 @@ func convert(stdin bool, templateFilePath string, json, split bool, subpath stri
 				new := map[string]yaml.Node{}
 				for _, p := range selection {
 					comps := dynaml.PathComponents(p, false)
-					node, ok := yaml.FindR(true, flowed, comps...)
+					node, ok := yaml.FindR(true, flowed, nil, comps...)
 					if !ok {
 						log.Fatalln(fmt.Sprintf("path %q not found%s", subpath, doc))
 					}

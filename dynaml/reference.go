@@ -34,7 +34,7 @@ func (e ReferenceExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 			return binding.FindFromRoot(path[start : end+1])
 		} else {
 			if tag != nil {
-				return yaml.Find(tag.Node(), path...)
+				return yaml.Find(tag.Node(), binding.GetFeatures(), path...)
 			}
 			return binding.FindReference(path[:end+1])
 		}
@@ -42,7 +42,7 @@ func (e ReferenceExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 
 	if e.Tag != "" {
 		info := DefaultInfo()
-		if e.Tag != "doc:0" {
+		if e.Tag != "doc:0" && e.Tag != "doc.0" {
 			tags := binding.GetState().GetTags(e.Tag)
 			if len(tags) == 0 {
 				return info.Error("tag '%s' not found", e.Tag)
@@ -110,7 +110,7 @@ func (e ReferenceExpr) find(f func(int, []string) (node yaml.Node, x bool), bind
 			return info.Error("'%s' not found", strings.Join(e.Path[0:i+1], "."))
 		}
 
-		if !isLocallyResolved(step) {
+		if !isLocallyResolved(step, binding) {
 			debug.Debug("  locally unresolved %T\n", step.Value())
 			if _, ok := step.Value().(Expression); ok {
 				info.Issue = yaml.NewIssue("'%s' unresolved", strings.Join(e.Path[0:i+1], "."))
@@ -122,7 +122,7 @@ func (e ReferenceExpr) find(f func(int, []string) (node yaml.Node, x bool), bind
 		}
 	}
 
-	if !locally && !isResolvedValue(step.Value()) {
+	if !locally && !isResolvedValue(step.Value(), binding) {
 		debug.Debug("  unresolved\n")
 		info.Issue = yaml.NewIssue("'%s' unresolved", strings.Join(e.Path, "."))
 		info.Failed = step.Failed() || step.HasError()

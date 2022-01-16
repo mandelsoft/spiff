@@ -7,8 +7,8 @@ Prefer <- ws 'prefer' req_ws Expression
 
 MarkedExpression <- ws Marker ( req_ws SubsequentMarker )* ws MarkerExpression ? ws
 SubsequentMarker <- Marker
-Marker <- '&' ( 'template' / 'temporary' / 'local' / 'inject' / 'state' / 'default' / TagMarker )
-TagMarker <- 'tag:' '*'? TagName ( ':' TagName )*
+Marker <- '&' ( 'template' / 'temporary' / 'local' / 'inject' / 'state' / 'default' / 'dynamic' / TagMarker )
+TagMarker <- 'tag:' '*'? Tag
 MarkerExpression <- Grouped
 
 Expression <- ( Scoped / LambdaExpr / Level7 ) ws
@@ -119,9 +119,10 @@ Name <- [a-zA-Z0-9_]+
 DefaultValue <- '=' Expression
 VarParams <- '...' ws
 
-Reference <- (( Tag  ('.' / Key )) / ( '.'? Key )) FollowUpRef
-Tag <- ( ('doc:' '-'? [0-9]+) / (TagName ( ':' TagName )*) ) '::'
-TagName <- [a-zA-Z_] [a-zA-Z0-9_]*
+Reference <- (( TagPrefix  ('.' / Key )) / ( '.'? Key )) FollowUpRef
+TagPrefix <- ( ('doc' [.:] '-'? [0-9]+) / Tag ) '::'
+Tag <- TagComponent ( [.:] TagComponent )*
+TagComponent <- [a-zA-Z_] [a-zA-Z0-9_]*
 FollowUpRef <- PathComponent*
 PathComponent <- ( '.' Key ) / ( '.'? Index )
 

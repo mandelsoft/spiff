@@ -19,7 +19,7 @@ func (e QualifiedExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 		return nil, info, false
 	}
 	locally = locally || info.Raw
-	if !isLocallyResolvedValue(root) {
+	if !isLocallyResolvedValue(root, binding) {
 		debug.Debug("not locally resolved: %v\n", root)
 		if root != nil {
 			if ex, ok := root.(Expression); ok {
@@ -28,14 +28,14 @@ func (e QualifiedExpr) Evaluate(binding Binding, locally bool) (interface{}, Eva
 		}
 		return e, info, true
 	}
-	if !locally && !isResolvedValue(root) {
+	if !locally && !isResolvedValue(root, binding) {
 		debug.Debug("not resoved: %v\n", root)
 		return e, info, true
 	}
 
 	debug.Debug("qualified reference (%t): %v\n", locally, e.Reference.Path)
 	return e.Reference.find(func(end int, path []string) (yaml.Node, bool) {
-		return yaml.Find(NewNode(root, nil), path[:end+1]...)
+		return yaml.Find(NewNode(root, nil), binding.GetFeatures(), path[:end+1]...)
 	}, binding, locally)
 }
 

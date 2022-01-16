@@ -3,6 +3,8 @@ package flow
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/mandelsoft/spiff/features"
 )
 
 var _ = Describe("Cascading YAML templates", func() {
@@ -1080,6 +1082,7 @@ types:
    lambda: (( type(.lambda) ))
    bool: (( type(true) ))
    int: (( type(1) ))
+   float: (( type(1.0) ))
    string: (( type("s") ))
    map: (( type(.map) ))
    list: (( type(.list) ))
@@ -1091,6 +1094,7 @@ types:
 types:
   bool: bool
   int: int
+  float: float
   lambda: lambda
   list: list
   map: map
@@ -1350,7 +1354,7 @@ foo: x ((!template_only.foo))
 foo: x ((template_only.foo))
 `)
 
-				Expect(source).To(CascadeAs(resolved))
+				Expect(source).To(CascadeAs(resolved).WithFeatures(features.INTERPOLATION))
 			})
 			It("ignores merge nodes with escaped escape", func() {
 				source := parseYAML(`

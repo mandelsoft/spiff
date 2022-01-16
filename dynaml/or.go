@@ -18,7 +18,7 @@ func (e OrExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluation
 			return e, infoa, true
 		}
 		// fmt.Printf("++++++++++++++++++ %s\n", e.A)
-		if isExpression(a) {
+		if IsExpression(a) {
 			return e, infoa, true
 		}
 		return a, infoa, true

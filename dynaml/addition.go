@@ -30,15 +30,28 @@ func (e AdditionExpr) Evaluate(binding Binding, locally bool) (interface{}, Eval
 
 	str, ok := a.(string)
 	if ok {
+		var cidr *net.IPNet
+		var err error
 		ip := net.ParseIP(str)
 		if ip == nil {
-			return info.Error("first argument for addition must be IP address or number")
+			ip, cidr, err = net.ParseCIDR(str)
+			if err != nil {
+				return info.Error("first argument for addition must be IP address, CIDR or number")
+			}
 		}
 		bint, ok := b.(int64)
 		if !ok {
 			return info.Error("addition argument for an IP address requires an integer argument")
 		}
-		return IPAdd(ip, bint).String(), info, true
+		ip = IPAdd(ip, bint)
+		if cidr != nil {
+			if !cidr.Contains(ip) {
+				return info.Error("resulting ip address not in CIDR range")
+			}
+			cidr.IP = ip
+			return cidr.String(), info, true
+		}
+		return ip.String(), info, true
 	}
 	a, b, err := NumberOperands(a, b)
 	if err != nil {

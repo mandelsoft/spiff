@@ -26,18 +26,32 @@ resource:
   description: (( "This document describes a " name " located at " url ))
 ```
 
-spiff is a command line tool and declarative YAML templating system, specially designed for generating deployment
-manifests (for example BOSH or [kubernetes](https://github.com/kubernetes) manifests).
+Instead of using only external value sources *spiff* provides a merging mechanism
+to merge a template with any number of merging stubs to produce a final document.
+
+It is a command line tool and declarative YAML templating system, specially designed for generating deployment
+manifests (for example BOSH, [Kubernetes](https://github.com/kubernetes) or
+[Landscaper](https://github.com/gardener/landscaper) manifests).
+
+Besides the CLI there is a golang library enabling the usage of the spiff
+template processing in any GO program (for example [Landscaper](https://github.com/gardener/landscaper)).
+
+The templating engine offers enabling access to the filesystem based on a
+configurable [virtual filesystem](https://github.com/mandelsoft/vfs)
+or the process system to execute commands and incorporate the output into the
+template processing. 
 
 Contents:
 - [Installation](#installation)
 - [Usage](#usage)
+- [Feature Flags](#feature-flags)
 - [Libraries](#libraries)
 - [dynaml Templating Language](#dynaml-templating-language)
 	- [(( foo ))](#-foo-)
 	- [(( foo.bar.[1].baz ))](#-foobar1baz-)
 	- [(( foo.[bar].baz ))](#-foobarbaz-)
 	- [(( list.[1..3] ))](#-list13-)
+	- [(( tag::foo ))](#-tagfoo-)
 	- [(( 1.2e4 ))](#-12e4-)
 	- [(( "foo" ))](#-foo-)
 	- [(( [ 1, 2, 3 ] ))](#--1-2-3--)
@@ -132,6 +146,17 @@ Contents:
 		    - [(( mkdir("dir", 0755) ))](#-mkdirdir-0755-)
 		    - [(( list_files(".") ))](#-list_files-)
 		    - [(( archive(files, "tar") ))](#-archivefiles-tar-)
+		- [Semantic Versioning Functions](#semantic-versioning-functions)
+		    - [(( semver("v1.2-beta.1") ))](#-semverv12-beta1-)
+		    - [(( semverrelease("v1.2.3-beta.1") ))](#-semverreleasev123-beta1-)
+		    - [(( semvermajor("1.2.3-beta.1") ))](#-semvermajor123-beta1-)
+		    - [(( semverminor("1.2.3-beta.1") ))](#-semverminor123-beta1-)
+		    - [(( semverpatch("1.2.3-beta.1") ))](#-semverpatch123-beta1-)
+		    - [(( semverprerelease("1.2.3-beta.1") ))](#-semverprerelease123-beta1-)
+		    - [(( semvermetadata("1.2.3+demo") ))](#-semvermetadata123demo-)
+		    - [(( semvercmp("1.2.3", "1.2.3-beta.1") ))](#-semvercmp123-123-beta1-)
+		    - [(( semvermatch("1.2.3", "~1.2") ))](#-semvermatch123-12-)
+		    - [(( semversort("1.2.3", "1.2.1") ))](#-semversort123-121-)
 		- [X509 Functions](#x509-functions)
 		    - [(( x509genkey(spec) ))](#-x509genkeyspec-)
 		    - [(( x509publickey(key) ))](#-x509publickeykey-)
@@ -166,14 +191,16 @@ Contents:
 	- [Markers](#markers)
 	    - [(( &temporary ))](#-temporary-)
 	    - [(( &local ))](#-local-)
+    	- [(( &dynamic ))](#-dynamic-)
     	- [(( &inject ))](#-inject-)
     	- [(( &default ))](#-default-)
     	- [(( &state ))](#-state-)
     	- [(( &tag:name ))](#-tagname-)
     - [Tags](#tags)
         - [(( &tag:name(value) ))](#-tagnamevalue-)
-        - [(( name::path ))](#-namepath-)
-        - [(( name::. ))](#-name-)
+        - [(( tag::foo ))](#-tagfoo-)
+        - [(( tag::. ))](#-tag-)
+        - [(( foo.bar::alice ))](#-foobaralice-)
         - [Path Resolution for Tags](#path-resolution-for-tags)
         - [Tags in Multi-Document Streams](#tags-in-multi-document-streams)
 	- [Templates](#templates)
@@ -188,6 +215,16 @@ Contents:
 	- [Access to evaluation context](#access-to-evaluation-context)
 	- [Operation Priorities](#operation-priorities)
 	- [String Interpolation](#string-interpolation)
+	- [YAML-based Control Structures](#yaml-based-control-structures)
+	    - [in Maps](#control-structures-in-maps)
+	    - [in Lists](#control-structures-in-lists)
+	    - [`<<if:`](#if)
+	    - [`<<switch:`](#switch)
+	    - [`<<type:`](#type)
+	    - [`<<for:`](#for)
+	        - [Lists as Iteration Result](#lists-as-iteration-result)
+	        - [Maps as Iteration Result](#maps-as-iteration-result)
+	    - [`<<merge:`](#merge)
 - [Structural Auto-Merge](#structural-auto-merge)
 - [Bringing it all together](#bringing-it-all-together)
 - [Useful to Know](#useful-to-know)
@@ -283,6 +320,12 @@ The ` merge` command offers several options:
 - The option `--preserve-temporary` will preserve the fields marked as temporary
   in the final document.
   
+- The option `--features=<featurelist>` will enable this given features. New
+  features that are incompatible with the old behaviour must be explicitly 
+  enabled. Typically those feature do not break the common behavior but introduce
+  a dedicated interpretation for yaml values that were used as regular values
+  before.
+  
 The folder [libraries](libraries/README.md) offers some useful
 utility libraries. They can also be used as an example for the power
 of this templating engine.
@@ -340,6 +383,33 @@ stdin.
 If the option `-d` is given, the data is decrypted, otherwise the data is
 read as yaml document and the encrypted result is printed. 
 
+# Feature Flags
+
+New features that are incompatible with the old behaviour must be explicitly 
+enabled. Typically those features do not break the common behavior but introduce
+a dedicated interpretation for yaml values that were used as regular values
+before and can therefore break existing use cases.
+  
+The following feature flags are currently supported:
+
+| Feature | Since | State | Meaning |
+|---------|-------|-------|---------|
+| `interpolation` | 1.7.0-beta-1 | alpha | [dynaml as part of yaml strings](#string-interpolation) |
+| `control` | 1.7.0-beta-4 | alpha | [yaml based control structures](#yaml-based-control-structures) | 
+
+Active feature flags can be queried using the *dynaml* function
+`features()` as list of strings. If this function is called with a string
+argument, it returns whether the given feature is currenty enabled.
+
+Features can be enabled by command line using the `--features` option,
+by the go library using the `WithFeatures` function or generally
+by setting the environment variable `SPIFF_FEATURES` to a feature list.
+This setting is alwas used as default. By using the `Plain()` spiff
+settings from the go library all environment variables are ignored.
+
+A feature can be specified by name or by name prepended with the prefix `no`
+to disable it.
+ 
 # Libraries
 
 The [libraries](libraries/README.md) folder contains some useful _spiff_ template
@@ -1226,7 +1296,7 @@ The result is the string `3 times 2 yields 6`.
 
 ## `(( "10.10.10.10" - 11 ))`
 
-Besides arithmetic on integers it is also possible to use addition and subtraction on ip addresses.
+Besides arithmetic on integers it is also possible to use addition and subtraction on ip addresses and cidrs.
 
 e.g.:
 
@@ -1242,7 +1312,7 @@ ip: 10.10.10.10
 range: 10.10.10.10-10.11.11.1
 ```
 
-Subtraction also works on two IP addresses to calculate the number of
+Subtraction also works on two IP addresses or cidrs to calculate the number of
 IP addresses between two IP addresses.
 
 e.g.:
@@ -2061,6 +2131,7 @@ template:
   
 types:
   - int: (( type(1) ))
+  - float: (( type(1.0) ))
   - bool: (( type(true) ))
   - string: (( type("foobar") ))
   - list:   (( type([]) ))
@@ -2076,6 +2147,7 @@ evaluates types to
 ```yaml
 types:
 - int: int
+- float: float
 - bool: bool
 - string: string
 - list: list
@@ -2836,6 +2908,7 @@ The following validators are available:
 | `privatekey` | none | private key in pem format |
 | `certificate` | none | certificate in pem format |
 | `ca`|  none | certificate for CA |
+| `semver` | optional list of constraints | validate semver version against constraints |
 | `type`| list of accepted type keys | at least one [type key](#-typefoobar-) must match |
 | `valueset` | list argument with values | possible values |
 | `value` or `=` | value | check dedicated value |
@@ -3282,10 +3355,299 @@ yaml:
   bob: 27
 
 ```
+### Semantic Versioning Functions
+
+*Spiff* supports handling of semantic version names. It supports all functionality
+from the [Masterminds Semver Package](https://github.com/Masterminds/semver/blob/v3.1.1/README.md)
+accepting versions with or without a leading `v`.
+
+#### `(( semver("v1.2-beta.1") ))`
+
+Check whether a given string is a semantic version and return 
+its normalized form (without leading `v` and complete release part with major,
+minor and and patch version number).
+
+e.g.:
+
+```yaml
+normalized: (( semver("v1.2-beta.1") ))
+```
+
+resolves to
+
+```yaml
+normalized: 1.2.0-beta.1
+```
+
+#### `(( semverrelease("v1.2.3-beta.1") ))`
+
+Return the release part of a semantic version omitting metadata and prerelease
+information.
+
+e.g.:
+
+```yaml
+release: (( semverrelease("v1.2.3-beta.1") ))
+```
+
+resolves to
+
+```yaml
+release: v1.2.3
+```
+
+If an additional string argument is given this function replaces
+the release by the release of the given semantic version preserving
+metadata and prerelease information.
+
+e.g.:
+
+```yaml
+new: (( semverrelease("1.2.3-beta.1", "1.2.1) ))
+```
+
+resolves to
+
+```yaml
+new: 1.2.1-beta.1
+```
+
+#### `(( semvermajor("1.2.3-beta.1") ))`
+
+Determine the major version number of the given semantic version.
+The result is an integer.
+
+e.g.:
+
+```yaml
+major: (( semvermajor("1.2.3-beta.1") ))
+```
+
+resolves to
+
+```yaml
+major: 1
+```
+
+The function `semverincmajor` can be used to increment the
+major version number and reset the minor version, patch version 
+and release suffixes.
+
+e.g.:
+
+```yaml
+new: (( semverincmajor("1.2.3-beta.1") ))
+```
+
+resolves to
+
+```yaml
+new: 2.0.0
+```
+
+#### `(( semverminor("1.2.3-beta.1") ))`
+
+Determine the minor version number of the given semantic version.
+The result is an integer.
+
+e.g.:
+
+```yaml
+minor: (( semverminor("1.2.3-beta.1") ))
+```
+
+resolves to
+
+```yaml
+minor: 2
+```
+
+The function `semverincminor` can be used to increment the
+minor version number and reset the patch version 
+and release suffixes.
+
+e.g.:
+
+```yaml
+new: (( semverincmajor("v1.2.3-beta.1") ))
+```
+
+resolves to
+
+```yaml
+new: v1.3.0
+```
+
+#### `(( semverpatch("1.2.3-beta.1") ))`
+
+Determine the patch version number of the given semantic version.
+The result is an integer.
+
+e.g.:
+
+```yaml
+patch: (( semverpatch("1.2.3-beta.1") ))
+```
+
+resolves to
+
+```yaml
+patch: 3
+```
+
+The function `semverincpatch` can be used to increment the
+patch version number or reset the release suffixes.
+If there are rlease suffixes, they are removed and the release
+info is kept unchanged, otherwise the patch version number
+is increased.
+
+e.g.:
+
+```yaml
+final: (( semverincpatch("1.2.3-beta.1") ))
+new: (( semverincpatch(final) ))
+```
+
+resolves to
+
+```yaml
+final: 1.2.3
+new: 1.2.4
+```
+
+#### `(( semverprerelease("1.2.3-beta.1") ))`
+
+Determine the prerelease of the given semantic version.
+The result is a string.
+
+e.g.:
+
+```yaml
+prerelease: (( semverprerelease("1.2.3-beta.1") ))
+```
+
+resolves to
+
+```yaml
+prerelease: beta.1
+```
+
+If an additional string argument is given this function sets, replaces or clears
+(if set to empty string) the prerelease
+
+e.g.:
+
+```yaml
+new: (( semverprerelease("1.2.3-beta.1", "beta.2) ))
+```
+
+resolves to
+
+```yaml
+new: 1.2.3-beta.2
+```
+
+#### `(( semvermetadata("1.2.3+demo") ))`
+
+Determine the metadata of the given semantic version.
+The result is a string.
+
+e.g.:
+
+```yaml
+metadata: (( semvermetadata("1.2.3+demo") ))
+```
+
+resolves to
+
+```yaml
+metadata: demo
+```
+
+If an additional string argument is given this function sets, replaces or clears
+(if set to empty string) the metadata.
+
+e.g.:
+
+```yaml
+new: (( semvermetadata("1.2.3-test", "demo) ))
+```
+
+resolves to
+
+```yaml
+new: 1.2.3+demo
+```
+
+#### `(( semvercmp("1.2.3", 1.2.3-beta.1") ))`
+
+Compare two semantic versions. A prerelease is always *smaller* than 
+the final release. The result is an integer with the following values:
+
+| result | meaning |
+|--------|---------|
+| -1 | first version is before the second version |
+| 0 | both versions are equal |
+| 1 | first versuon is after the second one |
+
+e.g.:
+
+```yaml
+compare: (( semvercmp("1.2.3", "1.2.3-beta.1") ))
+```
+
+resolves to
+
+```yaml
+compare: 1
+```
+
+#### `(( semvermatch("1.2.3", "~1.2") ))`
+
+Match the given semantic version against a list of contraints.
+The result is a boolean. It is possible to specify any number of version
+constraints. If no constraint is given, the function just checks whether 
+the given string is a semantic version.
+
+e.g.:
+
+```yaml
+match: (( semvermatch("1.2.3", "~1.2") ))
+```
+
+resolves to
+
+```yaml
+match: true
+```
+
+The complete list of possible constraints specification can be found
+[here](https://github.com/Masterminds/semver/blob/v3.1.1/README.md#checking-version-constraints).
+
+#### `(( semversort("1.2.3", "1.2.1") ))`
+
+Sort a list of versions in ascending order. A leading `v` is preserved.
+
+e.g.:
+
+```yaml
+sorted: (( semversort("1.2.3", "1.2.1") ))
+```
+
+resolves to
+
+```yaml
+sorted:
+  - 1.2.1
+  - 1.2.3
+```
+
+The list of versions to be sorted may also be specified with a single list
+argument.
 
 ### X509 Functions
 
-spiff supports some useful functions to work with _X509_ certificates and keys.
+*Spiff* supports some useful functions to work with _X509_ certificates and keys.
 Please refer also to the [Useful to Know](#useful-to-know) section to find some
 tips for providing state.
 
@@ -4530,7 +4892,7 @@ Please note, that the list expansion might span multiple arguments (including th
 Nodes of the yaml document can be marked to enable dedicated behaviours for this
 node. Such markers are part of the _dynaml_ syntax and may be prepended to
 any dynaml expression. They are denoted by the `&` character directly followed 
-by a marker name. If the expression is combination of markers and regular
+by a marker name. If the expression is a combination of markers and regular
 expressions, the expression follows the marker list enclosed in brackets
 (for example `(( &temporary( a + b ) ))`).
 
@@ -4588,6 +4950,40 @@ removed from a stub directly after resolving dynaml expressions. Such nodes
 are therefore not available for merging and they are not used for further
 merging of stubs and finally the template.
 
+### `(( &dynamic ))`
+
+This marker can be used to mark a template expression (direct or referenced)
+to enforce the re-evaluation of the template in the usage context whenever the
+node is used to override or inject a node value along the processing chain.
+It can also be used together with
+[`&inject`](#-inject-) or [`&default`](#-default-).
+
+e.g.:
+
+**template.yaml**
+```yaml
+data: 1
+```
+
+merged with
+
+**stub.yaml**
+```yaml
+id: (( &dynamic &inject &template(__ctx.FILE) ))
+```
+
+will resolve to
+
+```yaml
+id: template.yaml
+data: 1
+```
+
+The original template is kept along the merge chain and is evaluated
+separately in the context of the very stub or template it is used.
+
+Using this marker for nodes not evaluationg to a template value is
+not possible.
 
 ### `(( &inject ))`
 
@@ -4773,7 +5169,9 @@ value as a whole or sub structure.
 ### `(( &tag:name(value) ))`
 
 This syntax is used to tag a node whose value is defined by a dynaml expression.
-It can also be used to denote tagged simple value nodes.
+It can also be used to denote tagged simple value nodes. (As usual the value
+part is optional for adding markers to structured values
+(see [Markers](#markers)).)
 
 e.g.:
 
@@ -4785,12 +5183,15 @@ data:
 ```
 
 If the name is prefixed with a star (`*`), the tag is defined globally.
-Gobal tags surive stub processing and their value is visible in sub sequent
+Gobal tags surive stub processing and their value is visible in subsequent
 stub (and template) processings.
 
 A tag name may consist of multiple components separated by a colon (`:`).
 
-### `(( name::path ))`
+Tags can also be defined dynamically by the dynaml
+function [tagdef](#-tagdeftag-valiue-).
+
+### `(( tag::foo ))`
 
 Reference a sub path of the value of a tagged node.
 
@@ -4807,9 +5208,9 @@ tagref: (( persons::alice ))
 
 resolves `tagref` to `25`
 
-### `(( name::. ))`
+### `(( tag::. ))`
 
-Reference the value of tagged node.
+Reference the whole (structured) value of tagged node.
 
 e.g.:
 
@@ -4823,11 +5224,18 @@ tagref: (( alice::. ))
 
 resolves `tagref` to `25`
 
+### `(( foo.bar::alice ))`
+
+Tag names may be structured. A tag name consists of a non-empty list of 
+tag components separated by a dot or colon (`:`). A tag component may
+contain ASCII letters or numbers, starting wit a letter.
+Multi-component tags are subject to [Tag Resolution](#path-resolution-for-tags).
+
 ### Path Resolution for Tags
 
 A tag reference always contains a tag name and a path separated by a double 
 colon (`::`).
-The standard usecase is to describe a dedicated sub node for a tagged
+The standard use-case is to describe a dedicated sub node for a tagged
 node value.
 
 for example, if the tag `X` describes the value
@@ -4838,14 +5246,19 @@ data:
   bob: 24
 ```
 
-the tagged reference `tag::data.alice` describes the value `25`.
+the tagged reference `X::data.alice` describes the value `25`.
 
-For tagged reference with a path other the `.` (the whole tag value),
+For tagged references with a path other than `.` (the whole tag value),
 structured tags feature a more sophisticated resolution mechanism. A structured
 tag consist of multiple tag components separated by a colon (`:`), for
-example `lib:mylib`.
+example `lib:mylib`. Therefore tags span a tree of namespaces or scopes
+used to resolve path references. A tag-less reference just uses 
+the actual document or binding to resolve a path extression.
+
 Evaluation of a path reference for a tag tries to resolve the path in the
-first unique nested tag, if it cannot be resolved directly by the given tag.
+first tag tree level where the path is available (breadth-first search).
+If this level contains multiple tags that could resolve the given path, the
+resolution fails because it cannot be unambigiously resolved. 
 
 For example:
 
@@ -4914,7 +5327,7 @@ Local tags are only avaialble on the processing level they are declared.
 Additionally to the tags explicitly set by tag markers, there are implicit
 document tags given by the document index during the processing of a 
 (multi-document) template. The implicit document tags are qualified with the
-prefix `doc:`. This prefix should not be used to own tags in the documents
+prefix `doc.`. This prefix should not be used to own tags in the documents
 
 e.g.:
 
@@ -4927,10 +5340,10 @@ data:
   bob: 24
 ---
 alice: (( persons::alice ))
-prev: (( doc:1::. ))
+prev: (( doc.1::. ))
 ---
 bob: (( persons::bob ))
-prev: (( doc:2::. ))
+prev: (( doc.2::. ))
 ```
 
 resolves to
@@ -4953,8 +5366,8 @@ prev:
 ```
 
 If the given document index is negative it denotes the document relative to the
-one actually processed (so, the tag `doc:-1` denotes the previous document).
-The index `doc:0` can be used to denote the actual document. Here always a path
+one actually processed (so, the tag `doc.-1` denotes the previous document).
+The index `doc.0` can be used to denote the actual document. Here always a path
 must be specified, it is not possible to refer to the complete document
 (with `.`). 
 
@@ -5243,6 +5656,7 @@ The following fields are supported:
 
 | Field Name  | Type | Meaning |
 | ------------| ---- | ------- |
+| `VERSION` | string |current version of *spiff*  |
 | `FILE` | string | name of actually processed template file  |
 | `DIR`  | string | name of directory of actually processed template file  |
 | `RESOLVED_FILE` | string | name of actually processed template file with resolved symbolic links |
@@ -5300,8 +5714,11 @@ The complete grammar can be found in [dynaml.peg](dynaml/dynaml.peg).
 
 ## String Interpolation
 
+Feature state: alpha
+
 **Attention:** This is an alpha feature. It must be enabled on the command
-line with the `--interpolation` option. Also for the spiff library it must
+line with the `--interpolation` or `--features=interpolation` option.
+Also for the spiff library it must
 explicitly be enabled. By adding the key `interpolation` to the feature list
 stored in the environment variable `SPIFF_FEATURES` this feature will be enabled
 by default.
@@ -5354,7 +5771,549 @@ will resolve `interpolation` to `this is testtest`.
 
 The embedded dynaml expression must be concatenatable with strings.
 
+## YAML-based Control Structures
 
+Feature state: alpha
+
+In addition to describe conditions and loops with *dynaml* expressions
+it is also possible to use elements of the document structure to embed
+control structures.
+
+Such a YAML-based control structure is always described as a map in YAML/JSON.
+The syntactical elements are expressed as map fields starting with `<<`.
+Additionally, depending on the control structure, regular fields are possible.
+Control structures finally represent a value for the containing node.
+They may contain marker expressions (`<<`), also.
+
+e.g.:
+
+```yaml
+temp:
+  <<: (( &temporary ))
+  <<if: (( features("control") ))
+  <<then:
+    alice: 25
+    bob: 26
+```
+
+resolves to
+
+```yaml
+final:
+  alice: 25
+  bob: 26
+```
+
+Tu use this alpha feature the feature flag `control` must be enabled.
+
+Please be aware: Control structure maps typically are always completely resolved
+before they are evaluated.
+
+### Control Structures in Maps
+
+A control structure itself is always a dedicated map node in a document.
+It is substituted by a regular value node determined by the execution
+of the control structure.
+
+The fields of a control structure map are not subject to overwriting by stubs,
+but the complete structure can be overwritten.
+
+If used as value for a map field the resulting value is just used as effective
+value for this field.
+
+If a map should be enriched by maps resulting from multiple control structures
+the special control structure [`<<merge:`](#merge) can be used. It allows to
+specify a list of maps which should be merged with the actual control structure
+map to finally build the result value.
+
+### Control Structures in Lists
+
+A control structure can be used as list value, also.
+In this case there is a dedicated interpretation of the resulting
+value of the control structure. If it is NOT a list value,
+for convenience, the value is directly used as list entry and substitutes the
+control structure map.
+
+If the resulting value is again a list, it is inserted into the containing
+list at the place of occurrence of the control structure.
+So, if a list value should be used as dedicated entry in a list, the 
+result of a control structure must be a list with the intended
+list as entry.
+
+e.g.:
+
+```yaml
+list:
+ - <<if: (( features("control") ))
+   <<then: alice
+ - <<if: (( features("control") ))
+   <<then:
+   - - peter
+ - <<if: (( features("control") ))
+   <<then:
+   - bob
+```
+resolves to
+
+```yaml
+list:
+- alice
+- - peter
+- bob
+```
+
+### `<<if:`
+
+The condition structure is defined by the syntax field `<<if`. It additionally
+accepts the fields `<<then` and `<<else`.
+
+The condition field must provide a boolean value.
+If it is `true` the optional `<<then` field is used to substitute the control
+structure, otherwise the optional `<<else` field is used.
+
+If the appropriate case is not specified, the result is the undefined `(( ~~ ))`
+value. The containing field is therefore completely omitted from the output.
+
+.e.g.:
+
+```yaml
+x: test1
+cond:
+  field:
+    <<if: (( x == "test" ))
+    <<then: alice
+    <<else: bob
+```
+
+evaluates `cond.field` to `bob`
+
+If the *else* case is omitted, the `cond` field would be an empty map (`field`
+is omitted, because the contained control structure evaluates to *undefined*)
+
+A comparable way to do this with regular *dynaml* could look like this:
+
+```yaml
+cond: (( x == "test" ? "alice" :"bob" ))
+```
+
+A better way more suitable for complex cases would be:
+
+```yaml
+local:
+  <<: (( &local))
+  then: alice
+  else: bob
+
+cond: (( x == "test" ? local.then :local.else ))
+```
+
+### `<<switch:`
+
+The `switch` control structure evaluates the switch value of the `<<switch`
+field to a string and uses it to select an appropriate regular field
+in the control map.
+
+If it is not found the value of the optional field `<<default` is used. If no default
+is specified, the control structure evaluates to an error, if no appropriate
+regular field is available.
+
+The *nil* value matches the `default` case. If the switch value is undefined
+the control evaluates to the undefined value `(( ~~ ))`.
+
+e.g.:
+
+```yaml
+x: alice
+
+value:
+  <<switch: (( x ))
+  alice: 25
+  bob: 26 
+  <<default: other
+```
+
+evaluates `value` to `25`.
+
+A comparable way to do this with regular *dynaml* could look like this:
+
+```yaml
+local:
+  <<: (( &local))
+  cases:
+    alice: 25
+    bob: 26
+  default: other
+
+value: (( local.cases[x] || local.default ))
+```
+
+### `<<type:`
+
+The `type` control structure evaluates the type of the value of the `<<type`
+field and uses it to select an appropriate regular field
+in the control map.
+
+If it is not found the value of the optional field `<<default` is used. If no default
+is specified, the control structure evaluates to an error, if no appropriate
+regular field is available.
+
+
+e.g.:
+
+```yaml
+x: alice
+
+value:
+  <<type: (( x ))
+  string: alice
+  <<default: unknown
+```
+
+evaluates `value` to `alice`.
+
+A comparable way to do this with regular *dynaml* could look like this:
+
+```yaml
+local:
+  <<: (( &local))
+  cases:
+    string: alice
+  default: unknown
+
+value: (( local.cases[type(x)] || local.default ))
+```
+
+For more complex scenarios not only switching on strings a second syntax 
+can be used. Instead of using fields in the control map as cases, a dedicated
+field `<<cases` may contain a list of cases, that are checked sequentially
+(In this flavor regular fields are not allowed anymore).
+
+Every case is described again by a map containing the fields:
+
+- `case`: the expected value to match the switch value
+- `match`: a lambda function taking one argument and yielding a boolean value
+used to match the given switch value
+- `value`: (optional) the resulting value in case of a match. If not defined 
+  the result will be the undefined value.
+
+One of `case` or `match` must be present.
+
+e.g.:
+
+```yaml
+x: 5
+selected:
+  <<switch: (( x ))
+  <<cases:
+    - case:
+        alice: 25
+      value: alice
+    - match: (( |v|->v == 5 ))
+      value: bob
+  <<default: unknown
+```
+
+resolves to
+
+```yaml
+x: 5
+selected: bob
+```
+
+If `x` would be set to the complex value
+
+```yaml
+x:
+  alice: 25
+```
+
+it would resolve to
+ 
+```yaml
+x:
+  alice: 25
+selected: alice
+```
+
+### `<<for:`
+
+The loop control is able to execute a multi-dimensional loop and 
+produce a list or map based on the value combinations.
+
+The loop ranges are specified by the value of the `<<for` field.
+It is possible ol loop over lists or maps.
+The range specification can be given by either a map or list:
+- *map*: the keys of the map are the names of the control variables and the values
+       must be lists or maps specifying the ranges.
+       
+  The map key might optionally be a comma-separated pair (for example `key,value`) of
+  variable names. In this case the first name is the name for the index
+  variable and the second one for the value variable.
+  
+  If multiple ranges are specified iterations are alphabetically
+  ordered by value variable name (first) and index variable name (second) to
+  determine the traversing order.
+              
+- *list*: if the control variables are defined by a list, each list element
+   must contain two mandatory and one optional field(s):
+    - `name`: the name of the (list or map entry value) control variable
+    - `values`: a list to define the value range.
+    - `index` : (optional) the name of the variable providing the list index
+      or map key of the loop range (defaulted to `index-<name>`)
+  
+  Here the order in the list determine the traversal order.
+  
+Traversal is done by recursively iterating follow up ranges for every entry
+in the actual range. This means the last range is completely iterated
+for the first values of the first ranges first.
+
+If no index variable is specified for a loop range there is an additional
+implicit binding for every control variable describing the actual list index
+or map key of the processed value for this dimension. It is denoted by
+`index-<control variable>`
+
+If multiple loop ranges are specified, the ranges may mix iterations over
+maps and lists.
+
+The iteration result value is determined by the value of the `<<do` field.
+It is implicitly handled as template and is evaluated for every
+set of iteration values. 
+
+#### Lists as Iteration Result
+
+The result of the evaluation using only the `<<do` value field is a list.
+
+e.g.:
+
+```yaml
+alice:
+ - a
+ - b
+bob:
+ - 1
+ - 2
+ - 3
+list:
+  <<for: 
+     key,alice: (( .alice )) # sorted by using alice as primary sort key
+     bob: (( .bob ))
+  <<do:
+    value: (( alice "-" key "-" bob "-" index-bob ))
+```
+
+evaluates `list` to
+
+```yaml
+list:
+- value: a-0-1-0
+- value: a-0-2-1
+- value: a-0-3-2
+- value: b-1-1-0
+- value: b-1-2-1
+- value: b-1-3-2
+```
+
+It first iterates over the values for `alice`. For each such value it then
+iterates over the values of `bob`.
+
+A comparable way to do this with regular *dynaml* could look like this:
+
+```yaml
+list: (( sum[alice|[]|s,key,alice|-> s sum[bob|[]|s,index_bob,bob|->s (alice "-" key "-" bob "-" index_bob)]] ))
+```
+
+A result list may omit entries if the value expression evaluates to the undefined
+value (`~~`). The nil value  (`~`) is kept. This way a  `for` control can be used
+to filter lists.
+
+e.g.: 
+
+```yaml
+bob:
+- 1
+- 2
+- 3
+filtered:
+  <<for: 
+     bob: (( .bob ))
+  <<do: (( bob == 2 ? ~~ :bob ))
+```
+
+resolves to
+
+```yaml
+bob:
+- 1
+- 2
+- 3
+filtered:
+- 1
+- 3 
+```
+
+#### Maps as Iteration Result
+
+If the result should be a map it is required to additionally specify a
+key value for every iteration. This is specified by the optional `<<mapkey`
+field. Like the `<<do` field it is implicitly handled as template and re-evaluated
+for every iteration.
+
+e.g.:
+
+```yaml
+x: suffix
+
+alice:
+  - a
+  - b
+bob:
+  - 1
+  - 2
+  - 3
+
+map: 
+  <<for:
+     - name: alice
+       values: (( .alice ))
+     - name: bob
+       values:  (( .bob ))
+  <<mapkey: (( alice bob ))
+  <<do:
+    value: (( alice bob x )) 
+```
+
+evaluates the field `map` to
+
+```yaml
+map:
+  a1:
+    value: a1suffix
+  a2:
+    value: a2suffix
+  a3:
+    value: a3suffix
+  b1:
+    value: b1suffix
+  b2:
+    value: b2suffix
+  b3:
+    value: b3suffix
+```
+
+Here the traversal order is irrelevant as long as the generated key values
+are unique. If several evaluations of the key expression yield the same 
+value the last one will win.
+
+A comparable way to do this with regular *dynaml* could look like this:
+
+```yaml
+map: (( sum[alice|{}|s,index_alice,alice|-> s sum[bob|{}|s,index_bob,bob|->s {(alice bob)=alice bob x}]] ))
+```
+
+An iteration value is ignored if the key or the value evaluate to the undefined
+value `(( ~~ ))`. Additionally the key may evaluate to the nil value `(( ~ ))`, also.
+
+e.g.:
+
+```yaml
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+filtered:
+  <<for: 
+     key,bob: (( .bob ))
+  <<mapkey: (( key ))
+  <<do: (( bob == 2 ? ~~ :bob ))
+```
+
+or
+
+```yaml
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+filtered:
+  <<for: 
+     key,bob: (( .bob ))
+  <<mapkey: (( bob == 2 ? ~~ :key ))
+  <<do: (( bob ))
+```
+
+resolve to
+
+```yaml
+bob:
+  b1: 1
+  b2: 2
+  b3: 3
+filtered:
+  b1: 1
+  b3: 3
+```
+
+
+### `<<merge:`
+
+With `merge` it is possible to merge maps given as list value of the
+`<<merge` field with regular map fields from the control structure
+to determine the final map value.
+
+The value for `<<merge:` may be a single map or a list of maps to join
+with the directly given fields.
+
+e.g.:
+
+```yaml
+map:
+  <<merge: 
+    - bob: 26
+      charlie: 1
+    - charlie: 27
+  alice: 25
+  charlie: 2
+```
+
+resolves to
+
+```yaml
+map:
+  alice: 25
+  bob: 26
+  charlie: 27
+```
+
+If multiple maps contain the same key, the last value (in order of list)
+will win.
+
+This might be combined with other control structures, for example to conditionally
+merge multiple maps:
+
+e.g.:
+
+```yaml
+x: charlie
+map:
+  <<merge: 
+    - <<if: (( x == "charlie" ))
+      <<then:
+        charlie: 27
+    - <<if: (( x == "alice" ))
+      <<then:
+        alice: 20
+  alice: 25
+  charlie: 2
+```
+
+resolves to
+
+```yaml
+x: charlie
+map:
+  alice: 25
+  charlie: 27
+```
 
 # Structural Auto-Merge
 
@@ -6220,7 +7179,7 @@ networks:
      lb: (( deployment.testservice.status.loadBalancer.ingress ))
   
   ```
-- Crazy Shit: Graph Analysis with _spiff_
+- Crazy Shit: Graph Analaysis with _spiff_
 
   It is easy to describe a simple graph with knots and edges (for example 
   for a set of components and their dependencies) just by using a map of lists.

@@ -189,9 +189,9 @@ data:
 ---
 tags:
   - <<: (( &temporary ))
-  - <<: (( &tag:lib:alice ))
+  - <<: (( &tag:lib.alice ))
     data: alice.alice
-  - <<: (( &tag:lib:alice:v1 ))
+  - <<: (( &tag:lib.alice.v1 ))
     data: alice.v1
 usage:
    data: (( lib::data ))
@@ -208,9 +208,9 @@ usage:
 ---
 tags:
   - <<: (( &temporary ))
-  - <<: (( &tag:lib:alice ))
+  - <<: (( &tag:lib.alice ))
     data: alice.alice
-  - <<: (( &tag:lib:bob))
+  - <<: (( &tag:lib.bob))
     data: bob
 usage:
    data: (( catch(lib::data) ))
@@ -219,7 +219,7 @@ usage:
 ---
 usage:
   data:
-    error: 'ambigious tag resolution for lib::data: lib:alice <-> lib:bob'
+    error: 'ambigious tag resolution for lib::data: lib.alice <-> lib.bob'
     valid: false
 `)
 			Expect(source).To(FlowAs(resolved))
@@ -230,7 +230,7 @@ usage:
 ---
 tags:
   - <<: (( &temporary ))
-  - <<: (( &tag:lib:alice ))
+  - <<: (( &tag:lib.alice ))
     func: (( |x|->x * _.multiplier ))
     multiplier: 2
 usage:

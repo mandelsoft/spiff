@@ -61,31 +61,47 @@ func (s *sourceData) Data() ([]byte, error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 type spiff struct {
-	key           string
-	mode          int
-	fs            vfs.FileSystem
-	opts          flow.Options
-	values        map[string]yaml.Node
-	functions     Functions
-	tags          map[string]*dynaml.Tag
-	interpolation bool
+	key      string
+	mode     int
+	fs       vfs.FileSystem
+	opts     flow.Options
+	values   map[string]yaml.Node
+	registry dynaml.Registry
+	tags     map[string]*dynaml.Tag
+	features features.FeatureFlags
 
 	binding dynaml.Binding
 }
 
 // NewFunctions provides a new registry for additional spiff functions
 func NewFunctions() Functions {
-	return dynaml.NewRegistry()
+	return dynaml.NewFunctions()
 }
 
-// New create a new default spiff context.
+// NewControls provides a new registry for additional spiff controls
+func NewControls() Controls {
+	return dynaml.NewControls()
+}
+
+// New creates a new default spiff context.
+// It evaluates the environment variable `SPIFF_FEATURES` to setup the
+// initial feature set and `SPIFF_ENCRYPTION_KEY` to determine the
+// encryption key.
 func New() Spiff {
-	set := features.Features()
-	_, interpolation := set[features.INTERPOLATION]
 	return &spiff{
-		key:           features.EncryptionKey(),
-		mode:          MODE_DEFAULT,
-		interpolation: interpolation,
+		key:      features.EncryptionKey(),
+		mode:     MODE_DEFAULT,
+		features: features.Features(),
+	}
+}
+
+// Plain creates a new plain spiff context without
+// any predefined settings.
+func Plain() Spiff {
+	return &spiff{
+		key:      "",
+		mode:     MODE_DEFAULT,
+		features: features.FeatureFlags{},
 	}
 }
 
@@ -102,8 +118,8 @@ func (s *spiff) ResetStream() Spiff {
 func (s *spiff) assureBinding() {
 	if s.binding == nil {
 		state := flow.NewState(s.key, s.mode, s.fs).
-			SetFunctions(s.functions).
-			SetInterpolation(s.interpolation)
+			SetRegistry(s.registry).
+			SetFeatures(s.features)
 		if len(s.tags) > 0 {
 			var tags []*dynaml.Tag
 			for _, t := range s.tags {
@@ -122,7 +138,23 @@ func (s *spiff) assureBinding() {
 // WithInterpolation creates a new context with
 // enabled/disabled string interpolation feature
 func (s spiff) WithInterpolation(b bool) Spiff {
-	s.interpolation = b
+	s.features.Set(features.INTERPOLATION, b)
+	return s.Reset()
+}
+
+// WithControl creates a new context with
+// enabled/disabled yaml based control structure feature
+func (s spiff) WithControl(b bool) Spiff {
+	s.features.Set(features.CONTROL, b)
+	return s.Reset()
+}
+
+// WithFeatures creates a new context with
+// enabled features
+func (s spiff) WithFeatures(features ...string) Spiff {
+	for _, f := range features {
+		s.features.Set(f, true)
+	}
 	return s.Reset()
 }
 
@@ -158,7 +190,14 @@ func (s spiff) WithFileSystem(fs vfs.FileSystem) Spiff {
 // WithFunctions creates a new context with the given
 // additional function definitions
 func (s spiff) WithFunctions(functions Functions) Spiff {
-	s.functions = functions
+	s.registry = s.registry.WithFunctions(functions)
+	return s.Reset()
+}
+
+// WithControls creates a new context with the given
+// control definitions
+func (s spiff) WithControls(controls Controls) Spiff {
+	s.registry = s.registry.WithControls(controls)
 	return s.Reset()
 }
 
