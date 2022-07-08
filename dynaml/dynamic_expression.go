@@ -8,28 +8,36 @@ import (
 )
 
 type DynamicExpr struct {
-	Expression Expression
-	Reference  Expression
+	Root  Expression
+	Index Expression
 }
 
 func (e DynamicExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 
-	root, info, ok := e.Expression.Evaluate(binding, locally)
+	// if root is a reference expression and the type is known allow for element selection if element is resolved
+	// regardless of the resolution state of the root
+	// enables .["dyn"]
+	_, isRef := e.Root.(ReferenceExpr)
+
+	root, info, ok := e.Root.Evaluate(binding, locally || isRef)
 	if !ok {
 		return nil, info, false
 	}
-
-	locally = locally || info.Raw
 
 	if !isLocallyResolvedValue(root, binding) {
 		return e, info, true
 	}
 
-	if !locally && !isResolvedValue(root, binding) {
-		return e, info, true
-	}
+	locally = locally || info.Raw
+	/*
+		if !locally && !isResolvedValue(root, binding) {
+			info.Issue = yaml.NewIssue("'%s' unresolved", e.Expression)
+			return e, info, true
+		}
+	*/
 
-	dyn, infoe, ok := e.Reference.Evaluate(binding, locally)
+	dyn, infoe, ok := e.Index.Evaluate(binding, locally)
+
 	info.Join(infoe)
 	if !ok {
 		return nil, info, false
@@ -71,5 +79,5 @@ func (e DynamicExpr) Evaluate(binding Binding, locally bool) (interface{}, Evalu
 }
 
 func (e DynamicExpr) String() string {
-	return fmt.Sprintf("%s.[%s]", e.Expression, e.Reference)
+	return fmt.Sprintf("%s.[%s]", e.Root, e.Index)
 }
