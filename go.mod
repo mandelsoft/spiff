@@ -11,7 +11,7 @@ require (
 	github.com/pointlander/compress v1.1.0 // indirect
 	github.com/pointlander/jetset v1.0.0 // indirect
 	github.com/pointlander/peg v0.0.0-20160608205303-1d0268dfff9b
-	github.com/spf13/cobra v1.3.0
+	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.10.0
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 )
