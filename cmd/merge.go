@@ -241,9 +241,11 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 			}
 		}
 	}
-	if bindingYAML != nil || interpolation || len(tags) > 0 || len(templateYAMLs) > 1 {
-		defstate := flow.NewDefaultState().SetInterpolation(interpolation)
-		defstate.SetTags(tags...)
+	if interpolation {
+		features.SetInterpolation(true)
+	}
+	if bindingYAML != nil || features.Size() > 0 || len(tags) > 0 || len(templateYAMLs) > 1 {
+		defstate := flow.NewDefaultState().SetTags(tags...).SetFeatures(features)
 		binding = flow.NewEnvironment(
 			nil, "context", defstate)
 		if bindingYAML != nil {
