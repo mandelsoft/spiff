@@ -236,7 +236,7 @@ Contents:
 
 Official release executable binaries can be downloaded via [Github releases](https://github.com/mandelsoft/spiff/releases) for Darwin, Linux ans PowerPc machines (and virtual machines).
 
-Some of spiff's dependencies have changed since the last official release, and spiff will not be updated to keep up with these dependencies.  Working dependencies are vendored in the `Godeps` directory (more information on the `godep` tool is available [here](https://github.com/tools/godep)).  As such, trying to `go get` spiff will likely fail; the only supported way to use spiff is to use an official binary release.
+Some of spiff's dependencies have changed since the last official release, and spiff will not be updated to keep up with these dependencies. THose dependencies are either fixed or copied into the local code base.
 
 # Usage
 
@@ -312,6 +312,10 @@ The ` merge` command offers several options:
 - With option `--define <key>=<value>` (shorthand`-D`) additional binding values
   can be specified on the command line overriding binding values from the
   binding file. The option may occur multiple times.
+
+  If the *key* contains dots (`.`), it will be interpreted as path expression to 
+  describe fields in deep map values. A dot (and a `\` before a dot) can be escaped
+  by `\` to keep it in the field name.
   
 - The option `--preserve-escapes` will preserve the escaping for dynaml
   expressions and list/map merge directives. This option can be used
@@ -2274,8 +2278,8 @@ Alternatively the `merge` operation could be used, for example `merge foo.bar`. 
 ### `(( tagdef("tag", value) ))`
 
 The function `tagdef` can be used to define dynamic tags (see [Tags](#tags)).
-In contrast to the tag marker this function aloows to specify the tag name 
-and its intended value by an expression. Therefit can be used in composing
+In contrast to the tag marker this function allows to specify the tag name 
+and its intended value by an expression. Therefore, it can be used in composing
 elements like `map` or `sum` to create dynamic tag with calculated values.
 
 An optional third argument can be used to specify the intended scope
@@ -5251,9 +5255,9 @@ the tagged reference `X::data.alice` describes the value `25`.
 For tagged references with a path other than `.` (the whole tag value),
 structured tags feature a more sophisticated resolution mechanism. A structured
 tag consist of multiple tag components separated by a colon (`:`), for
-example `lib:mylib`. Therefore tags span a tree of namespaces or scopes
+example `lib:mylib`. Therefore, tags span a tree of namespaces or scopes
 used to resolve path references. A tag-less reference just uses 
-the actual document or binding to resolve a path extression.
+the actual document or binding to resolve a path expression.
 
 Evaluation of a path reference for a tag tries to resolve the path in the
 first tag tree level where the path is available (breadth-first search).
