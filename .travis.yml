@@ -6,7 +6,7 @@ go:
 matrix:
   include:
     - arch: amd64
-      go: 1.15.x
+      go: 1.18.x
 
 install:
   - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
