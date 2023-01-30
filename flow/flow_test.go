@@ -5903,6 +5903,58 @@ list:
 `)
 				Expect(source).To(FlowAs(resolved, stub))
 			})
+
+			It("don't merge non-unique keys", func() {
+				source := parseYAML(`
+---
+list:
+`)
+				stub := parseYAML(`
+---
+list:
+  - name: a
+    attr: b
+  - name: a
+    attr: d
+`)
+				resolved := parseYAML(`
+---
+list:
+  - name: a
+    attr: b
+  - name: a
+    attr: d
+`)
+				Expect(source).To(FlowAs(resolved, stub))
+			})
+
+			It("disables default key field", func() {
+				source := parseYAML(`
+---
+list:
+  - key:!name: a
+    attr: b
+  - name: c
+    attr: d
+`)
+				stub := parseYAML(`
+---
+list:
+  - name: c
+    attr: stub
+  - name: e
+    attr: f
+`)
+				resolved := parseYAML(`
+---
+list:
+  - name: c
+    attr: stub
+  - name: e
+    attr: f
+`)
+				Expect(source).To(FlowAs(resolved, stub))
+			})
 		})
 
 		Context("explicit merge with key tag", func() {

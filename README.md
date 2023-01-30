@@ -565,6 +565,11 @@ alice:
 
 This new key field will also be observed during the merging of lists.
 
+If the selected key field starts with a `!`, the key feature is disabled.
+The exclamation mark is removed from the effective field name, also.
+
+If the values for the key field are not unqiue, it is disables, also.
+
 ## `(( foo.[bar].baz ))`
 
 Look for the nearest 'foo' key, and from there follow through to the
