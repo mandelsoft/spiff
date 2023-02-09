@@ -45,9 +45,9 @@ Division <-  '/' req_ws Level0
 Modulo <-  '%' req_ws Level0
 
 Level0 <- IP / String / Number / Boolean / Undefined / Nil / Symbol / Not /
-          Substitution / Merge / Auto / Lambda / Chained / TopIndex
+          Substitution / Merge / Auto / Lambda / Chained
 
-Chained <- ( MapMapping / Sync / Catch / Mapping / MapSelection / Selection / Sum / List / Map / Range / Grouped / Reference ) ChainedQualifiedExpression*
+Chained <- ( MapMapping / Sync / Catch / Mapping / MapSelection / Selection / Sum / List / Map / Range / Grouped / Reference / TopIndex ) ChainedQualifiedExpression*
 ChainedQualifiedExpression <- ChainedCall / Currying / ChainedRef / ChainedDynRef / Projection
 ChainedRef <-  PathComponent FollowUpRef
 ChainedDynRef <- '.'? '[' Expression ']'

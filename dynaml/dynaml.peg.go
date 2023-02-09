@@ -1922,7 +1922,7 @@ func (p *DynamlGrammar) Init() {
 			position, tokenIndex, depth = position113, tokenIndex113, depth113
 			return false
 		},
-		/* 31 Level0 <- <(IP / String / Number / Boolean / Undefined / Nil / Symbol / Not / Substitution / Merge / Auto / Lambda / Chained / TopIndex)> */
+		/* 31 Level0 <- <(IP / String / Number / Boolean / Undefined / Nil / Symbol / Not / Substitution / Merge / Auto / Lambda / Chained)> */
 		func() bool {
 			position115, tokenIndex115, depth115 := position, tokenIndex, depth
 			{
@@ -2003,12 +2003,6 @@ func (p *DynamlGrammar) Init() {
 				l129:
 					position, tokenIndex, depth = position117, tokenIndex117, depth117
 					if !_rules[ruleChained]() {
-						goto l130
-					}
-					goto l117
-				l130:
-					position, tokenIndex, depth = position117, tokenIndex117, depth117
-					if !_rules[ruleTopIndex]() {
 						goto l115
 					}
 				}
@@ -2021,85 +2015,91 @@ func (p *DynamlGrammar) Init() {
 			position, tokenIndex, depth = position115, tokenIndex115, depth115
 			return false
 		},
-		/* 32 Chained <- <((MapMapping / Sync / Catch / Mapping / MapSelection / Selection / Sum / List / Map / Range / Grouped / Reference) ChainedQualifiedExpression*)> */
+		/* 32 Chained <- <((MapMapping / Sync / Catch / Mapping / MapSelection / Selection / Sum / List / Map / Range / Grouped / Reference / TopIndex) ChainedQualifiedExpression*)> */
 		func() bool {
-			position131, tokenIndex131, depth131 := position, tokenIndex, depth
+			position130, tokenIndex130, depth130 := position, tokenIndex, depth
 			{
-				position132 := position
+				position131 := position
 				depth++
 				{
-					position133, tokenIndex133, depth133 := position, tokenIndex, depth
+					position132, tokenIndex132, depth132 := position, tokenIndex, depth
 					if !_rules[ruleMapMapping]() {
+						goto l133
+					}
+					goto l132
+				l133:
+					position, tokenIndex, depth = position132, tokenIndex132, depth132
+					if !_rules[ruleSync]() {
 						goto l134
 					}
-					goto l133
+					goto l132
 				l134:
-					position, tokenIndex, depth = position133, tokenIndex133, depth133
-					if !_rules[ruleSync]() {
+					position, tokenIndex, depth = position132, tokenIndex132, depth132
+					if !_rules[ruleCatch]() {
 						goto l135
 					}
-					goto l133
+					goto l132
 				l135:
-					position, tokenIndex, depth = position133, tokenIndex133, depth133
-					if !_rules[ruleCatch]() {
+					position, tokenIndex, depth = position132, tokenIndex132, depth132
+					if !_rules[ruleMapping]() {
 						goto l136
 					}
-					goto l133
+					goto l132
 				l136:
-					position, tokenIndex, depth = position133, tokenIndex133, depth133
-					if !_rules[ruleMapping]() {
+					position, tokenIndex, depth = position132, tokenIndex132, depth132
+					if !_rules[ruleMapSelection]() {
 						goto l137
 					}
-					goto l133
+					goto l132
 				l137:
-					position, tokenIndex, depth = position133, tokenIndex133, depth133
-					if !_rules[ruleMapSelection]() {
+					position, tokenIndex, depth = position132, tokenIndex132, depth132
+					if !_rules[ruleSelection]() {
 						goto l138
 					}
-					goto l133
+					goto l132
 				l138:
-					position, tokenIndex, depth = position133, tokenIndex133, depth133
-					if !_rules[ruleSelection]() {
+					position, tokenIndex, depth = position132, tokenIndex132, depth132
+					if !_rules[ruleSum]() {
 						goto l139
 					}
-					goto l133
+					goto l132
 				l139:
-					position, tokenIndex, depth = position133, tokenIndex133, depth133
-					if !_rules[ruleSum]() {
+					position, tokenIndex, depth = position132, tokenIndex132, depth132
+					if !_rules[ruleList]() {
 						goto l140
 					}
-					goto l133
+					goto l132
 				l140:
-					position, tokenIndex, depth = position133, tokenIndex133, depth133
-					if !_rules[ruleList]() {
+					position, tokenIndex, depth = position132, tokenIndex132, depth132
+					if !_rules[ruleMap]() {
 						goto l141
 					}
-					goto l133
+					goto l132
 				l141:
-					position, tokenIndex, depth = position133, tokenIndex133, depth133
-					if !_rules[ruleMap]() {
+					position, tokenIndex, depth = position132, tokenIndex132, depth132
+					if !_rules[ruleRange]() {
 						goto l142
 					}
-					goto l133
+					goto l132
 				l142:
-					position, tokenIndex, depth = position133, tokenIndex133, depth133
-					if !_rules[ruleRange]() {
+					position, tokenIndex, depth = position132, tokenIndex132, depth132
+					if !_rules[ruleGrouped]() {
 						goto l143
 					}
-					goto l133
+					goto l132
 				l143:
-					position, tokenIndex, depth = position133, tokenIndex133, depth133
-					if !_rules[ruleGrouped]() {
+					position, tokenIndex, depth = position132, tokenIndex132, depth132
+					if !_rules[ruleReference]() {
 						goto l144
 					}
-					goto l133
+					goto l132
 				l144:
-					position, tokenIndex, depth = position133, tokenIndex133, depth133
-					if !_rules[ruleReference]() {
-						goto l131
+					position, tokenIndex, depth = position132, tokenIndex132, depth132
+					if !_rules[ruleTopIndex]() {
+						goto l130
 					}
 				}
-			l133:
+			l132:
 			l145:
 				{
 					position146, tokenIndex146, depth146 := position, tokenIndex, depth
@@ -2111,11 +2111,11 @@ func (p *DynamlGrammar) Init() {
 					position, tokenIndex, depth = position146, tokenIndex146, depth146
 				}
 				depth--
-				add(ruleChained, position132)
+				add(ruleChained, position131)
 			}
 			return true
-		l131:
-			position, tokenIndex, depth = position131, tokenIndex131, depth131
+		l130:
+			position, tokenIndex, depth = position130, tokenIndex130, depth130
 			return false
 		},
 		/* 33 ChainedQualifiedExpression <- <(ChainedCall / Currying / ChainedRef / ChainedDynRef / Projection)> */

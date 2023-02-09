@@ -31,7 +31,7 @@ func (e DynamicExpr) Evaluate(binding Binding, locally bool) (interface{}, Evalu
 	locally = locally || info.Raw
 	/*
 		if !locally && !isResolvedValue(root, binding) {
-			info.Issue = yaml.NewIssue("'%s' unresolved", e.Expression)
+			info.Issue = yaml.NewIssue("'%s' unresolved", e.Root)
 			return e, info, true
 		}
 	*/
@@ -73,9 +73,18 @@ func (e DynamicExpr) Evaluate(binding Binding, locally bool) (interface{}, Evalu
 	default:
 		return info.Error("index or field name required for reference qualifier")
 	}
-	return NewReferenceExpr(qual...).find(func(end int, path []string) (yaml.Node, bool) {
+
+	t, info, ok := NewReferenceExpr(qual...).find(func(end int, path []string) (yaml.Node, bool) {
 		return yaml.Find(NewNode(root, nil), binding.GetFeatures(), path[:end+1]...)
-	}, binding, locally)
+	}, binding, true)
+
+	if !ok {
+		return nil, info, false
+	}
+	if isResolvedValue(t, binding) {
+		return t, info, true
+	}
+	return e, info, true
 }
 
 func (e DynamicExpr) String() string {

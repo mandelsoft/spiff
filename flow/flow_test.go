@@ -8647,4 +8647,92 @@ round2: 2
 			Expect(source).To(FlowAs(resolved))
 		})
 	})
+
+	Context("indexed nodes", func() {
+		It("indexed field", func() {
+			source := parseYAML(`
+---
+alice:
+  bob: value
+x: (( alice["bob"] ))
+`)
+
+			resolved := parseYAML(`
+---
+alice:
+  bob: value
+x: value
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("delayed indexed field", func() {
+			source := parseYAML(`
+---
+fields:
+  key:
+    field: (( "x" ))
+val: (( fields["key"].field ))
+`)
+
+			resolved := parseYAML(`
+---
+fields:
+  key:
+    field: x
+val: x
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("resolves indexed map field on root", func() {
+			source := parseYAML(`
+---
+a.b: value
+x: (( .["a.b"] ))
+`)
+
+			resolved := parseYAML(`
+---
+a.b: value
+x: value
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("resolves indexed array field on root", func() {
+			source := parseYAML(`
+---
+a:
+  b: a
+x: (( .["a"].b ))
+`)
+
+			resolved := parseYAML(`
+---
+a:
+  b: a
+x: a
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		/*
+				FIt("resolves indexed array field on root", func() {
+						source := parseYAML(`
+			---
+			- name: a
+			  value: va
+			- name: b
+			  value: (( .[0] ))
+			`)
+
+						resolved := parseYAML(`
+			---
+			- name: a
+			  value: va
+			- name: b
+			  value: va
+			`)
+						Expect(source).To(FlowAs(resolved))
+					})
+		*/
+	})
 })
