@@ -519,10 +519,14 @@ from:
 ```
 
 If the path starts with a dot (`.`) the path is always evaluated from the root
-of the document.
+of the document. If the document root is a list, the first map level is used to resolve the path expression if it starts with `.__map`. This can be used to avoid the need 
+for using the own list index (like `.[1].path`), which might change if
+list entries are added.
 
 List entries consisting of a map with `name` field can directly be addressed
-by their name value as path component.
+by their name value as path component. 
+
+**Note**: This also works for the absolute paths for list documents.
 
 e.g.:
 
@@ -579,7 +583,7 @@ The index may be an integer constant (without spaces) as described in the
 last section. But it might also be an arbitrary dynaml expression (even
 an integer, but with spaces). If the expression evaluates to a string,
 it lookups the dedicated field. If the expression evaluates to an integer,
-the array element with this index is addressed.
+the array element with this index is addressed. The dot (`.`) in front of the index operator is optional.
 
 e.g.:
 
@@ -615,6 +619,8 @@ properties:
 ```
 
 resolves `foo` again to the value `42`.
+
+**Note**: The index operator is usable on the root element (`.[index]`), also.
 
 ## `(( list.[1..3] ))`
 
