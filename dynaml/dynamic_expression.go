@@ -48,6 +48,11 @@ func (e DynamicExpr) Evaluate(binding Binding, locally bool) (interface{}, Evalu
 
 	debug.Debug("dynamic reference: %+v\n", dyn)
 
+	if a, ok := dyn.([]yaml.Node); ok {
+		if len(a) == 1 {
+			dyn = a[0].Value()
+		}
+	}
 	var qual []string
 	switch v := dyn.(type) {
 	case int64:
@@ -59,6 +64,9 @@ func (e DynamicExpr) Evaluate(binding Binding, locally bool) (interface{}, Evalu
 	case string:
 		qual = []string{v}
 	case []yaml.Node:
+		if len(v) == 0 {
+			return info.Error("at least one index or field name required for reference qualifier")
+		}
 		qual = make([]string, len(v))
 		for i, e := range v {
 			switch v := e.Value().(type) {
@@ -88,5 +96,5 @@ func (e DynamicExpr) Evaluate(binding Binding, locally bool) (interface{}, Evalu
 }
 
 func (e DynamicExpr) String() string {
-	return fmt.Sprintf("%s.[%s]", e.Root, e.Index)
+	return fmt.Sprintf("%s.%s", e.Root, e.Index)
 }

@@ -622,6 +622,9 @@ resolves `foo` again to the value `42`.
 
 **Note**: The index operator is usable on the root element (`.[index]`), also.
 
+It is possible, to specify multiple comma separated indicies to successive lists
+(`foo[0][1]` is equivalent to `foo[0,1]). In such case the indices may not be again lists.
+
 ## `(( list.[1..3] ))`
 
 The slice expression can be used to extract a dedicated sub list from a list

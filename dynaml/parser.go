@@ -493,6 +493,8 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (
 			tokens.Push(RangeExpr{lhs, rhs})
 
 		case ruleList:
+			fallthrough
+		case ruleIndices:
 			seq := tokens.PopExpressionList()
 			tokens.Push(ListExpr{seq})
 
