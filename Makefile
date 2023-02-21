@@ -11,7 +11,7 @@ linux:
 	GOOS=linux GOARCH=amd64 go build -o spiff++/spiff++ .
 
 test:
-	go test $(VERBOSE) ./...
+	go test $(VERBOSE) --count=1 ./...
 
 spiff_linux_amd64.zip:
 	GOOS=linux GOARCH=amd64 go build -o spiff++/spiff++ .

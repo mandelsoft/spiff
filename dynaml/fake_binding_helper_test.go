@@ -61,6 +61,10 @@ func (c FakeBinding) WithScope(map[string]yaml.Node) Binding {
 	return c
 }
 
+func (c FakeBinding) WithListScope([]yaml.Node) Binding {
+	return c
+}
+
 func (c FakeBinding) WithLocalScope(map[string]yaml.Node) Binding {
 	return c
 }

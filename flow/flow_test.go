@@ -5903,6 +5903,58 @@ list:
 `)
 				Expect(source).To(FlowAs(resolved, stub))
 			})
+
+			It("don't merge non-unique keys", func() {
+				source := parseYAML(`
+---
+list:
+`)
+				stub := parseYAML(`
+---
+list:
+  - name: a
+    attr: b
+  - name: a
+    attr: d
+`)
+				resolved := parseYAML(`
+---
+list:
+  - name: a
+    attr: b
+  - name: a
+    attr: d
+`)
+				Expect(source).To(FlowAs(resolved, stub))
+			})
+
+			It("disables default key field", func() {
+				source := parseYAML(`
+---
+list:
+  - key:!name: a
+    attr: b
+  - name: c
+    attr: d
+`)
+				stub := parseYAML(`
+---
+list:
+  - name: c
+    attr: stub
+  - name: e
+    attr: f
+`)
+				resolved := parseYAML(`
+---
+list:
+  - name: c
+    attr: stub
+  - name: e
+    attr: f
+`)
+				Expect(source).To(FlowAs(resolved, stub))
+			})
 		})
 
 		Context("explicit merge with key tag", func() {
@@ -8591,6 +8643,133 @@ ceil: 2
 floor: 1
 round1: 1
 round2: 2
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Context("indexed nodes", func() {
+		It("indexed field", func() {
+			source := parseYAML(`
+---
+alice:
+  bob: value
+x: (( alice["bob"] ))
+`)
+
+			resolved := parseYAML(`
+---
+alice:
+  bob: value
+x: value
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("delayed indexed field", func() {
+			source := parseYAML(`
+---
+fields:
+  key:
+    field: (( "x" ))
+val: (( fields["key"].field ))
+`)
+
+			resolved := parseYAML(`
+---
+fields:
+  key:
+    field: x
+val: x
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("resolves indexed map field on root", func() {
+			source := parseYAML(`
+---
+a.b: value
+x: (( .["a.b"] ))
+`)
+
+			resolved := parseYAML(`
+---
+a.b: value
+x: value
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("resolves indexed array field on root", func() {
+			source := parseYAML(`
+---
+a:
+  b: a
+x: (( .["a"].b ))
+`)
+
+			resolved := parseYAML(`
+---
+a:
+  b: a
+x: a
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("resolves indexed array field on root", func() {
+			source := parseYAML(`
+---
+- name: a
+  value: va
+- name: b
+  value: (( .[0].value ))
+`)
+
+			resolved := parseYAML(`
+---
+- name: a
+  value: va
+- name: b
+  value: va
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("resolves named array field on root", func() {
+			source := parseYAML(`
+---
+- name: a
+  value: va
+- name: b
+  value: (( .a.value ))
+`)
+
+			resolved := parseYAML(`
+---
+- name: a
+  value: va
+- name: b
+  value: va
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+		It("supports absolute paths on first map level", func() {
+			source := parseYAML(`
+---
+- name: a
+  value: va
+- name: b
+  local: vb
+  value: (( .__map.local ))
+`)
+
+			resolved := parseYAML(`
+---
+- name: a
+  value: va
+- name: b
+  local: vb
+  value: vb
 `)
 			Expect(source).To(FlowAs(resolved))
 		})

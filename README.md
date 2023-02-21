@@ -99,7 +99,7 @@ Contents:
 		- [(( parseurl("http://github.com") ))](#-parseurlhttpgithubcom-)
 		- [(( sort(list) ))](#-sortlist-)
 		- [(( replace(string, "foo", "bar") ))](#-replacestring-foo-bar-)
-		- [(( substr(string, 1, 3) ))](#-substrstring-1-3-)
+		- [(( substr(string, 1, 2) ))](#-substrstring-1-2-)
 		- [(( match("(f.*)(b.*)", "xxxfoobar") ))](#-matchfb-xxxfoobar-)
 		- [(( keys(map) ))](#-keysmap-)
 		- [(( length(list) ))](#-lengthlist-)
@@ -236,7 +236,7 @@ Contents:
 
 Official release executable binaries can be downloaded via [Github releases](https://github.com/mandelsoft/spiff/releases) for Darwin, Linux and PowerPC machines (and virtual machines).
 
-Some of spiff's dependencies have changed since the last official release, and spiff will not be updated to keep up with these dependencies.  Working dependencies are vendored in the `Godeps` directory (more information on the `godep` tool is available [here](https://github.com/tools/godep)).  As such, trying to `go get` spiff will likely fail; the only supported way to use spiff is to use an official binary release.
+Some of spiff's dependencies have changed since the last official release, and spiff will not be updated to keep up with these dependencies. THose dependencies are either fixed or copied into the local code base.
 
 # Usage
 
@@ -312,6 +312,10 @@ The ` merge` command offers several options:
 - With option `--define <key>=<value>` (shorthand`-D`) additional binding values
   can be specified on the command line overriding binding values from the
   binding file. The option may occur multiple times.
+
+  If the *key* contains dots (`.`), it will be interpreted as path expression to 
+  describe fields in deep map values. A dot (and a `\` before a dot) can be escaped
+  by `\` to keep it in the field name.
   
 - The option `--preserve-escapes` will preserve the escaping for dynaml
   expressions and list/map merge directives. This option can be used
@@ -515,10 +519,14 @@ from:
 ```
 
 If the path starts with a dot (`.`) the path is always evaluated from the root
-of the document.
+of the document. If the document root is a list, the first map level is used to resolve the path expression if it starts with `.__map`. This can be used to avoid the need 
+for using the own list index (like `.[1].path`), which might change if
+list entries are added.
 
 List entries consisting of a map with `name` field can directly be addressed
-by their name value as path component.
+by their name value as path component. 
+
+**Note**: This also works for the absolute paths for list documents.
 
 e.g.:
 
@@ -561,6 +569,11 @@ alice:
 
 This new key field will also be observed during the merging of lists.
 
+If the selected key field starts with a `!`, the key feature is disabled.
+The exclamation mark is removed from the effective field name, also.
+
+If the values for the key field are not unqiue, it is disables, also.
+
 ## `(( foo.[bar].baz ))`
 
 Look for the nearest 'foo' key, and from there follow through to the
@@ -570,7 +583,7 @@ The index may be an integer constant (without spaces) as described in the
 last section. But it might also be an arbitrary dynaml expression (even
 an integer, but with spaces). If the expression evaluates to a string,
 it lookups the dedicated field. If the expression evaluates to an integer,
-the array element with this index is addressed.
+the array element with this index is addressed. The dot (`.`) in front of the index operator is optional.
 
 e.g.:
 
@@ -606,6 +619,11 @@ properties:
 ```
 
 resolves `foo` again to the value `42`.
+
+**Note**: The index operator is usable on the root element (`.[index]`), also.
+
+It is possible, to specify multiple comma separated indicies to successive lists
+(`foo[0][1]` is equivalent to `foo[0,1]). In such case the indices may not be again lists.
 
 ## `(( list.[1..3] ))`
 
@@ -2274,8 +2292,8 @@ Alternatively the `merge` operation could be used, for example `merge foo.bar`. 
 ### `(( tagdef("tag", value) ))`
 
 The function `tagdef` can be used to define dynamic tags (see [Tags](#tags)).
-In contrast to the tag marker this function aloows to specify the tag name 
-and its intended value by an expression. Therefit can be used in composing
+In contrast to the tag marker this function allows to specify the tag name 
+and its intended value by an expression. Therefore, it can be used in composing
 elements like `map` or `sum` to create dynamic tag with calculated values.
 
 An optional third argument can be used to specify the intended scope
@@ -5251,9 +5269,9 @@ the tagged reference `X::data.alice` describes the value `25`.
 For tagged references with a path other than `.` (the whole tag value),
 structured tags feature a more sophisticated resolution mechanism. A structured
 tag consist of multiple tag components separated by a colon (`:`), for
-example `lib:mylib`. Therefore tags span a tree of namespaces or scopes
+example `lib:mylib`. Therefore, tags span a tree of namespaces or scopes
 used to resolve path references. A tag-less reference just uses 
-the actual document or binding to resolve a path extression.
+the actual document or binding to resolve a path expression.
 
 Evaluation of a path reference for a tag tries to resolve the path in the
 first tag tree level where the path is available (breadth-first search).

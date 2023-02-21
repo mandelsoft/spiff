@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Mandelsoft. All rights reserved.
+ * Copyright 2022 Mandelsoft. All rights reserved.
  *  This file is licensed under the Apache Software License, v. 2 except as noted
  *  otherwise in the LICENSE file
  *
@@ -20,15 +20,17 @@ package osfs
 
 import (
 	"os"
+
+	"github.com/mandelsoft/vfs/pkg/vfs"
 )
 
 func mapPath(p string) string {
 	mapped := ""
-	for c := range path {
-		if os.IsPathSeparator(c) {
-			mapped = mapped + pkg.PathSeparatorChar
+	for _, c := range p {
+		if os.PathSeparator == c {
+			mapped = mapped + string(vfs.PathSeparatorChar)
 		} else {
-			mapped = mapped + c
+			mapped = mapped + string(c)
 		}
 	}
 	return mapped

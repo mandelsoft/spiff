@@ -1020,7 +1020,7 @@ var _ = Describe("parsing", func() {
 				QualifiedExpr{
 					DynamicExpr{
 						ReferenceExpr{Path: []string{"foo"}},
-						ReferenceExpr{Path: []string{"alice"}},
+						ListExpr{[]Expression{ReferenceExpr{Path: []string{"alice"}}}},
 					},
 					ReferenceExpr{Path: []string{"bar"}},
 				},
@@ -1032,7 +1032,7 @@ var _ = Describe("parsing", func() {
 				`foo.[ 0 ]`,
 				DynamicExpr{
 					ReferenceExpr{Path: []string{"foo"}},
-					IntegerExpr{0},
+					ListExpr{[]Expression{IntegerExpr{0}}},
 				},
 			)
 		})
@@ -1172,7 +1172,7 @@ var _ = Describe("parsing", func() {
 				QualifiedExpr{
 					DynamicExpr{
 						ReferenceExpr{Path: []string{"foo"}},
-						ReferenceExpr{Path: []string{"alice"}},
+						ListExpr{[]Expression{ReferenceExpr{Path: []string{"alice"}}}},
 					},
 					ReferenceExpr{Path: []string{"bar"}},
 				},
@@ -1184,7 +1184,7 @@ var _ = Describe("parsing", func() {
 				`foo[ 0 ]`,
 				DynamicExpr{
 					ReferenceExpr{Path: []string{"foo"}},
-					IntegerExpr{0},
+					ListExpr{[]Expression{IntegerExpr{0}}},
 				},
 			)
 		})
@@ -1249,6 +1249,6 @@ var _ = Describe("parsing", func() {
 
 func parsesAs(source string, expr Expression, path ...string) {
 	parsed, err := Parse(source, path, path)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(parsed).To(Equal(expr))
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, parsed).To(Equal(expr))
 }
