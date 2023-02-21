@@ -99,7 +99,7 @@ Contents:
 		- [(( parseurl("http://github.com") ))](#-parseurlhttpgithubcom-)
 		- [(( sort(list) ))](#-sortlist-)
 		- [(( replace(string, "foo", "bar") ))](#-replacestring-foo-bar-)
-		- [(( substr(string, 1, 3) ))](#-substrstring-1-3-)
+		- [(( substr(string, 1, 2) ))](#-substrstring-1-2-)
 		- [(( match("(f.*)(b.*)", "xxxfoobar") ))](#-matchfb-xxxfoobar-)
 		- [(( keys(map) ))](#-keysmap-)
 		- [(( length(list) ))](#-lengthlist-)
@@ -234,7 +234,7 @@ Contents:
 
 # Installation
 
-Official release executable binaries can be downloaded via [Github releases](https://github.com/mandelsoft/spiff/releases) for Darwin, Linux ans PowerPc machines (and virtual machines).
+Official release executable binaries can be downloaded via [Github releases](https://github.com/mandelsoft/spiff/releases) for Darwin, Linux and PowerPC machines (and virtual machines).
 
 Some of spiff's dependencies have changed since the last official release, and spiff will not be updated to keep up with these dependencies. THose dependencies are either fixed or copied into the local code base.
 
