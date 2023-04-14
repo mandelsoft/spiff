@@ -3625,6 +3625,28 @@ uniq:
 	})
 
 	Describe("when calling contains", func() {
+		It("handes maps", func() {
+			source := parseYAML(`
+---
+map:
+ a: alice
+ b: bob
+contains:
+  a: (( contains(map, "a") ))
+  c: (( contains(map, "c") ))
+`)
+			resolved := parseYAML(`
+---
+contains:
+  a: true
+  c: false
+map:
+  a: alice
+  b: bob
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
 		It("finds ints", func() {
 			source := parseYAML(`
 ---

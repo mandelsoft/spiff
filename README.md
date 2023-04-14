@@ -1621,7 +1621,7 @@ list:
 contains: true
 ```
 
-The function `contains` also works on strings to look for sub strings.
+The function `contains` also works on strings to look for sub strings or maps to look for a key. In those cases the element must be a string.
 
 e.g.:
 
