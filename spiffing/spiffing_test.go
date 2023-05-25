@@ -3,9 +3,39 @@ package spiffing
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/mandelsoft/spiff/dynaml"
 )
 
 var _ = Describe("Spiffing", func() {
+
+	Context("with functions", func() {
+		It("handles nil set", func() {
+			ctx := New().WithFunctions(nil)
+			templ, err := ctx.Unmarshal("test", []byte("(( \"testvalue\" ))"))
+			Expect(err).To(Succeed())
+			result, err := ctx.Cascade(templ, nil)
+			Expect(err).To(Succeed())
+			data, err := ctx.Marshal(result)
+			Expect(err).To(Succeed())
+			Expect(string(data)).To(Equal("testvalue\n"))
+		})
+		It("calls a function", func() {
+			f := func(arguments []interface{}, binding dynaml.Binding) (interface{}, dynaml.EvaluationInfo, bool) {
+				return "testvalue", dynaml.EvaluationInfo{}, true
+			}
+			funcs := NewFunctions()
+			funcs.RegisterFunction("testFunc", f)
+			ctx := New().WithFunctions(funcs)
+			templ, err := ctx.Unmarshal("test", []byte("(( testFunc() ))"))
+			Expect(err).To(Succeed())
+			result, err := ctx.Cascade(templ, nil)
+			Expect(err).To(Succeed())
+			data, err := ctx.Marshal(result)
+			Expect(err).To(Succeed())
+			Expect(string(data)).To(Equal("testvalue\n"))
+		})
+	})
 
 	Context("Simple processing", func() {
 		ctx, err := New().WithValues(map[string]interface{}{
