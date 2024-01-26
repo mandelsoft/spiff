@@ -21,3 +21,5 @@ vendor/github.com/onsi/
 vendor/github.com/pelletier/
 vendor/github.com/pointlander/
 vendor/github.com/spf13/
+/.project
+/.settings/
