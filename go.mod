@@ -1,6 +1,6 @@
 module github.com/mandelsoft/spiff
 
-go 1.18
+go 1.22.5
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.0

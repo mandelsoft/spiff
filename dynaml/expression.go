@@ -148,6 +148,17 @@ type Expression interface {
 	Evaluate(Binding, bool) (interface{}, EvaluationInfo, bool)
 }
 
+type MergeInfoExpression interface {
+	IncludesDirectMerge() bool
+}
+
+func IncludesDirectMerge(e Expression) bool {
+	if m, ok := e.(MergeInfoExpression); ok {
+		return m.IncludesDirectMerge()
+	}
+	return false
+}
+
 type StaticallyScopedValue interface {
 	StaticResolver() Binding
 	SetStaticResolver(binding Binding) StaticallyScopedValue
@@ -197,7 +208,7 @@ func (i *EvaluationInfo) PropagateError(value interface{}, state Status, msgfmt 
 	if i.LocalError {
 		value = nil
 	}
-	return value, *i, false //!i.LocalError
+	return value, *i, false // !i.LocalError
 }
 
 func (i EvaluationInfo) CleanError() EvaluationInfo {
