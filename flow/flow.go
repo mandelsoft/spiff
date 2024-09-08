@@ -449,7 +449,7 @@ func flowMap(root yaml.Node, env dynaml.Binding, shouldOverride, template bool) 
 					}
 				}
 			}
-			//flags |= yaml.FLAG_INJECTED
+			// flags |= yaml.FLAG_INJECTED
 		}
 	}
 	var result interface{}
@@ -482,7 +482,7 @@ func flowList(root yaml.Node, env dynaml.Binding, template bool) yaml.Node {
 	rootList := root.Value().([]yaml.Node)
 
 	debug.Debug("HANDLE LIST %v\n", env.Path())
-	merged, process, replaced, redirectPath, keyName, ismerged, flags, tag, stub := processMerges(root, rootList, env, template)
+	merged, process, replaced, redirectPath, keyName, ismerged, flags, tag, stub, nomerge := processMerges(root, rootList, env, template)
 
 	if process {
 		debug.Debug("process list (key: %s) %v\n", keyName, env.Path())
@@ -491,8 +491,12 @@ func flowList(root yaml.Node, env dynaml.Binding, template bool) yaml.Node {
 			env = env.RedirectOverwrite(redirectPath)
 		}
 		for idx, val := range merged.([]yaml.Node) {
-			step, resolved := stepName(idx, val, keyName, env)
+			step, keyed, resolved := stepName(idx, val, keyName, env)
 			debug.Debug("  step %s\n", step)
+			_, _ = keyed, nomerge
+			if !keyed && nomerge {
+				val = yaml.MergedNode(val)
+			}
 			if resolved {
 				val = flow(val, env.WithPath(step), false, false)
 			}
@@ -560,13 +564,13 @@ func FlowString(root yaml.Node, env dynaml.Binding) (yaml.Node, error) {
 	return yaml.SubstituteNode(expr, root), nil
 }
 
-func stepName(index int, value yaml.Node, keyName string, env dynaml.Binding) (string, bool) {
+func stepName(index int, value yaml.Node, keyName string, env dynaml.Binding) (string, bool, bool) {
 	if keyName == "" {
 		keyName = "name"
 	}
 	name, ok := yaml.FindString(value, env.GetFeatures(), keyName)
 	if ok {
-		return keyName + ":" + name, true
+		return keyName + ":" + name, true, true
 	}
 
 	step := fmt.Sprintf("[%d]", index)
@@ -578,20 +582,27 @@ func stepName(index int, value yaml.Node, keyName string, env dynaml.Binding) (s
 			v = flow(v, env.WithPath(step), false, false)
 			_, ok := v.Value().(dynaml.Expression)
 			if ok {
-				return step, false
+				return step, false, false
 			}
 		}
 		name, ok = v.Value().(string)
 		if ok {
-			return keyName + ":" + name, true
+			return keyName + ":" + name, true, true
 		}
 	} else {
 		debug.Debug("raw %s not found", keyName)
 	}
-	return step, true
+	return step, false, true
 }
 
-func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding, template bool) (interface{}, bool, bool, []string, string, bool, yaml.NodeFlags, string, yaml.Node) {
+func useMerge(n yaml.Node) bool {
+	if e, ok := n.Value().(dynaml.Expression); ok {
+		return dynaml.IncludesDirectMerge(e)
+	}
+	return false
+}
+
+func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding, template bool) (interface{}, bool, bool, []string, string, bool, yaml.NodeFlags, string, yaml.Node, bool) {
 	var flags yaml.NodeFlags
 	var stub yaml.Node
 	flags, stub = get_inherited_flags(env)
@@ -602,6 +613,24 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding, templat
 	keyName := orig.KeyName()
 	replaced := orig.ReplaceFlag()
 	redirectPath := orig.RedirectPath()
+
+	// first, check for omitted stub merging for non-keyed values
+	nomerge := false
+	for _, val := range root {
+		if val == nil {
+			continue
+		}
+
+		inlineNode, _, ok := yaml.UnresolvedListEntryMerge(val)
+		if ok {
+			if useMerge(inlineNode) {
+				// do not merge list entries for list with merge expression because
+				// the list order would change or the potential merge candidates will
+				// be inserted.
+				nomerge = true
+			}
+		}
+	}
 
 	for _, val := range root {
 		if val == nil {
@@ -703,7 +732,7 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding, templat
 	}
 
 	debug.Debug("--> %+v  proc=%v replaced=%v redirect=%v key=%s\n", result, process, replaced, redirectPath, keyName)
-	return result, process, replaced, redirectPath, keyName, merged, flags, tag, stub
+	return result, process, replaced, redirectPath, keyName, merged, flags, tag, stub, nomerge
 }
 
 func ProcessKeyTag(val yaml.Node) (yaml.Node, string) {
@@ -754,7 +783,7 @@ func newEntries(a []yaml.Node, b []yaml.Node, keyName string) []yaml.Node {
 			}
 		}
 
-		added = append(added, val)
+		added = append(added, yaml.MergedNode(val))
 	}
 
 	return added

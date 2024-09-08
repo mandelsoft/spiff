@@ -12,6 +12,10 @@ type CondExpr struct {
 	F Expression
 }
 
+func (e CondExpr) IncludesDirectMerge() bool {
+	return IncludesDirectMerge(e.T) || IncludesDirectMerge(e.F)
+}
+
 func (e CondExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 	info := DefaultInfo()

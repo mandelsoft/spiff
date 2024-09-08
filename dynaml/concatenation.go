@@ -13,6 +13,10 @@ type ConcatenationExpr struct {
 	B Expression
 }
 
+func (e ConcatenationExpr) IncludesDirectMerge() bool {
+	return IncludesDirectMerge(e.A) || IncludesDirectMerge(e.B)
+}
+
 func (e ConcatenationExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	resolved := true
 

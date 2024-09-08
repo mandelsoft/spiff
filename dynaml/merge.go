@@ -15,6 +15,10 @@ type MergeExpr struct {
 	KeyName  string
 }
 
+func (e MergeExpr) IncludesDirectMerge() bool {
+	return !e.Redirect
+}
+
 func (e MergeExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	var info EvaluationInfo
 	info.KeyName = e.KeyName
