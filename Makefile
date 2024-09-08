@@ -2,6 +2,9 @@ VERBOSE=-v
 
 all: vendor grammar test release
 
+build:
+	go build -o spiff
+
 grammar:
 	go generate ./...
 
