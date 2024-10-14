@@ -16,39 +16,9 @@
  *  limitations under the License.
  */
 
-package osfs
-
-import (
-	"io/ioutil"
-	"os"
-
-	"github.com/mandelsoft/vfs/pkg/projectionfs"
-	"github.com/mandelsoft/vfs/pkg/vfs"
-)
-
-type tempfs struct {
-	vfs.FileSystem
-	dir string
-}
-
-var _ vfs.FileSystemCleanup = (*tempfs)(nil)
-
-func NewTempFileSystem() (vfs.FileSystem, error) {
-	dir, err := ioutil.TempDir("", "VFS-")
-	if err != nil {
-		return nil, err
-	}
-	fs, err := projectionfs.New(New(), dir)
-	if err != nil {
-		os.Remove(dir)
-	}
-	return &tempfs{fs, dir}, err
-}
-
-func (t *tempfs) Cleanup() error {
-	return os.RemoveAll(t.dir)
-}
-
-func (t *tempfs) Root() string {
-	return t.dir
-}
+// Package vfs provides a virtual filesystem for GO. It is the main package
+// providing the abstract interfaces and implementation-agnostic
+// utility functions wrapped together with an implementation into a
+// comprehensive user interface VFS.
+// (see https://pkg.go.dev/github.com/mandelsoft/vfs)
+package vfs

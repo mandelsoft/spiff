@@ -53,10 +53,6 @@ func (m *MappedFileSystem) Base() vfs.FileSystem {
 	return m.base
 }
 
-func (m *MappedFileSystem) VolumeName(name string) string {
-	return m.base.VolumeName(name)
-}
-
 func (m *MappedFileSystem) FSTempDir() string {
 	return vfs.PathSeparatorString
 }

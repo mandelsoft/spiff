@@ -75,7 +75,9 @@ func NewState(key string, mode int, optfs ...vfs.FileSystem) *State {
 	if fs == nil {
 		fs = osfs.New()
 	} else {
-		mode = mode & ^MODE_OS_ACCESS
+		if !osfs.IsOsFileSystem(fs) {
+			mode = mode & ^MODE_OS_ACCESS
+		}
 	}
 	return &State{
 		tags:       map[string]*dynaml.TagInfo{},

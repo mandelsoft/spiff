@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Mandelsoft. All rights reserved.
+ * Copyright 2023 Mandelsoft. All rights reserved.
  *  This file is licensed under the Apache Software License, v. 2 except as noted
  *  otherwise in the LICENSE file
  *
@@ -16,39 +16,38 @@
  *  limitations under the License.
  */
 
-package osfs
+package vfs
 
 import (
-	"io/ioutil"
-	"os"
-
-	"github.com/mandelsoft/vfs/pkg/projectionfs"
-	"github.com/mandelsoft/vfs/pkg/vfs"
+	"io/fs"
+	"sort"
 )
 
-type tempfs struct {
-	vfs.FileSystem
-	dir string
+type iofs struct {
+	FileSystem
 }
 
-var _ vfs.FileSystemCleanup = (*tempfs)(nil)
+var (
+	_ fs.File        = File(nil)
+	_ fs.ReadDirFile = File(nil)
+)
 
-func NewTempFileSystem() (vfs.FileSystem, error) {
-	dir, err := ioutil.TempDir("", "VFS-")
+func (i *iofs) Open(name string) (fs.File, error) {
+	return i.FileSystem.Open(name)
+}
+
+func (i *iofs) ReadDir(name string) ([]fs.DirEntry, error) {
+	f, err := i.FileSystem.Open(name)
 	if err != nil {
 		return nil, err
 	}
-	fs, err := projectionfs.New(New(), dir)
-	if err != nil {
-		os.Remove(dir)
-	}
-	return &tempfs{fs, dir}, err
+	defer f.Close()
+	dirs, err := f.ReadDir(-1)
+	sort.Slice(dirs, func(i, j int) bool { return dirs[i].Name() < dirs[j].Name() })
+	return dirs, err
 }
 
-func (t *tempfs) Cleanup() error {
-	return os.RemoveAll(t.dir)
-}
-
-func (t *tempfs) Root() string {
-	return t.dir
+// AsIoFS maps a virtual filesystem
+func AsIoFS(fs FileSystem) fs.ReadDirFS {
+	return &iofs{fs}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Mandelsoft. All rights reserved.
+ * Copyright 2024 Mandelsoft. All rights reserved.
  *  This file is licensed under the Apache Software License, v. 2 except as noted
  *  otherwise in the LICENSE file
  *
@@ -16,39 +16,8 @@
  *  limitations under the License.
  */
 
-package osfs
+package vfs
 
-import (
-	"io/ioutil"
-	"os"
-
-	"github.com/mandelsoft/vfs/pkg/projectionfs"
-	"github.com/mandelsoft/vfs/pkg/vfs"
-)
-
-type tempfs struct {
-	vfs.FileSystem
-	dir string
-}
-
-var _ vfs.FileSystemCleanup = (*tempfs)(nil)
-
-func NewTempFileSystem() (vfs.FileSystem, error) {
-	dir, err := ioutil.TempDir("", "VFS-")
-	if err != nil {
-		return nil, err
-	}
-	fs, err := projectionfs.New(New(), dir)
-	if err != nil {
-		os.Remove(dir)
-	}
-	return &tempfs{fs, dir}, err
-}
-
-func (t *tempfs) Cleanup() error {
-	return os.RemoveAll(t.dir)
-}
-
-func (t *tempfs) Root() string {
-	return t.dir
+func isSlash(c uint8) bool {
+	return c == '\\' || c == '/'
 }
