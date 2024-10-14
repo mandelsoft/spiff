@@ -170,7 +170,7 @@ func (s spiff) WithEncryptionKey(key string) Spiff {
 // WithMode creates a new context with the given processing mode.
 // (see MODE constants)
 func (s spiff) WithMode(mode int) Spiff {
-	if s.fs != nil {
+	if s.fs != nil && !osfs.IsOsFileSystem(s.fs) {
 		mode = mode & ^MODE_OS_ACCESS
 	}
 	s.mode = mode
@@ -179,11 +179,11 @@ func (s spiff) WithMode(mode int) Spiff {
 
 // WithFileSystem creates a new context with the given
 // virtual filesystem used for filesystem functions during
-// prcessing. Setting a filesystem disables the command
+// processing. Setting a filesystem disables the command
 // execution functions.
 func (s spiff) WithFileSystem(fs vfs.FileSystem) Spiff {
 	s.fs = fs
-	if fs != nil {
+	if s.fs != nil && !osfs.IsOsFileSystem(s.fs) {
 		s.mode = s.mode & ^MODE_OS_ACCESS
 	}
 	return s.Reset()

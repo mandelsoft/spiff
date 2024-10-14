@@ -23,10 +23,32 @@ import (
 	"time"
 
 	"github.com/mandelsoft/filepath/pkg/filepath"
+	"github.com/modern-go/reflect2"
 
 	"github.com/mandelsoft/vfs/pkg/utils"
 	"github.com/mandelsoft/vfs/pkg/vfs"
 )
+
+var OsFs = &osFileSystem{}
+
+// OsFsCheck should be implemented by forwarding wrappers
+// to check for an OS Filesystem implementation.
+type OsFsCheck interface {
+	IsOsFileSystem() bool
+}
+
+func IsOsFileSystem(fs vfs.FileSystem) bool {
+	if reflect2.IsNil(fs) {
+		return false
+	}
+	if _, ok := fs.(*osFileSystem); ok {
+		return true
+	}
+	if c, ok := fs.(OsFsCheck); ok {
+		return c.IsOsFileSystem()
+	}
+	return false
+}
 
 type osFileSystem struct {
 }

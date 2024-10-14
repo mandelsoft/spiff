@@ -23,6 +23,10 @@ type MarkerExpr struct {
 	expr Expression
 }
 
+func (e MarkerExpr) IncludesDirectMerge() bool {
+	return IncludesDirectMerge(e.expr)
+}
+
 func NewTemplateMarker(expr Expression) MarkerExpr {
 	return MarkerExpr{list: []string{TEMPLATE}, expr: expr}
 }
@@ -142,6 +146,10 @@ func newMarkerExpr(m string) MarkerExpr {
 type MarkerExpressionExpr struct {
 	contents string
 	expr     Expression
+}
+
+func (e MarkerExpressionExpr) IncludesDirectMerge() bool {
+	return IncludesDirectMerge(e.expr)
 }
 
 func (e MarkerExpressionExpr) String() string {

@@ -2,10 +2,13 @@ VERBOSE=-v
 
 all: vendor grammar test release
 
+build:
+	go build -o spiff
+
 grammar:
 	go generate ./...
 
-release: spiff_linux_amd64.zip spiff_darwin_amd64.zip spiff_linux_ppc64le.zip spiff_linux_arm64.zip
+release: spiff_linux_amd64.zip spiff_darwin_amd64.zip spiff_linux_ppc64le.zip spiff_linux_arm64.zip spiff_windows_amd64.zip spiff_windows_386.zip
 
 linux:
 	GOOS=linux GOARCH=amd64 go build -o spiff++/spiff++ .
@@ -36,6 +39,18 @@ spiff_linux_ppc64le.zip:
 	rm -f spiff++/spiff_linux_ppc64le.zip
 	(cd spiff++; zip spiff_linux_ppc64le.zip spiff++)
 	rm spiff++/spiff++
+
+spiff_windows_amd64.zip:
+	GOOS=windows GOARCH=amd64 go build -o spiff++/spiff++.exe .
+	rm -f spiff++/spiff_windows_amd64.zip
+	(cd spiff++; zip spiff_windows_amd64.zip spiff++.exe)
+	rm spiff++/spiff++.exe
+
+spiff_windows_386.zip:
+	GOOS=windows GOARCH=386 go build -o spiff++/spiff++_386.exe .
+	rm -f spiff++/spiff_windows_386.zip
+	(cd spiff++; zip spiff_windows_386.zip spiff++_386.exe)
+	rm spiff++/spiff++_386.exe
 
 .PHONY: vendor
 vendor:

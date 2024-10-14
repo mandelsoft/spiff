@@ -69,7 +69,7 @@ outer:
 			}
 			p := next
 			if rooted {
-				p = PathSeparatorString + next
+				p = vol + PathSeparatorString + next
 			}
 			fi, err := fs.Lstat(p)
 			if err != nil {

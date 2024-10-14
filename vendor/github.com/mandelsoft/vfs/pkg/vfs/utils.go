@@ -21,6 +21,7 @@ package vfs
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -60,12 +61,12 @@ func Join(fs FileSystem, elems ...string) string {
 // by purely lexical processing. It applies the following rules
 // iteratively until no further processing can be done:
 //
-//	1. Replace multiple path separators with a single one.
-//	2. Eliminate each . path name element (the current directory).
-//	3. Eliminate each inner .. path name element (the parent directory)
-//	   along with the non-.. element that precedes it.
-//	4. Eliminate .. elements that begin a rooted path:
-//	   that is, replace "/.." by "/" at the beginning of a path.
+//  1. Replace multiple path separators with a single one.
+//  2. Eliminate each . path name element (the current directory).
+//  3. Eliminate each inner .. path name element (the parent directory)
+//     along with the non-.. element that precedes it.
+//  4. Eliminate .. elements that begin a rooted path:
+//     that is, replace "/.." by "/" at the beginning of a path.
 //
 // The returned path ends in a slash only if it is the root "/".
 //
@@ -192,12 +193,8 @@ func Trim(fs FileSystem, path string) string {
 func IsAbs(fs FileSystem, path string) bool {
 	if fs != nil {
 		_, path = SplitVolume(fs, path)
-	} else {
-		if strings.HasPrefix(path, string(os.PathSeparator)) {
-			return true
-		}
 	}
-	return strings.HasPrefix(path, PathSeparatorString)
+	return len(path) > 0 && isSlash(path[0])
 }
 
 // IsRoot determines whether a given path is a root path.
@@ -205,7 +202,7 @@ func IsAbs(fs FileSystem, path string) bool {
 // a volume name.
 func IsRoot(fs FileSystem, path string) bool {
 	_, path = SplitVolume(fs, path)
-	return path == PathSeparatorString
+	return len(path) == 1 && isSlash(path[0])
 }
 
 func SplitVolume(fs FileSystem, path string) (string, string) {
@@ -267,6 +264,68 @@ func Abs(fs FileSystem, path string) (string, error) {
 	return Join(fs, p, path), nil
 }
 
+// Rel determines the relative path from a source folder
+// to a target file.
+func Rel(fs FileSystem, src, tgt string) (string, error) {
+	if ok, _ := Exists(fs, src); ok {
+		if ok, _ := IsDir(fs, src); !ok {
+			return "", ErrNotDir
+		}
+	}
+	s, err := Canonical(fs, src, false)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", src, err)
+	}
+
+	t, err := Canonical(fs, tgt, false)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", tgt, err)
+	}
+
+	vs, sseq := Components(fs, s)
+	vt, tseq := Components(fs, t)
+	if vs != vt {
+		return "", fmt.Errorf("different volumes")
+	}
+
+	if s == t {
+		return ".", nil
+	}
+	var is int
+	for is = 0; is < len(sseq); is++ {
+		if len(tseq) <= is || tseq[is] != sseq[is] {
+			break
+		}
+	}
+
+	for i := is; i < len(sseq); i++ {
+		sseq[i] = ".."
+	}
+
+	if is < len(tseq) {
+		return Join(fs, append(sseq[is:], tseq[is:]...)...), nil
+	}
+	return Join(fs, sseq[is:]...), nil
+}
+
+// Components splits a path into its volume part and a list
+// of path components.
+func Components(fs FileSystem, p string) (string, []string) {
+	var seq []string
+	var b string
+
+	v, p := SplitVolume(fs, p)
+
+	for p != "" && !IsRoot(fs, p) {
+		p, b = Split(fs, p)
+		seq = append(seq, b)
+	}
+	for i := 0; i < len(seq)/2; i++ {
+		seq[i], seq[len(seq)-i-1] = seq[len(seq)-i-1], seq[i]
+	}
+	return v, seq
+}
+
 // Split splits path immediately following the final Separator,
 // separating it into a directory and file name component.
 // If there is no Separator in path, Split returns an empty dir
@@ -312,7 +371,7 @@ func SplitPath(fs FileSystem, path string) (string, []string, bool) {
 }
 
 func Exists_(err error) bool {
-	return err == nil || !os.IsNotExist(err)
+	return err == nil || !IsNotExist(err)
 }
 
 // Exists checks if a file or directory exists.
@@ -321,7 +380,7 @@ func Exists(fs FileSystem, path string) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	if os.IsNotExist(err) {
+	if IsNotExist(err) {
 		return false, nil
 	}
 	return false, err
@@ -333,7 +392,7 @@ func DirExists(fs FileSystem, path string) (bool, error) {
 	if err == nil && fi.IsDir() {
 		return true, nil
 	}
-	if os.IsNotExist(err) {
+	if IsNotExist(err) {
 		return false, nil
 	}
 	return false, err
@@ -345,7 +404,7 @@ func FileExists(fs FileSystem, path string) (bool, error) {
 	if err == nil && fi.Mode()&os.ModeType == 0 {
 		return true, nil
 	}
-	if os.IsNotExist(err) {
+	if IsNotExist(err) {
 		return false, nil
 	}
 	return false, err

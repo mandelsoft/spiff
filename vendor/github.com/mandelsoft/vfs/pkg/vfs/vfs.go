@@ -81,6 +81,14 @@ func (fs *vfs) Abs(path string) (string, error) {
 	return Abs(fs, path)
 }
 
+func (fs *vfs) Rel(src, tgt string) (string, error) {
+	return Rel(fs, src, tgt)
+}
+
+func (fs *vfs) Components(path string) (string, []string) {
+	return Components(fs, path)
+}
+
 func (fs *vfs) EvalSymlinks(path string) (string, error) {
 	return EvalSymlinks(fs, path)
 }

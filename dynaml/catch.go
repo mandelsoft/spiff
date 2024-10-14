@@ -2,6 +2,7 @@ package dynaml
 
 import (
 	"fmt"
+
 	"github.com/mandelsoft/spiff/debug"
 	"github.com/mandelsoft/spiff/yaml"
 )
@@ -13,6 +14,10 @@ const CATCH_VALID = "valid"
 type CatchExpr struct {
 	A      Expression
 	Lambda Expression
+}
+
+func (e CatchExpr) IncludesDirectMerge() bool {
+	return IncludesDirectMerge(e.A)
 }
 
 func (e CatchExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {

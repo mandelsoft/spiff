@@ -10,6 +10,10 @@ type OrExpr struct {
 	B Expression
 }
 
+func (e OrExpr) IncludesDirectMerge() bool {
+	return IncludesDirectMerge(e.A) || IncludesDirectMerge(e.B)
+}
+
 func (e OrExpr) Evaluate(binding Binding, locally bool) (interface{}, EvaluationInfo, bool) {
 	a, infoa, ok := e.A.Evaluate(binding, false)
 	if ok && !infoa.Undefined {

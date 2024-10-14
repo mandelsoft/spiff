@@ -8,6 +8,10 @@ type GroupedExpr struct {
 	Expr Expression
 }
 
+func (e GroupedExpr) IncludesDirectMerge() bool {
+	return IncludesDirectMerge(e.Expr)
+}
+
 func (e GroupedExpr) String() string {
 	return fmt.Sprintf("( %s )", e.Expr)
 }

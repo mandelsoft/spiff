@@ -48,3 +48,7 @@ func NewTempFileSystem() (vfs.FileSystem, error) {
 func (t *tempfs) Cleanup() error {
 	return os.RemoveAll(t.dir)
 }
+
+func (t *tempfs) Root() string {
+	return t.dir
+}
