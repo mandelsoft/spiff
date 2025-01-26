@@ -195,6 +195,9 @@ func (e *DefaultEnvironment) FindInScopes(nodescope *Scope, path []string) (yaml
 	if len(path) > 0 {
 		scope := nodescope
 		for scope != nil {
+			if scope.local == nil {
+				break
+			}
 			val := scope.local[path[0]]
 			if val != nil {
 				return yaml.FindR(true, val, e.GetFeatures(), path[1:]...)
@@ -216,8 +219,8 @@ func (e *DefaultEnvironment) FindReference(path []string) (yaml.Node, bool) {
 			}
 			return yaml.FindR(true, node(outer.GetRootBinding()), e.GetFeatures(), path[1:]...)
 		}
-		//fmt.Printf("FIND %s: %s\n", strings.Join(path,"."), e)
-		//fmt.Printf("FOUND %s: %v\n", strings.Join(path,"."),  keys(nodescope))
+		// fmt.Printf("FIND %s: %s\n", strings.Join(path,"."), e)
+		// fmt.Printf("FOUND %s: %v\n", strings.Join(path,"."),  keys(nodescope))
 		if path[0] == yaml.DOCNODE && nodescope != nil {
 			return e.FindInScopes(nodescope, path[1:])
 		}
@@ -227,7 +230,7 @@ func (e *DefaultEnvironment) FindReference(path []string) (yaml.Node, bool) {
 		return nil, false
 	}
 
-	//fmt.Printf("RESOLVE: %s: %s\n",path[0], dynaml.ExpressionType(root.Value()))
+	// fmt.Printf("RESOLVE: %s: %s\n",path[0], dynaml.ExpressionType(root.Value()))
 	if len(path) > 1 && path[0] == yaml.SELF {
 		resolver := root.Resolver()
 		return resolver.FindReference(path[1:])
@@ -333,11 +336,11 @@ func (e *DefaultEnvironment) Flow(source yaml.Node, shouldOverride bool) (yaml.N
 
 		next = Cleanup(next, updateBinding(next, env))
 		b := reflect.DeepEqual(result, next)
-		//b,r:=yaml.Equals(result, next,[]string{})
+		// b,r:=yaml.Equals(result, next,[]string{})
 		if b {
 			break
 		}
-		//fmt.Printf("****** found diff: %s\n", r)
+		// fmt.Printf("****** found diff: %s\n", r)
 		result = next
 	}
 	debug.Debug("@@@ Done\n")
@@ -425,8 +428,10 @@ func updateBinding(root yaml.Node, binding dynaml.Binding) CleanupFunction {
 							ref, ok := yaml.FindR(true, root, binding.GetFeatures(), scope.path...)
 							if ok {
 								debug.Debug("found %#v\n", ref.Value())
-								m := ref.Value().(map[string]yaml.Node)
-								scope.local = m
+								scope.local = nil
+								if m, ok := ref.Value().(map[string]yaml.Node); ok {
+									scope.local = m
+								}
 							}
 						} else {
 							break
@@ -459,7 +464,7 @@ func resolveSymbol(env *DefaultEnvironment, name string, scope *Scope) (yaml.Nod
 	}
 	for scope != nil {
 		if nodescope == nil && scope.path != nil && scope.local != nil {
-			//fmt.Printf("SCOPE NODE: <%s> %v %v\n", strings.Join(scope.path,"."), keys(scope.local), keys(scope.nodescope))
+			// fmt.Printf("SCOPE NODE: <%s> %v %v\n", strings.Join(scope.path,"."), keys(scope.local), keys(scope.nodescope))
 			nodescope = scope
 		}
 		val := scope.local[name]
