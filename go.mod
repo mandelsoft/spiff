@@ -1,6 +1,7 @@
 module github.com/mandelsoft/spiff
 
 go 1.22.5
+toolchain go1.23.7
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.0
@@ -11,7 +12,7 @@ require (
 	github.com/pointlander/peg v0.0.0-20160608205303-1d0268dfff9b
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.14.0
-	golang.org/x/crypto v0.10.0
+	golang.org/x/crypto v0.36.0
 )
 
 require (
@@ -33,9 +34,9 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
-	golang.org/x/net v0.11.0 // indirect
-	golang.org/x/sys v0.9.0 // indirect
-	golang.org/x/text v0.10.0 // indirect
+	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
