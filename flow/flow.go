@@ -481,8 +481,13 @@ func flowMap(root yaml.Node, env dynaml.Binding, shouldOverride, template bool) 
 func flowList(root yaml.Node, env dynaml.Binding, template bool) yaml.Node {
 	rootList := root.Value().([]yaml.Node)
 
+	if root.Merged() {
+		return root
+	}
+
 	debug.Debug("HANDLE LIST %v\n", env.Path())
-	merged, process, replaced, redirectPath, keyName, ismerged, flags, tag, stub, nomerge := processMerges(root, rootList, env, template)
+	merged, process, replaced, redirectPath, keyName, ismerged, flags, tag, stub := processMerges(root, rootList, env, template)
+	nomerge := flags.IsNoMerge()
 
 	if process {
 		debug.Debug("process list (key: %s) %v\n", keyName, env.Path())
@@ -622,20 +627,20 @@ func useMerge(n yaml.Node) bool {
 	return false
 }
 
-func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding, template bool) (interface{}, bool, bool, []string, string, bool, yaml.NodeFlags, string, yaml.Node, bool) {
+func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding, template bool) (interface{}, bool, bool, []string, string, bool, yaml.NodeFlags, string, yaml.Node) {
 	var flags yaml.NodeFlags
 	var stub yaml.Node
 	flags, stub = get_inherited_flags(env)
 	tag := orig.GetAnnotation().Tag()
 	spliced := []yaml.Node{}
 	process := true
-	merged := false
+	merged := orig.Merged()
 	keyName := orig.KeyName()
 	replaced := orig.ReplaceFlag()
 	redirectPath := orig.RedirectPath()
 
 	// first, check for omitted stub merging for non-keyed values
-	nomerge := false
+	nomerge := orig.Flags().IsNoMerge()
 	for _, val := range root {
 		if val == nil {
 			continue
@@ -751,8 +756,12 @@ func processMerges(orig yaml.Node, root []yaml.Node, env dynaml.Binding, templat
 		result = processed
 	}
 
+	if nomerge {
+		flags |= yaml.FLAG_NOMERGE
+	}
+
 	debug.Debug("--> %+v  proc=%v replaced=%v redirect=%v key=%s\n", result, process, replaced, redirectPath, keyName)
-	return result, process, replaced, redirectPath, keyName, merged, flags, tag, stub, nomerge
+	return result, process, replaced, redirectPath, keyName, merged, flags, tag, stub
 }
 
 const NO_LIST_KEY = "<<<NO LIST KEY>>"
