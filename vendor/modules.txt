@@ -100,15 +100,16 @@ github.com/pelletier/go-toml/v2
 github.com/pelletier/go-toml/v2/internal/ast
 github.com/pelletier/go-toml/v2/internal/danger
 github.com/pelletier/go-toml/v2/internal/tracker
-# github.com/pointlander/compress v1.1.0
+# github.com/pointlander/compress v1.1.1-0.20190518213731-ff44bd196cc3
 ## explicit
 github.com/pointlander/compress
-# github.com/pointlander/jetset v1.0.0
+# github.com/pointlander/jetset v1.0.1-0.20190518214125-eee7eff80bd4
 ## explicit
 github.com/pointlander/jetset
-# github.com/pointlander/peg v0.0.0-20160608205303-1d0268dfff9b
-## explicit
+# github.com/pointlander/peg v1.0.1
+## explicit; go 1.13
 github.com/pointlander/peg
+github.com/pointlander/peg/tree
 # github.com/spf13/afero v1.9.2
 ## explicit; go 1.16
 github.com/spf13/afero

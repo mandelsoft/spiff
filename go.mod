@@ -8,7 +8,7 @@ require (
 	github.com/mandelsoft/vfs v0.4.4
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.24.2
-	github.com/pointlander/peg v0.0.0-20160608205303-1d0268dfff9b
+	github.com/pointlander/peg v1.0.1
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.14.0
 	golang.org/x/crypto v0.10.0
@@ -26,8 +26,8 @@ require (
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.5 // indirect
-	github.com/pointlander/compress v1.1.0 // indirect
-	github.com/pointlander/jetset v1.0.0 // indirect
+	github.com/pointlander/compress v1.1.1-0.20190518213731-ff44bd196cc3 // indirect
+	github.com/pointlander/jetset v1.0.1-0.20190518214125-eee7eff80bd4 // indirect
 	github.com/spf13/afero v1.9.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
