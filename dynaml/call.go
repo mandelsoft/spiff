@@ -275,6 +275,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "merge":
 		result, sub, ok = func_merge(values, binding)
 
+	case "deepmerge":
+		result, sub, ok = func_deepmerge(values, binding)
+
 	case "base64":
 		result, sub, ok = func_base64(values, binding)
 	case "base64_decode":

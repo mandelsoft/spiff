@@ -125,6 +125,7 @@ Contents:
 		- [(( makemap(fieldlist) ))](#-makemapfieldlist-)
 		- [(( makemap(key, value) ))](#-makemapkey-value-)
 		- [(( merge(map1, map2) ))](#-mergemap1-map2-)
+		- [(( deepmerge(map1, map2) ))](#-deepmergemap1-map2-)
 		- [(( intersect(list1, list2) ))](#-intersectlist1-list2-)
 		- [(( reverse(list) ))](#-reverselist-)
 		- [(( parse(yamlorjson) ))](#-parseyamlorjson-)
@@ -781,6 +782,7 @@ yields the list `[ 1, 2, 3, "alice" ]` for `bar`.
 ### `(( map1 map2 ))`
 
 Concatenation of maps as expression. Any sequences of maps can be concatenated, given by any dynaml expression. Thereby entries will be merged. Entries with the same key are overwritten from left to right.
+This is a flat map merge, only top level entries are merged. If you want a deep merge you can use [deepmerge(map1, map2)](#-deepmergemap1-map2-)
 
 e.g.:
 
@@ -2824,6 +2826,54 @@ merged:
       age: 24
   outer2: 24
   sum: 49
+```
+
+### `(( deepmerge(map1, map2) ))`
+
+The `merge` function provides a spiff-like merge used for merging templates and stubs. Hereby, only existing entries can be overwritten.
+If a formal deep merge of map entries is required, the `deepmerge` function can be used.
+
+If an entry in both maps is a again a map, those maps are merged recursively, again.
+It is possible to give any number of maps as arguments to `deepmerge`.
+Alternatively a single list of maps can be given.
+Merging is done from left to right, where values in later maps replace left values.
+
+e.g.:
+
+```yaml
+map1:
+    a: a
+    b: b
+    c:
+        a: ca
+        b: cb
+    d: d
+
+map2:
+    a: 2a
+    c:
+        a: 2ca
+        c: 2cc
+    d:
+        a: 2da
+    e: 2e
+
+merged: (( deepmerge(map1,map2) ))
+```
+
+resolves `merged` to
+
+```yaml
+merged:
+    a: 2a
+    b: b
+    c:
+        a: 2ca
+        b: cb
+        c: 2cc
+    d:
+        a: 2da
+    e: 2e
 ```
 
 ### `(( intersect(list1, list2) ))`
