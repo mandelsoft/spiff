@@ -12,7 +12,7 @@ type selectToListContext struct {
 	defaultContext
 }
 
-var SelectToListContext = &selectToListContext{defaultContext{brackets: "[]", keyword: "select", list: true}}
+var SelectToListContext = &selectToListContext{defaultContext{brackets: "[]", keyword: "select", supported: MAP_SUPPORT | LIST_SUPPORT}}
 
 func (c *selectToListContext) CreateMappingAggregation(source interface{}) MappingAggregation {
 	return &selectToList{MapperForSource(source), []yaml.Node{}}
@@ -47,7 +47,7 @@ type selectToMapContext struct {
 	defaultContext
 }
 
-var SelectToMapContext = &selectToMapContext{defaultContext{brackets: "{}", keyword: "select", list: false}}
+var SelectToMapContext = &selectToMapContext{defaultContext{brackets: "{}", keyword: "select", supported: MAP_SUPPORT}}
 
 func (c *selectToMapContext) CreateMappingAggregation(source interface{}) MappingAggregation {
 	return &selectToMap{MapperForSource(source), map[string]yaml.Node{}}

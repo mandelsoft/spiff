@@ -4564,6 +4564,90 @@ map:
 		})
 	})
 
+	Describe("when doing a filter", func() {
+		Context("for a list", func() {
+			It("maps simple expression", func() {
+				source := parseYAML(`
+---
+list:
+  - alice
+  - bob
+filtered: (( filter[list|x|->x == "bob"] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - alice
+  - bob
+filtered:
+  - bob
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("with index", func() {
+				source := parseYAML(`
+---
+list:
+  - alice
+  - bob
+  - charly
+filtered: (( filter[list|i,v|->i % 2] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - alice
+  - bob
+  - charly
+filtered:
+  - bob
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("for a map", func() {
+			It("maps simple expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 23
+filtered: (( filter{map|v|->v == 23} ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 23
+filtered:
+  bob: 23
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("key", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 23
+filtered: (( filter{map|k,v|->k == "bob"} ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 23
+filtered:
+  bob: 23
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
 	Describe("when doing a mapping", func() {
 		Context("for a list", func() {
 			It("maps simple expression", func() {

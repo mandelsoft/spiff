@@ -112,9 +112,9 @@ func PathComponents(ref string, leading bool) []string {
 	if comp != "" {
 		path = append(path, comp)
 	}
-	//fmt.Printf("REF '%s' -> %v\n", ref, path)
+	// fmt.Printf("REF '%s' -> %v\n", ref, path)
 	return path
-	//return strings.Split(contents, ".")
+	// return strings.Split(contents, ".")
 }
 
 type ExpressionParseError struct {
@@ -437,6 +437,14 @@ func buildExpression(grammar *DynamlGrammar, path []string, stubPath []string) (
 			rhs := tokens.Pop()
 			lhs := tokens.Pop()
 			tokens.Push(MappingExpr{Lambda: rhs, A: lhs, Context: MapToListContext})
+		case ruleFilterList:
+			rhs := tokens.Pop()
+			lhs := tokens.Pop()
+			tokens.Push(MappingExpr{Lambda: rhs, A: lhs, Context: FilterListContext})
+		case ruleFilterMap:
+			rhs := tokens.Pop()
+			lhs := tokens.Pop()
+			tokens.Push(MappingExpr{Lambda: rhs, A: lhs, Context: FilterMapContext})
 		case ruleSelection:
 			rhs := tokens.Pop()
 			lhs := tokens.Pop()
