@@ -35,10 +35,10 @@ func (e SubstitutionExpr) Evaluate(binding Binding, locally bool) (interface{}, 
 	}
 	if state != nil {
 		if state.HasError() {
-			debug.Debug("resolving template failed: " + state.Error())
+			debug.Debug("resolving template failed: %s", state.Error())
 			return info.PropagateError(e, state, "resolution of template '%s' failed", strings.Join(template.Path, "."))
 		} else {
-			debug.Debug("resolving template delayed: " + state.Error())
+			debug.Debug("resolving template delayed: %s", state.Error())
 			return e, info, true
 		}
 	}

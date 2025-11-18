@@ -115,7 +115,7 @@ func diff(aFilePath, bFilePath string, separator string) {
 					fmt.Printf("  %s has:\n    \x1b[32m%s\x1b[0m\n", bFilePath, strings.Replace(string(byaml), "\n", "\n    ", -1))
 				}
 
-				fmt.Printf(separator)
+				fmt.Print(separator)
 			}
 		}
 	}

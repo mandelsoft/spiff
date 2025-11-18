@@ -156,7 +156,7 @@ func merge(stdin bool, templateFilePath string, opts flow.Options, json, split b
 		}
 		m, ok := bindingYAML.Value().(map[string]yaml.Node)
 		if !ok {
-			log.Fatalf(fmt.Sprintf("binding %q must be a map\n", bindingFilePath))
+			log.Fatalf("binding %q must be a map\n", bindingFilePath)
 		}
 		for k, v := range values {
 			i, err := strconv.ParseInt(v, 10, 64)

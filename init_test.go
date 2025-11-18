@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -17,6 +18,7 @@ func Test(t *testing.T) {
 		var err error
 		spiff, err = gexec.Build("github.com/mandelsoft/spiff")
 		Ω(err).ShouldNot(HaveOccurred())
+		fmt.Printf("executable: %s\n", spiff)
 	})
 
 	AfterSuite(func() {
