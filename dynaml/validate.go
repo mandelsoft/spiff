@@ -2,10 +2,11 @@ package dynaml
 
 import (
 	"fmt"
-	"github.com/mandelsoft/spiff/yaml"
 	"net"
 	"regexp"
 	"strings"
+
+	"github.com/mandelsoft/spiff/yaml"
 )
 
 type Validator func(value interface{}, binding Binding, args ...interface{}) (bool, string, error, bool)
@@ -131,7 +132,7 @@ func _validate(value interface{}, cond interface{}, binding Binding, args ...yam
 				if err != nil {
 					return ValidatorErrorf("lambda validator result index %d: %s", 3, err)
 				}
-				return SimpleValidatorResult(toBool(l[0].Value()), t, f)
+				return SimpleValidatorResult(toBool(l[0].Value()), t, "%s", f)
 			default:
 				return ValidatorErrorf("invalid result length of validator %s, got %d", v, len(l))
 			}
@@ -283,13 +284,13 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 			}
 			reason += m
 			if !r {
-				return ValidatorResult(false, m)
+				return ValidatorResult(false, "%s", m)
 			}
 		}
 		if len(args) == 1 {
-			return ValidatorResult(true, reason[1:])
+			return ValidatorResult(true, "%s", reason[1:])
 		}
-		return ValidatorResult(true, reason+")")
+		return ValidatorResult(true, "%s", reason+")")
 	case "or":
 		if len(args) == 0 {
 			return ValidatorErrorf("validator argument required")
@@ -304,13 +305,13 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 			}
 			reason += m
 			if r {
-				return ValidatorResult(true, m)
+				return ValidatorResult(true, "%s", m)
 			}
 		}
 		if len(args) == 1 {
-			return ValidatorResult(true, reason[1:])
+			return ValidatorResult(true, "%s", reason[1:])
 		}
-		return ValidatorResult(false, reason+")")
+		return ValidatorResult(false, "%s", reason+")")
 
 	case "empty":
 		switch v := value.(type) {
@@ -575,9 +576,9 @@ func handleStringType(value interface{}, op string, binding Binding, args ...yam
 			reason += fmt.Sprintf("is not of type %s", s)
 		}
 		if len(args) == 1 {
-			return ValidatorResult(false, reason[1:])
+			return ValidatorResult(false, "%s", reason[1:])
 		}
-		return ValidatorResult(false, reason+")")
+		return ValidatorResult(false, "%s", reason+")")
 
 	case "dnsname":
 		s, err := StringValue(op, value)
@@ -656,7 +657,7 @@ func ValidatorResult(r bool, msgfmt string, args ...interface{}) (bool, string, 
 
 func SimpleValidatorResult(r bool, t, f string, args ...interface{}) (bool, string, error, bool) {
 	if r {
-		return ValidatorResult(r, t)
+		return ValidatorResult(r, "%s", t)
 	}
-	return ValidatorResult(r, fmt.Sprintf(f, args...))
+	return ValidatorResult(r, f, args...)
 }

@@ -155,11 +155,11 @@ func flowFor(ctx *dynaml.ControlContext) (yaml.Node, bool) {
 			}
 			it, err := controlIterator(name, values)
 			if err != nil {
-				return dynaml.ControlIssue(ctx, err.Error())
+				return dynaml.ControlIssue(ctx, "%s", err.Error())
 			}
 			ranges[len(ranges)-i], err = controlIteration(name, index, it)
 			if err != nil {
-				return dynaml.ControlIssue(ctx, err.Error())
+				return dynaml.ControlIssue(ctx, "%s", err.Error())
 			}
 		}
 		sort.Sort(ranges)
@@ -189,7 +189,7 @@ func flowFor(ctx *dynaml.ControlContext) (yaml.Node, bool) {
 			}
 			it, err := controlIterator(name, l)
 			if err != nil {
-				return dynaml.ControlIssue(ctx, err.Error())
+				return dynaml.ControlIssue(ctx, "%s", err.Error())
 			}
 
 			if len(spec) < 2 || len(spec) > 3 {
@@ -210,7 +210,7 @@ func flowFor(ctx *dynaml.ControlContext) (yaml.Node, bool) {
 
 			ranges[len(ranges)-i-1], err = controlIteration(name, index, it)
 			if err != nil {
-				return dynaml.ControlIssue(ctx, err.Error())
+				return dynaml.ControlIssue(ctx, "%s", err.Error())
 			}
 		}
 	default:

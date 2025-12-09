@@ -13,7 +13,13 @@ var _ = Describe("merging lists", func() {
 list:
    - field: e
      attr: f
+   - field: g
+     attr: h
    - <<<: (( merge ))
+   - field: i
+     attr: j
+   - field: k
+     attr: l
 `)
 			stub := parseYAML(`
 ---
@@ -28,10 +34,61 @@ list:
 list:
   - field: e
     attr: f
+  - field: g
+    attr: h
   - field: a
     attr: b
   - field: c
     attr: d
+  - field: i
+    attr: j
+  - field: k
+    attr: l
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+
+		It("merges map lists with two inserts", func() {
+			source := parseYAML(`
+---
+temp:
+- <<: (( &temporary ))
+- field: t1
+  attr: vt1
+- field: t2
+  attr: vt2
+
+list:
+   - field: a1
+     attr: va1
+   - <<<: (( merge ))
+   - field: a2
+     attr: va2
+   - <<: (( temp ))
+`)
+			stub := parseYAML(`
+---
+list:
+  - field: b1
+    attr: vb1
+  - field: b2
+    attr: vb2
+`)
+			resolved := parseYAML(`
+---
+list:
+  - field: a1
+    attr: va1
+  - field: b1
+    attr: vb1
+  - field: b2
+    attr:  vb2
+  - field: a2
+    attr: va2
+  - field: t1
+    attr: vt1
+  - field: t2
+    attr: vt2
 `)
 			Expect(source).To(FlowAs(resolved, stub))
 		})

@@ -89,6 +89,8 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	switch funcName {
 	case "defined":
 		f = e.defined
+	case "optional":
+		f = e.optional
 	case "require":
 		f = e.require
 	case "valid":
@@ -274,6 +276,9 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 
 	case "merge":
 		result, sub, ok = func_merge(values, binding)
+
+	case "deepmerge":
+		result, sub, ok = func_deepmerge(values, binding)
 
 	case "base64":
 		result, sub, ok = func_base64(values, binding)

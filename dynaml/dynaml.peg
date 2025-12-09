@@ -47,7 +47,7 @@ Modulo <-  '%' req_ws Level0
 Level0 <- IP / String / Number / Boolean / Undefined / Nil / Symbol / Not /
           Substitution / Merge / Auto / Lambda / Chained
 
-Chained <- ( MapMapping / Sync / Catch / Mapping / MapSelection / Selection / Sum / List / Map / Range / Grouped / Reference / TopIndex ) ChainedQualifiedExpression*
+Chained <- ( MapMapping / Sync / Catch / Mapping / FilterList / FilterMap / MapSelection / Selection / Sum / List / Map / Range / Grouped / Reference / TopIndex ) ChainedQualifiedExpression*
 ChainedQualifiedExpression <- ChainedCall / Currying / ChainedRef / ChainedDynRef / Projection
 ChainedRef <-  PathComponent FollowUpRef
 ChainedDynRef <- '.'? Indices
@@ -104,6 +104,8 @@ LambdaExt <- ',' Expression
 LambdaOrExpr <- LambdaExpr / ( '|' Expression )
 
 Catch <- 'catch[' Level7 LambdaOrExpr  ']'
+FilterList <- 'filter[' Level7 LambdaOrExpr ']'
+FilterMap <- 'filter{' Level7 LambdaOrExpr '}'
 MapMapping <- 'map{' Level7 LambdaOrExpr '}'
 Mapping <- 'map[' Level7 LambdaOrExpr ']'
 MapSelection <- 'select{' Level7 LambdaOrExpr '}'

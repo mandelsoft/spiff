@@ -13,7 +13,7 @@ func flowControl(node yaml.Node, undef map[string]yaml.Node, env dynaml.Binding)
 	is := false
 	ctx, err := dynaml.GetControl(node, undef, env)
 	if err != nil {
-		node, resolved = dynaml.ControlIssue(ctx, err.Error())
+		node, resolved = dynaml.ControlIssue(ctx, "%s", err.Error())
 	} else if ctx != nil {
 		if err == nil {
 			is = true

@@ -177,7 +177,7 @@ match: (( catch(semvermatch("1.2.x")) ))
 			resolved := parseYAML(`
 ---
 match:
-  error: "semvermatch: \"1.2.x\": Invalid Semantic Version"
+  error: "semvermatch: \"1.2.x\": invalid semantic version"
   valid: false
 `)
 			Expect(source).To(FlowAs(resolved))
@@ -239,7 +239,7 @@ match: (( catch(validate("1.2.x", "semver")) ))
 			resolved := parseYAML(`
 ---
 match:
-  error: 'condition 1 failed: semver: "1.2.x": Invalid Semantic Version'
+  error: 'condition 1 failed: semver: "1.2.x": invalid semantic version'
   valid: false
 `)
 			Expect(source).To(FlowAs(resolved))

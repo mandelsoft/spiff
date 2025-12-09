@@ -115,6 +115,7 @@ Contents:
 		- [(( defined(foobar) ))](#-definedfoobar-)
 		- [(( valid(foobar) ))](#-validfoobar-)
 		- [(( require(foobar) ))](#-requirefoobar-)
+		- [(( optional(cond,value) ))](#-optionalcondvalue-)
 		- [(( stub(foo.bar) ))](#-stubfoobar-)
 		- [(( tagdef("tag", value) ))](#-tagdeftag-valiue-)
 		- [(( eval(foo "." bar ) ))](#-evalfoo--bar--)
@@ -125,6 +126,7 @@ Contents:
 		- [(( makemap(fieldlist) ))](#-makemapfieldlist-)
 		- [(( makemap(key, value) ))](#-makemapkey-value-)
 		- [(( merge(map1, map2) ))](#-mergemap1-map2-)
+		- [(( deepmerge(map1, map2) ))](#-deepmergemap1-map2-)
 		- [(( intersect(list1, list2) ))](#-intersectlist1-list2-)
 		- [(( reverse(list) ))](#-reverselist-)
 		- [(( parse(yamlorjson) ))](#-parseyamlorjson-)
@@ -181,6 +183,11 @@ Contents:
 		- [(( map{list|elem|->dynaml-expr} ))](#-maplistelem-dynaml-expr-)
 		- [(( select[expr|elem|->dynaml-expr] ))](#-selectexprelem-dynaml-expr-)
 		- [(( select{map|elem|->dynaml-expr} ))](#-selectmapelem-dynaml-expr-)
+    - [Filters](#filters)
+      - [(( filter[list|elem|->dynaml-expr] ))](#-filterlistelem-dynaml-expr-)
+      - [(( filter[list|idx,elem|->dynaml-expr] ))](#-filterlistidxelem-dynaml-expr-)
+      - [(( filter{map|value|->dynaml-expr} ))](#-filtermapvalue-dynaml-expr-)
+      - [(( filter{map|key,value|->dynaml-expr} ))](#-filtermapkeyvalue-dynaml-expr-)
 	- [Aggregations](#aggregations)
 		- [(( sum[list|initial|sum,elem|->dynaml-expr] ))](#-sumlistinitialsumelem-dynaml-expr-)
 		- [(( sum[list|initial|sum,idx,elem|->dynaml-expr] ))](#-sumlistinitialsumidxelem-dynaml-expr-)
@@ -781,6 +788,7 @@ yields the list `[ 1, 2, 3, "alice" ]` for `bar`.
 ### `(( map1 map2 ))`
 
 Concatenation of maps as expression. Any sequences of maps can be concatenated, given by any dynaml expression. Thereby entries will be merged. Entries with the same key are overwritten from left to right.
+This is a flat map merge, only top level entries are merged. If you want a deep merge you can use [deepmerge(map1, map2)](#-deepmergemap1-map2-)
 
 e.g.:
 
@@ -2252,6 +2260,53 @@ bob: ~
 alice: default
 ```
 
+
+### `(( optional(cond,value) ))`
+
+The function `optional` checks whether an expression can successfully be evaluated. If it can be evaluated and the evaluation result can be mapped to `true`, the value expression is evaluated and returned as result.
+If the condition cannot be evaluated or evaluates to a value mapped to `false` the function evaluates to an [*undefined* expression](#undefined).
+
+e.g.:
+
+```yaml
+defaultdef:
+  <<<: (( &template &temporary ))
+  value: alice
+
+defaultundef:
+  <<<: (( &template &temporary ))
+  value: (( undef ))
+  
+optional:
+  undef: (( optional(flag, *defaultdef) ))
+  xfalse: (( optional(false, *defaultdef) ))
+  xtrue: (( optional(true, *defaultdef) ))
+  xundef: (( optional(flag, *defaultundef) ))
+
+```
+
+evaluates to
+
+```yaml
+optional:
+  xtrue:
+    value: alice
+```
+
+The field `undef` is omitted because the condition `flag` cannot be evaluated; there is no such field defined in the document.
+The field `xfalse` is omitted because the condition is `false`,
+and the field `xtrue` is used because the condition is `true`. 
+The value is always an evaluated template.
+The field `xundef` is omitted, also, and the value (again a template substitution) is not evaluated at all and does not produce an error (because of the usage of an undefined field `undefined`).
+
+This way parts of the document can be evaluated under some conditions, only.
+
+This function is basically equivalent to the more complex expression
+
+```
+ (( ( cond || false ) ? value :~~ ))
+```
+
 ### `(( stub(foo.bar) ))`
 
 The function `stub` yields the value of a dedicated field found in the first
@@ -2824,6 +2879,54 @@ merged:
       age: 24
   outer2: 24
   sum: 49
+```
+
+### `(( deepmerge(map1, map2) ))`
+
+The `merge` function provides a spiff-like merge used for merging templates and stubs. Hereby, only existing entries can be overwritten.
+If a formal deep merge of map entries is required, the `deepmerge` function can be used.
+
+If an entry in both maps is a again a map, those maps are merged recursively, again.
+It is possible to give any number of maps as arguments to `deepmerge`.
+Alternatively a single list of maps can be given.
+Merging is done from left to right, where values in later maps replace left values.
+
+e.g.:
+
+```yaml
+map1:
+    a: a
+    b: b
+    c:
+        a: ca
+        b: cb
+    d: d
+
+map2:
+    a: 2a
+    c:
+        a: 2ca
+        c: 2cc
+    d:
+        a: 2da
+    e: 2e
+
+merged: (( deepmerge(map1,map2) ))
+```
+
+resolves `merged` to
+
+```yaml
+merged:
+    a: 2a
+    b: b
+    c:
+        a: 2ca
+        b: cb
+        c: 2cc
+    d:
+        a: 2da
+    e: 2e
 ```
 
 ### `(( intersect(list1, list2) ))`
@@ -4449,7 +4552,7 @@ given by a [lambda function](#-lambda-x-x--port-). There are two basic forms of
 the mapping function: It can be inlined as in `(( map[list|x|->x ":" port] ))`, 
 or it can be determined by a regular dynaml expression evaluating to a lambda
 function as in `(( map[list|mapping.expression))` (here the mapping is taken
-from the property `mapping.expression`, which should hold an approriate lambda
+from the property `mapping.expression`, which should hold an appropriate lambda
 function).
 
 The mapping comes in two target flavors: with `[]` or `{}` in the syntax. The first
@@ -4459,7 +4562,7 @@ second one takes only a map source and produces a filtered or transformed _map_.
 Additionally the mapping uses three basic mapping behaviours:
 - _transforming the values using the keyword `map`_. Here the result of the lambda
   function is used as new value to replace the original one. Or
-- _filtering using the keywork `select`_. Here the result of the lambda
+- _filtering using the keywork  `filter`or `select`_. Here the result of the lambda
   function is used as a boolean to decide whether the entry should be kept
   (`true`) or omitted (`false`).
 - _composing_ using the keyword `sum`. Here always the list flavor is used,
@@ -4682,6 +4785,138 @@ This flavor only works on _maps_.
 
 An alternate way to express the same is to use `sum[persons|{}|s,k,v|->v > 25 ? s {k = v} :s]`.
 
+
+## Filters
+
+Filters are used to filter elements of a list or map by calculating the decision by a dynaml expression. They replace the `select` syntax. The expression is given by a lambda function. There are two basic forms of the filter function: It can be inlined as in `(( filter[list|x|->x ":" port] ))`, or it can be determined by a regular dynaml expression evaluating to a lambda function as in `(( filter[list|filter.expression))` (here the filter function is taken from the property `filter.expression`, which should hold an appropriate lambda function).
+
+### `(( filter[list|elem|->dynaml-expr] ))`
+
+Create a new list from a given list by filtering entries.
+The expression gets the element and can decide to keep the entry in the
+list by returning a value evaluatable to `true`.
+
+
+e.g.
+
+```yaml
+hosts:
+  - alice
+  - bob
+  - charly
+filtered: (( filter[hosts|x|->x == "bob"] ))
+```
+
+yields
+
+```yaml
+hosts:
+- alice
+- bob
+- charly
+filtered:
+- bob
+```
+
+### `(( filter[list|idx,elem|->dynaml-expr] ))`
+
+Create a new list from a given list by filtering entries.
+The expression gets the element and its index  and can decide to keep the entry in the
+list by returning a value evaluatable to `true`.
+
+e.g.
+
+```yaml
+list:
+  - alice
+  - bob
+  - charly
+
+filtered: (( map[list|i,p|->i % 2] ))
+```
+
+yields
+
+```yaml
+list:
+  - alice
+  - bob
+  - charly
+
+filtered:
+- bob
+```
+
+The expression result is mapped to a boolean value. An integer value is mapped to `true` if it is not equal to 0.
+
+- int: !=0
+- string: len != 0
+- map: size !=0
+- list: len != 0
+
+### `(( filter{map|value|->dynaml-expr} ))`
+
+Create a new map from a given map by filtering entries.
+The expression gets the mapped value and can decide to keep the entry in the
+map by returning a value evaluatable to `true`.
+
+e.g.
+
+```yaml
+map:
+  alice:
+    age: 25
+  bob:
+    age: 24
+
+filtered: (( filter{map|p|-> p.age < 25} ))
+```
+
+yields
+
+```yaml
+map:
+  alice:
+    age: 25
+  bob:
+    age: 24
+
+filtered:
+  bob:
+    age: 24
+```
+
+### `(( filter{map|key,value|->dynaml-expr} ))`
+
+Create a new map from a given map by filtering entries.
+The expression gets the key and its mapped element and can decide to keep the entry in the
+map by returning a value evaluatable to `true`.
+
+e.g.
+
+```yaml
+map:
+  alice:
+    age: 25
+  bob:
+    age: 24
+
+filtered: (( filter{map|k,v|->k == "bob"} ))
+```
+
+yields
+
+```yaml
+map:
+  alice:
+    age: 25
+  bob:
+    age: 24
+
+filtered:
+  bob:
+    age: 24
+```
 
 ## Aggregations
 
@@ -5649,6 +5884,7 @@ Provides an empty list. Basically this is not a dedicated literal, but just a re
 Provides the *null* value.
 
 ### `(( ~~ ))`
+<a id=undefined/>
 
 This literal evaluates to an *undefined* expression. The element (list entry or map field) carrying this value, although defined, will be removed from the document and handled as undefined for further merges and the evaluation of referential expressions.
 

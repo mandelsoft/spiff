@@ -77,6 +77,8 @@ const (
 
 	FLAG_INJECTED = 0x040
 	FLAG_IMPLIED  = 0x080
+
+	FLAG_NOMERGE = 0x100
 )
 
 type NodeFlags int
@@ -157,6 +159,14 @@ func (f NodeFlags) Injected() bool {
 }
 func (f *NodeFlags) SetInjected() *NodeFlags {
 	*f |= FLAG_INJECTED
+	return f
+}
+
+func (f NodeFlags) IsNoMerge() bool {
+	return (f & FLAG_NOMERGE) != 0
+}
+func (f *NodeFlags) SetNoMerge() *NodeFlags {
+	*f |= FLAG_NOMERGE
 	return f
 }
 
@@ -303,7 +313,7 @@ func (n Annotation) Preferred() bool {
 }
 
 func (n Annotation) Merged() bool {
-	return n.merged //|| n.ReplaceFlag() || len(n.RedirectPath()) > 0
+	return n.merged // || n.ReplaceFlag() || len(n.RedirectPath()) > 0
 }
 
 func (n Annotation) StandardOverride() bool {

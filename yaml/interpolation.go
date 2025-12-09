@@ -119,7 +119,7 @@ func addExpr(result, str, expr *string, final, unescape bool) bool {
 		*result = *result + string(r)
 	}
 	if *expr != "" {
-		*expr = strings.TrimSpace((*expr)[:len(*expr)-1])
+		*expr = "( " + strings.TrimSpace((*expr)[:len(*expr)-1]) + " )"
 	}
 	if *result != "" && *expr != "" {
 		*result += " "

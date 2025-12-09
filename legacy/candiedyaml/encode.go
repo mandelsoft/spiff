@@ -250,12 +250,17 @@ func (e *Encoder) emitSlice(tag string, v reflect.Value) {
 }
 
 func (e *Encoder) emitBase64(tag string, v reflect.Value) {
-	if v.IsNil() {
+	if v.Kind() == reflect.Slice && v.IsNil() {
 		e.emitNil()
 		return
 	}
 
-	s := v.Bytes()
+	var s []byte
+	if v.Kind() == reflect.String {
+		s = []byte(v.String())
+	} else {
+		s = v.Bytes()
+	}
 
 	dst := make([]byte, base64.StdEncoding.EncodedLen(len(s)))
 
@@ -267,10 +272,13 @@ func (e *Encoder) emitString(tag string, v reflect.Value) {
 	var style yaml_scalar_style_t
 	s := v.String()
 
-	if nonPrintable.MatchString(s) {
-		e.emitBase64(tag, v)
-		return
-	}
+	/*
+		if nonPrintable.MatchString(s) {
+			e.emitBase64(tag, v)
+			return
+		}
+
+	*/
 
 	if v.Type() == numberType {
 		style = yaml_PLAIN_SCALAR_STYLE

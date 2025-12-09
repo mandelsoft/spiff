@@ -4564,6 +4564,90 @@ map:
 		})
 	})
 
+	Describe("when doing a filter", func() {
+		Context("for a list", func() {
+			It("maps simple expression", func() {
+				source := parseYAML(`
+---
+list:
+  - alice
+  - bob
+filtered: (( filter[list|x|->x == "bob"] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - alice
+  - bob
+filtered:
+  - bob
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("with index", func() {
+				source := parseYAML(`
+---
+list:
+  - alice
+  - bob
+  - charly
+filtered: (( filter[list|i,v|->i % 2] ))
+`)
+				resolved := parseYAML(`
+---
+list:
+  - alice
+  - bob
+  - charly
+filtered:
+  - bob
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+
+		Context("for a map", func() {
+			It("maps simple expression", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 23
+filtered: (( filter{map|v|->v == 23} ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 23
+filtered:
+  bob: 23
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+
+			It("key", func() {
+				source := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 23
+filtered: (( filter{map|k,v|->k == "bob"} ))
+`)
+				resolved := parseYAML(`
+---
+map:
+  alice: 25
+  bob: 23
+filtered:
+  bob: 23
+`)
+				Expect(source).To(FlowAs(resolved))
+			})
+		})
+	})
+
 	Describe("when doing a mapping", func() {
 		Context("for a list", func() {
 			It("maps simple expression", func() {
@@ -6123,6 +6207,88 @@ foo: (( valid(~) ))
 			resolved := parseYAML(`
 ---
 foo: false
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
+	Describe("optional values", func() {
+		It("use", func() {
+			source := parseYAML(`
+---
+default:
+  <<<: (( &template &temporary ))
+  value: alice
+
+value:
+  some: other
+  result: (( optional(true, *default) )) 
+`)
+			resolved := parseYAML(`
+---
+value:
+  some: other
+  result:
+    value: alice
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("dont't use", func() {
+			source := parseYAML(`
+---
+default:
+  <<<: (( &template &temporary ))
+  value: alice
+
+value:
+  some: other
+  result: (( optional(false, *default) )) 
+`)
+			resolved := parseYAML(`
+---
+value:
+  some: other
+
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("dont't use if undefined", func() {
+			source := parseYAML(`
+---
+default:
+  <<<: (( &template &temporary ))
+  value: alice
+
+value:
+  some: other
+  result: (( optional(flag, *default) )) 
+`)
+			resolved := parseYAML(`
+---
+value:
+  some: other
+
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("don't use, and to not fail for undef", func() {
+			source := parseYAML(`
+---
+default:
+  <<<: (( &template &temporary ))
+  value: (( undefined ))))
+
+value:
+  some: other
+  result: (( optional(false, *default) )) 
+`)
+			resolved := parseYAML(`
+---
+value:
+  some: other
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
@@ -8628,7 +8794,23 @@ interpolated: this is a 10test
 `)
 			Expect(source).To(FlowAs(resolved).WithFeatures(features.INTERPOLATION))
 		})
+
+		It("handles expression priority", func() {
+			source := parseYAML(`
+---
+flag: true
+interpolated: this is a (( flag ? "successful" :"failed")) test
+`)
+
+			resolved := parseYAML(`
+---
+flag: true
+interpolated: this is a successful test
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.INTERPOLATION))
+		})
 	})
+
 	Context("math", func() {
 		It("sqrt", func() {
 			source := parseYAML(`
