@@ -8712,7 +8712,23 @@ interpolated: this is a 10test
 `)
 			Expect(source).To(FlowAs(resolved).WithFeatures(features.INTERPOLATION))
 		})
+
+		It("handles expression priority", func() {
+			source := parseYAML(`
+---
+flag: true
+interpolated: this is a (( flag ? "successful" :"failed")) test
+`)
+
+			resolved := parseYAML(`
+---
+flag: true
+interpolated: this is a successful test
+`)
+			Expect(source).To(FlowAs(resolved).WithFeatures(features.INTERPOLATION))
+		})
 	})
+
 	Context("math", func() {
 		It("sqrt", func() {
 			source := parseYAML(`

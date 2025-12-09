@@ -174,11 +174,6 @@ Contents:
 	- [(( catch[expr|v,e|->v] ))](#-catchexprve-v-)
 	- [(( sync[expr|v,e|->defined(v.field),v.field|10] ))](#-syncexprve-definedvfieldvfield10-)
 	- [Inline List Expansion (( [a, list..., b] ))](#inline-list-expansion)
-    - [Filters](#filters)
-      - [(( filter[list|elem|->dynaml-expr] ))](#-filterlistelem-dynaml-expr-)
-      - [(( filter[list|idx,elem|->dynaml-expr] ))](#-filterlistidxelem-dynaml-expr-)
-      - [(( filter{map|value|->dynaml-expr} ))](#-filtermapvalue-dynaml-expr-)
-      - [(( filter{map|key,value|->dynaml-expr} ))](#-filtermapkeyvalue-dynaml-expr-)
 	- [Mappings](#mappings)
 		- [(( map[list|elem|->dynaml-expr] ))](#-maplistelem-dynaml-expr-)
 		- [(( map[list|idx,elem|->dynaml-expr] ))](#-maplistidxelem-dynaml-expr-)
@@ -187,6 +182,11 @@ Contents:
 		- [(( map{list|elem|->dynaml-expr} ))](#-maplistelem-dynaml-expr-)
 		- [(( select[expr|elem|->dynaml-expr] ))](#-selectexprelem-dynaml-expr-)
 		- [(( select{map|elem|->dynaml-expr} ))](#-selectmapelem-dynaml-expr-)
+    - [Filters](#filters)
+      - [(( filter[list|elem|->dynaml-expr] ))](#-filterlistelem-dynaml-expr-)
+      - [(( filter[list|idx,elem|->dynaml-expr] ))](#-filterlistidxelem-dynaml-expr-)
+      - [(( filter{map|value|->dynaml-expr} ))](#-filtermapvalue-dynaml-expr-)
+      - [(( filter{map|key,value|->dynaml-expr} ))](#-filtermapkeyvalue-dynaml-expr-)
 	- [Aggregations](#aggregations)
 		- [(( sum[list|initial|sum,elem|->dynaml-expr] ))](#-sumlistinitialsumelem-dynaml-expr-)
 		- [(( sum[list|initial|sum,idx,elem|->dynaml-expr] ))](#-sumlistinitialsumidxelem-dynaml-expr-)
@@ -4495,138 +4495,6 @@ result: 25
 This example is quite useless, because the sync expression is a constant. It
 just demonstrates the usage.
 
-## Filters
-
-Filters are used to filter elements of a list or map by calculating the decision by a dynaml expression. The expression is given by a lambda function. There are two basic forms of the filter function: It can be inlined as in `(( filter[list|x|->x ":" port] ))`, or it can be determined by a regular dynaml expression evaluating to a lambda function as in `(( filter[list|filter.expression))` (here the filter function is taken from the property `filter.expression`, which should hold an appropriate lambda function).
-
-### `(( filter[list|elem|->dynaml-expr] ))`
-
-Create a new list from a given list by filtering entries.
-The expression gets the element and can decide to keep the entry in the
-list by returning a value evaluatable to `true`.
-
-
-e.g.
-
-```yaml
-hosts:
-  - alice
-  - bob
-  - charly
-filtered: (( filter[hosts|x|->x == "bob"] ))
-```
-
-yields
-
-```yaml
-hosts:
-- alice
-- bob
-- charly
-filtered:
-- bob
-```
-
-### `(( filter[list|idx,elem|->dynaml-expr] ))`
-
-Create a new list from a given list by filtering entries.
-The expression gets the element and its index  and can decide to keep the entry in the
-list by returning a value evaluatable to `true`.
-
-e.g.
-
-```yaml
-list:
-  - alice
-  - bob
-  - charly
-
-filtered: (( map[list|i,p|->i % 2] ))
-```
-
-yields
-
-```yaml
-list:
-  - alice
-  - bob
-  - charly
-
-filtered:
-- bob
-```
-
-The expression result is mapped to a boolean value. An integer value is mapped to `true` if it is not equal to 0.
-
-- int: !=0
-- string: len != 0
-- map: size !=0
-- list: len != 0
-
-### `(( filter{map|value|->dynaml-expr} ))`
-
-Create a new map from a given map by filtering entries.
-The expression gets the mapped value and can decide to keep the entry in the
-map by returning a value evaluatable to `true`.
-
-e.g.
-
-```yaml
-map:
-  alice:
-    age: 25
-  bob:
-    age: 24
-
-filtered: (( filter{map|p|-> p.age < 25} ))
-```
-
-yields
-
-```yaml
-map:
-  alice:
-    age: 25
-  bob:
-    age: 24
-
-filtered:
-  bob:
-    age: 24
-```
-
-### `(( filter{map|key,value|->dynaml-expr} ))`
-
-Create a new map from a given map by filtering entries.
-The expression gets the key and its mapped element and can decide to keep the entry in the
-map by returning a value evaluatable to `true`.
-
-e.g.
-
-```yaml
-map:
-  alice:
-    age: 25
-  bob:
-    age: 24
-
-filtered: (( filter{map|k,v|->k == "bob"} ))
-```
-
-yields
-
-```yaml
-map:
-  alice:
-    age: 25
-  bob:
-    age: 24
-
-filtered:
-  bob:
-    age: 24
-```
-
 ## Mappings
 
 Mappings are used to produce a new list from the entries of a _list_ or _map_,
@@ -4646,7 +4514,7 @@ second one takes only a map source and produces a filtered or transformed _map_.
 Additionally the mapping uses three basic mapping behaviours:
 - _transforming the values using the keyword `map`_. Here the result of the lambda
   function is used as new value to replace the original one. Or
-- _filtering using the keywork `select`_. Here the result of the lambda
+- _filtering using the keywork  `filter`or `select`_. Here the result of the lambda
   function is used as a boolean to decide whether the entry should be kept
   (`true`) or omitted (`false`).
 - _composing_ using the keyword `sum`. Here always the list flavor is used,
@@ -4869,6 +4737,138 @@ This flavor only works on _maps_.
 
 An alternate way to express the same is to use `sum[persons|{}|s,k,v|->v > 25 ? s {k = v} :s]`.
 
+
+## Filters
+
+Filters are used to filter elements of a list or map by calculating the decision by a dynaml expression. They replace the `select` syntax. The expression is given by a lambda function. There are two basic forms of the filter function: It can be inlined as in `(( filter[list|x|->x ":" port] ))`, or it can be determined by a regular dynaml expression evaluating to a lambda function as in `(( filter[list|filter.expression))` (here the filter function is taken from the property `filter.expression`, which should hold an appropriate lambda function).
+
+### `(( filter[list|elem|->dynaml-expr] ))`
+
+Create a new list from a given list by filtering entries.
+The expression gets the element and can decide to keep the entry in the
+list by returning a value evaluatable to `true`.
+
+
+e.g.
+
+```yaml
+hosts:
+  - alice
+  - bob
+  - charly
+filtered: (( filter[hosts|x|->x == "bob"] ))
+```
+
+yields
+
+```yaml
+hosts:
+- alice
+- bob
+- charly
+filtered:
+- bob
+```
+
+### `(( filter[list|idx,elem|->dynaml-expr] ))`
+
+Create a new list from a given list by filtering entries.
+The expression gets the element and its index  and can decide to keep the entry in the
+list by returning a value evaluatable to `true`.
+
+e.g.
+
+```yaml
+list:
+  - alice
+  - bob
+  - charly
+
+filtered: (( map[list|i,p|->i % 2] ))
+```
+
+yields
+
+```yaml
+list:
+  - alice
+  - bob
+  - charly
+
+filtered:
+- bob
+```
+
+The expression result is mapped to a boolean value. An integer value is mapped to `true` if it is not equal to 0.
+
+- int: !=0
+- string: len != 0
+- map: size !=0
+- list: len != 0
+
+### `(( filter{map|value|->dynaml-expr} ))`
+
+Create a new map from a given map by filtering entries.
+The expression gets the mapped value and can decide to keep the entry in the
+map by returning a value evaluatable to `true`.
+
+e.g.
+
+```yaml
+map:
+  alice:
+    age: 25
+  bob:
+    age: 24
+
+filtered: (( filter{map|p|-> p.age < 25} ))
+```
+
+yields
+
+```yaml
+map:
+  alice:
+    age: 25
+  bob:
+    age: 24
+
+filtered:
+  bob:
+    age: 24
+```
+
+### `(( filter{map|key,value|->dynaml-expr} ))`
+
+Create a new map from a given map by filtering entries.
+The expression gets the key and its mapped element and can decide to keep the entry in the
+map by returning a value evaluatable to `true`.
+
+e.g.
+
+```yaml
+map:
+  alice:
+    age: 25
+  bob:
+    age: 24
+
+filtered: (( filter{map|k,v|->k == "bob"} ))
+```
+
+yields
+
+```yaml
+map:
+  alice:
+    age: 25
+  bob:
+    age: 24
+
+filtered:
+  bob:
+    age: 24
+```
 
 ## Aggregations
 
