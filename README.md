@@ -5884,7 +5884,7 @@ Provides an empty list. Basically this is not a dedicated literal, but just a re
 Provides the *null* value.
 
 ### `(( ~~ ))`
-<a id=undefined/>
+<a id="undefined"></a>
 
 This literal evaluates to an *undefined* expression. The element (list entry or map field) carrying this value, although defined, will be removed from the document and handled as undefined for further merges and the evaluation of referential expressions.
 
