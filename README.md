@@ -115,6 +115,7 @@ Contents:
 		- [(( defined(foobar) ))](#-definedfoobar-)
 		- [(( valid(foobar) ))](#-validfoobar-)
 		- [(( require(foobar) ))](#-requirefoobar-)
+		- [(( optional(cond,value) ))](#-optionalcondvalue-)
 		- [(( stub(foo.bar) ))](#-stubfoobar-)
 		- [(( tagdef("tag", value) ))](#-tagdeftag-valiue-)
 		- [(( eval(foo "." bar ) ))](#-evalfoo--bar--)
@@ -2257,6 +2258,53 @@ evaluates to
 foo: ~
 bob: ~
 alice: default
+```
+
+
+### `(( optional(cond,value) ))`
+
+The function `optional` checks whether an expression can successfully be evaluated. If it can be evaluated and the evaluation result can be mapped to `true`, the value expression is evaluated and returned as result.
+If the condition cannot be evaluated or evaluates to a value mapped to `false` the function evaluates to an [*undefined* expression](#undefined).
+
+e.g.:
+
+```yaml
+defaultdef:
+  <<<: (( &template &temporary ))
+  value: alice
+
+defaultundef:
+  <<<: (( &template &temporary ))
+  value: (( undef ))
+  
+optional:
+  undef: (( optional(flag, *defaultdef) ))
+  xfalse: (( optional(false, *defaultdef) ))
+  xtrue: (( optional(true, *defaultdef) ))
+  xundef: (( optional(flag, *defaultundef) ))
+
+```
+
+evaluates to
+
+```yaml
+optional:
+  xtrue:
+    value: alice
+```
+
+The field `undef` is omitted because the condition `flag` cannot be evaluated; there is no such field defined in the document.
+The field `xfalse` is omitted because the condition is `false`,
+and the field `xtrue` is used because the condition is `true`. 
+The value is always an evaluated template.
+The field `xundef` is omitted, also, and the value (again a template substitution) is not evaluated at all and does not produce an error (because of the usage of an undefined field `undefined`).
+
+This way parts of the document can be evaluated under some conditions, only.
+
+This function is basically equivalent to the more complex expression
+
+```
+ (( ( cond || false ) ? value :~~ ))
 ```
 
 ### `(( stub(foo.bar) ))`
@@ -5836,6 +5884,7 @@ Provides an empty list. Basically this is not a dedicated literal, but just a re
 Provides the *null* value.
 
 ### `(( ~~ ))`
+<a id=undefined/>
 
 This literal evaluates to an *undefined* expression. The element (list entry or map field) carrying this value, although defined, will be removed from the document and handled as undefined for further merges and the evaluation of referential expressions.
 

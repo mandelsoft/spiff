@@ -6212,6 +6212,88 @@ foo: false
 		})
 	})
 
+	Describe("optional values", func() {
+		It("use", func() {
+			source := parseYAML(`
+---
+default:
+  <<<: (( &template &temporary ))
+  value: alice
+
+value:
+  some: other
+  result: (( optional(true, *default) )) 
+`)
+			resolved := parseYAML(`
+---
+value:
+  some: other
+  result:
+    value: alice
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("dont't use", func() {
+			source := parseYAML(`
+---
+default:
+  <<<: (( &template &temporary ))
+  value: alice
+
+value:
+  some: other
+  result: (( optional(false, *default) )) 
+`)
+			resolved := parseYAML(`
+---
+value:
+  some: other
+
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("dont't use if undefined", func() {
+			source := parseYAML(`
+---
+default:
+  <<<: (( &template &temporary ))
+  value: alice
+
+value:
+  some: other
+  result: (( optional(flag, *default) )) 
+`)
+			resolved := parseYAML(`
+---
+value:
+  some: other
+
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("don't use, and to not fail for undef", func() {
+			source := parseYAML(`
+---
+default:
+  <<<: (( &template &temporary ))
+  value: (( undefined ))))
+
+value:
+  some: other
+  result: (( optional(false, *default) )) 
+`)
+			resolved := parseYAML(`
+---
+value:
+  some: other
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+	})
+
 	Describe("require values", func() {
 		It("checks for undefined values", func() {
 			source := parseYAML(`

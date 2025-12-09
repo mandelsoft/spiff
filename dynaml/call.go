@@ -89,6 +89,8 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	switch funcName {
 	case "defined":
 		f = e.defined
+	case "optional":
+		f = e.optional
 	case "require":
 		f = e.require
 	case "valid":
