@@ -300,6 +300,8 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "md5crypt_check":
 		result, sub, ok = func_md5crypt_check(values, binding)
 
+	case "ascanonjson":
+		result, sub, ok = func_as_jcs(values, binding)
 	case "asjson":
 		result, sub, ok = func_as_json(values, binding)
 	case "asyaml":
