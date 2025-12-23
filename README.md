@@ -148,6 +148,8 @@ Contents:
 		    - [(( mkdir("dir", 0755) ))](#-mkdirdir-0755-)
 		    - [(( list_files(".") ))](#-list_files-)
 		    - [(( archive(files, "tar") ))](#-archivefiles-tar-)
+            - [(( local_ips() ))](#-local_ips-)
+            - [(( local_interfaces() ))](#-local_interfaces-)
 		- [Semantic Versioning Functions](#semantic-versioning-functions)
 		    - [(( semver("v1.2-beta.1") ))](#-semverv12-beta1-)
 		    - [(( semverrelease("v1.2.3-beta.1") ))](#-semverreleasev123-beta1-)
@@ -3526,6 +3528,77 @@ yaml:
   bob: 27
 
 ```
+
+#### `(( local_ips() ))`
+
+This functiion provides access to IP addresses of local interfaces.
+It accepts optional string arguments acting as filter.
+- interface names, like `eth0`, or `ens33`
+- IP address types `v4` and/or `v6`
+- include loopback address `loopback`
+
+By default, the non-loopback addresses of all (active) interfaces are reported.
+
+e.g.: 
+
+```yaml
+ips:
+  all: (( local_ips() ))
+  v4: (( local_ips("v4") ))
+```
+
+yields
+
+```yaml
+ips:
+  all:
+  - 127.0.0.1
+  - 192.168.126.130
+  v4:
+  - 192.168.126.130  # if loopback address is required add selector "loopback"
+```
+
+#### `(( local_interfaces() ))`
+
+
+e.g.:
+
+```yaml
+interfaces: (( local_interfaces() ))
+```
+
+yields
+
+```yaml
+interfaces:
+  ens33:
+    addrs:
+    - 192.168.126.130
+    index: 2
+    mac: 00:0d:29:84:87:e8
+    mtu: 1500
+    name: ens33
+  lo:
+    addrs:
+    - 127.0.0.1
+    index: 1
+    mac: ""
+    mtu: 65536
+    name: lo
+```
+
+This function provides information of local network interfaces
+as map with the interface name as key.
+
+With optional string arguments the information can be filtered, see [`(( local_ips() ))`](#-local_ips-).
+
+Per interface the folloing information is provided:
+- `name` in addition to the map key the interface name is also provided as field.
+- `index` the index of the interface
+- `mtu` the MTU of the interface
+- `mac` the MAC address of the interface
+- `addrs` the list of IP addresses assigned to this interface
+
 ### Semantic Versioning Functions
 
 *Spiff* supports handling of semantic version names. It supports all functionality

@@ -253,6 +253,11 @@ func (e CallExpr) Evaluate(binding Binding, locally bool) (interface{}, Evaluati
 	case "error":
 		result, sub, ok = func_error(values, binding)
 
+	case "local_ips":
+		result, sub, ok = func_localips(values, binding)
+	case "local_interfaces":
+		result, sub, ok = func_localinterfaces(values, binding)
+
 	case "min_ip":
 		result, sub, ok = func_minIP(values, binding)
 
