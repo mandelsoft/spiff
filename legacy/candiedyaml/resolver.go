@@ -368,6 +368,14 @@ func resolveInterface(event yaml_event_t, useNumber bool) (string, interface{}) 
 		return "", val
 	}
 
+	// Honour an explicit !!str tag: the YAML spec requires that an explicit
+	// tag overrides implicit type resolution. Without this guard, values like
+	// `!!str off` or `!!str yes` are still coerced to booleans because the
+	// character-based dispatch below does not check the tag.
+	if string(event.tag) == yaml_STR_TAG {
+		return yaml_STR_TAG, val
+	}
+
 	if len(val) == 0 {
 		return yaml_NULL_TAG, nil
 	}
