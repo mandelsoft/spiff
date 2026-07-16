@@ -661,5 +661,21 @@ var _ = Describe("Resolver", func() {
 				Expect(tag).To(Equal(""))
 			})
 		})
+
+		Context("Explicit !!str tag preserves string (no bool coercion)", func() {
+			strTagBoolTokens := []string{"on", "ON", "off", "OFF", "yes", "YES", "no", "NO", "true", "TRUE", "false", "FALSE", "y", "Y", "n", "N"}
+
+			It("returns the raw string for each YAML 1.1 bool token tagged !!str", func() {
+				for _, tok := range strTagBoolTokens {
+					event.value = []byte(tok)
+					event.tag = []byte(yaml_STR_TAG)
+					event.implicit = false
+
+					tag, result := resolveInterface(event, false)
+					Expect(tag).To(Equal(yaml_STR_TAG), "token %q: expected tag !!str", tok)
+					Expect(result).To(Equal(tok), "token %q: expected string, not bool", tok)
+				}
+			})
+		})
 	})
 })
