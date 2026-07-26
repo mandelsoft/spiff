@@ -321,6 +321,10 @@ func IsResolvedNode(node yaml.Node, binding Binding) bool {
 	return isResolvedValue(node.Value(), binding)
 }
 
+func IsCompletedNode(node yaml.Node, binding Binding) bool {
+	return node.Merged() && isResolved(node, binding)
+}
+
 func isResolved(node yaml.Node, binding Binding) bool {
 	return node == nil || isResolvedValue(node.Value(), binding)
 }

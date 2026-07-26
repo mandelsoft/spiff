@@ -75,14 +75,16 @@ func _flow(root yaml.Node, env dynaml.Binding, shouldOverride, enforceTemplate b
 		env = env.RedirectOverwrite(redirect)
 	}
 
-	debug.Debug("//{ FLOW %v: %+v\n", env.Path(), root)
+	debug.Debug("//{ FLOW %v: (merged %t) %+v\n", env.Path(), merged, root)
 	debug.Debug("/// BIND: %+v\n", env)
 	defer debug.Debug("//}\n")
 	if !replace {
-		if _, ok := root.Value().(dynaml.Expression); !ok && merged {
-			debug.Debug("  skip handling of merged node")
+		// if _, ok := root.Value().(dynaml.Expression); !ok && merged {
+		if dynaml.IsCompletedNode(root, env) {
+			debug.Debug("  skip handling of resolved node")
 			return root
 		}
+
 		switch val := root.Value().(type) {
 		case map[string]yaml.Node:
 			ok, err := dynaml.IsControl(root, env)
@@ -424,7 +426,7 @@ func flowMap(root yaml.Node, env dynaml.Binding, shouldOverride, template bool) 
 				}
 			}
 
-			debug.Debug("MAP %v (%s)%s  -> %T\n", env.Path(), val.KeyName(), key, val.Value())
+			debug.Debug("MAP %v (%s) key:%s  -> %T\n", env.Path(), val.KeyName(), key, val.Value())
 			if !val.Undefined() {
 				if flags.PropagateImplied() {
 					val = yaml.AddFlags(val, yaml.FLAG_IMPLIED)

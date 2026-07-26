@@ -267,4 +267,42 @@ list:
 			Expect(source).To(FlowAs(resolved, stub))
 		})
 	})
+
+	Context("other", func() {
+		It("merg and fallback", func() {
+			source := parseYAML(`
+---
+data:
+  inst:
+    name: (( merge || ( data.properties.inst_name "inst" ) ))
+
+  properties:
+    <<<: (( merge ))
+    inst_name: (( merge ))
+
+  instances:
+      - name: (( data.inst.name ))
+      - <<<: (( merge || ~ ))
+`)
+			stub := parseYAML(`
+---
+data:
+  properties:
+    inst_name: test
+    bla: blub
+`)
+			resolved := parseYAML(`
+---
+data:
+  inst:
+    name: testinst
+  instances:
+  - name: testinst
+  properties:
+    bla: blub
+    inst_name: test
+`)
+			Expect(source).To(FlowAs(resolved, stub))
+		})
+	})
 })
