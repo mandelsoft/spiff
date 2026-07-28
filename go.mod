@@ -11,7 +11,7 @@ require (
 	github.com/pointlander/peg v0.0.0-20160608205303-1d0268dfff9b
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0
-	golang.org/x/crypto v0.51.0
+	golang.org/x/crypto v0.52.0
 )
 
 require (
