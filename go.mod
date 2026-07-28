@@ -3,7 +3,7 @@ module github.com/mandelsoft/spiff
 go 1.25.0
 
 require (
-	github.com/Masterminds/semver/v3 v3.4.0
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/cloudfoundry-incubator/candiedyaml v0.0.0-20170901234223-a41693b7b7af
 	github.com/gowebpki/jcs v1.0.1
 	github.com/mandelsoft/vfs v0.4.4
