@@ -7493,6 +7493,94 @@ hash:
 `)
 			Expect(source).To(FlowAs(resolved))
 		})
+
+		It("it hashes structured data", func() {
+			source := parseYAML(`
+---
+data: 
+  nested:
+    alice: 25
+    bob: 26
+  list:
+    - alice
+    - bob
+jcs: (( asjson(data, true) ))
+hash:
+  direct: (( hash(data) ))
+  jcs: (( hash(.jcs) ))
+`)
+			resolved := parseYAML(`
+---
+data:
+  list:
+  - alice
+  - bob
+  nested:
+    alice: 25
+    bob: 26
+hash:
+  direct: e8686dc47d7f826cc5d8f290ed6feb5667234a4b7164b784b427ee508eada118
+  jcs: e8686dc47d7f826cc5d8f290ed6feb5667234a4b7164b784b427ee508eada118
+jcs: '{"list":["alice","bob"],"nested":{"alice":25,"bob":26}}'
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("hashes string as json", func() {
+			source := parseYAML(`
+---
+data: alice
+jcs: (( asjson(data, true) ))
+hash:
+  direct: (( hash(data, "*sha256") ))
+  jcs: (( hash(.jcs) ))
+`)
+			resolved := parseYAML(`
+---
+data: alice
+jcs: '"alice"'
+hash:
+  direct: 0a50500b2a3435fe7472877eb22d48d47a228e946b0b991ab7402a8d00f6b32d
+  jcs: 0a50500b2a3435fe7472877eb22d48d47a228e946b0b991ab7402a8d00f6b32d
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("hashes base64 encoded binary data", func() {
+			source := parseYAML(`
+---
+data: (( base64("alice") ))
+hash:
+  bin: (( hash(data, "#sha256") ))
+  str: (( hash("alice") ))
+`)
+			resolved := parseYAML(`
+---
+data: YWxpY2U=
+hash:
+  bin: 2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90
+  str: 2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
+
+		It("supports sole data type indicator", func() {
+			source := parseYAML(`
+---
+data: (( base64("alice") ))
+hash:
+  bin: (( hash(data, "#") ))
+  str: (( hash("alice") ))
+`)
+			resolved := parseYAML(`
+---
+data: YWxpY2U=
+hash:
+  bin: 2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90
+  str: 2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90
+`)
+			Expect(source).To(FlowAs(resolved))
+		})
 	})
 
 	Describe("when calling bcrypt", func() {

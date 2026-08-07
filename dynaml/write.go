@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+const BINARY_INDICATOR = "#"
+
 func func_write(arguments []interface{}, binding Binding) (interface{}, EvaluationInfo, bool) {
 	var err error
 	info := DefaultInfo()
@@ -56,7 +58,7 @@ func getWriteOptions(arg interface{}, wopt WriteOpts, permonly bool) (WriteOpts,
 		for i := 0; i < len(opts); i++ {
 			o := strings.TrimSpace(opts[i])
 			switch o {
-			case "binary", "#":
+			case "binary", BINARY_INDICATOR:
 				wopt.Binary = true
 				opts = append(opts[:i], opts[i+1:]...)
 				i--
