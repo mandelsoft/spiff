@@ -253,7 +253,7 @@ match: (( catch(validate("1.2.3", ["semver", "~1.3"])) ))
 			resolved := parseYAML(`
 ---
 match:
-  error: 'condition 1 failed: [1.2.3 is less than 1.3]'
+  error: 'condition 1 failed: ["1.2.3" is less than "1.3"]'
   valid: false
 `)
 			Expect(source).To(FlowAs(resolved))
