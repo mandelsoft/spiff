@@ -277,8 +277,9 @@ data:
     name: (( merge || ( data.properties.inst_name "inst" ) ))
 
   properties:
-    <<<: (( merge ))
+    <<<: (( merge )):q
     inst_name: (( merge ))
+    instnames: (( join(",",map[instances|v|->v.name]) ))
 
   instances:
       - name: (( data.inst.name ))
@@ -290,6 +291,9 @@ data:
   properties:
     inst_name: test
     bla: blub
+  instances:
+      - name: global
+
 `)
 			resolved := parseYAML(`
 ---
@@ -298,9 +302,11 @@ data:
     name: testinst
   instances:
   - name: testinst
+  - name: global
   properties:
     bla: blub
     inst_name: test
+    instnames: testinst,global
 `)
 			Expect(source).To(FlowAs(resolved, stub))
 		})

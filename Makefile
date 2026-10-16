@@ -1,6 +1,6 @@
 VERBOSE=-v
 
-all: vendor grammar test release
+all: grammar test release
 
 build:
 	go build -o spiff
