@@ -37,3 +37,5 @@ require (
 	golang.org/x/text v0.43.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )
+
+tool github.com/pointlander/peg
