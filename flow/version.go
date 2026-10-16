@@ -1,3 +1,3 @@
 package flow
 
-var VERSION = "v1.7.0-beta-9"
+var VERSION = "v1.7.0-beta-10"

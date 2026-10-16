@@ -1,4 +1,4 @@
-//go:generate go run -v  ../vendor/github.com/pointlander/peg dynaml.peg
+//go:generate go tool peg dynaml.peg
 
 package dynaml
 
