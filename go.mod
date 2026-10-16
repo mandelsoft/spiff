@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/cloudfoundry-incubator/candiedyaml v0.0.0-20170901234223-a41693b7b7af
-	github.com/gowebpki/jcs v1.0.1
+	github.com/gowebpki/jcs v1.0.2
 	github.com/mandelsoft/vfs v0.4.4
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.44.0
