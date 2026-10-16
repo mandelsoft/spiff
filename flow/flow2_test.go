@@ -277,7 +277,7 @@ data:
     name: (( merge || ( data.properties.inst_name "inst" ) ))
 
   properties:
-    <<<: (( merge )):q
+    <<<: (( merge ))
     inst_name: (( merge ))
     instnames: (( join(",",map[instances|v|->v.name]) ))
 
